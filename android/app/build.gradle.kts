@@ -22,7 +22,7 @@ android {
         // Default backend: the hosted production API. Overridable at runtime in
         // Settings (persisted via DataStore) — e.g. http://10.0.2.2:8000 for a
         // local dev backend on the emulator.
-        buildConfigField("String", "DEFAULT_BASE_URL", "\"https://plantbill.in\"")
+        buildConfigField("String", "DEFAULT_BASE_URL", "\"https://api.plantbill.in/\"")
     }
 
     buildTypes {
