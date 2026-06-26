@@ -77,11 +77,16 @@ fun SummaryHero(
         }
 
         Spacer(Modifier.height(Dimens.lg))
-        // Cash / UPI / Due
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Dimens.sm)) {
-            PayStat("Cash", summary.cashTotal, CashGreen, Modifier.weight(1f))
-            PayStat("UPI", summary.upiTotal, UpiBlue, Modifier.weight(1f))
-            PayStat("Due", summary.dueTotal, DueAmber, Modifier.weight(1f))
+        // Cash / UPI / Due — full-width rows so large amounts never break the layout.
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f), MaterialTheme.shapes.medium)
+                .padding(horizontal = Dimens.md, vertical = Dimens.xs),
+        ) {
+            PayStatRow("Cash", summary.cashTotal, CashGreen)
+            PayStatRow("UPI", summary.upiTotal, UpiBlue)
+            PayStatRow("Due", summary.dueTotal, DueAmber)
         }
 
         Spacer(Modifier.height(Dimens.lg))
@@ -172,13 +177,19 @@ private fun MetricCard(label: String, value: String, valueColor: Color, modifier
 }
 
 @Composable
-private fun PayStat(label: String, money: Money, color: Color, modifier: Modifier) {
-    Column(
-        modifier
-            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f), MaterialTheme.shapes.medium)
-            .padding(Dimens.md),
+private fun PayStatRow(label: String, money: Money, color: Color) {
+    Row(
+        Modifier.fillMaxWidth().padding(vertical = Dimens.sm),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(label, style = MaterialTheme.typography.labelLarge, color = color, fontWeight = FontWeight.SemiBold)
+        Box(Modifier.size(10.dp).background(color, CircleShape))
+        Text(
+            label,
+            style = MaterialTheme.typography.titleMedium,
+            color = color,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.weight(1f).padding(start = Dimens.sm),
+        )
         MoneyText(money, style = MaterialTheme.typography.titleMedium)
     }
 }

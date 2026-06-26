@@ -116,40 +116,28 @@ class BillingViewModel @Inject constructor(
     fun showToast(message: String) = _ui.update { it.copy(toast = message) }
 
     /**
-     * Voice guesses → closest available plant added to cart. The recognizer
-     * returns several alternative phrases; we score every one against the
-     * product names and pick the single best phonetic match, so unclear or
-     * heavily-accented speech still snaps to a real plant. Falls back to a text
-     * search only when nothing is even close.
+     * Voice → the closest plant in THIS shop's catalog, always. The recognizer
+     * returns several alternative phrases; we score every one against the product
+     * names and add the single nearest plant. The mic is deliberately restricted
+     * to the catalog: whatever is spoken snaps to a real product name — no stray
+     * words, no plain-text search.
      */
     fun onVoiceTranscript(alternatives: List<String>) {
         val products = _ui.value.products
-        val names = products.map { it.name }
-        if (names.isEmpty() || alternatives.isEmpty()) {
-            _ui.update { it.copy(query = alternatives.firstOrNull().orEmpty()) }
+        if (products.isEmpty()) {
+            _ui.update { it.copy(toast = "Add products first, then use voice.") }
             return
         }
+        val names = products.map { it.name }
         var best: com.plantora.billing.ui.billing.voice.PhoneticMatcher.Match? = null
         for (alt in alternatives) {
-            val m = com.plantora.billing.ui.billing.voice.PhoneticMatcher.findBestMatch(alt, names)
+            val m = com.plantora.billing.ui.billing.voice.PhoneticMatcher.findClosest(alt, names)
             if (m != null && (best == null || m.score > best!!.score)) best = m
         }
-        val confident = best != null && best!!.score >= CONFIDENT_MATCH
-        val product = best?.takeIf { confident }?.let { mm -> products.find { it.name == mm.candidate } }
-        if (product != null) {
-            // Only auto-add when we're sure which plant was said, so a mumbled or
-            // unrelated phrase never drops a random item into the cart.
-            addProduct(product)
-            _ui.update { it.copy(query = "", toast = "Added ${product.name} to cart") }
-        } else {
-            // Not confident — don't add anything; just run it as a text search.
-            _ui.update { it.copy(query = alternatives.first(), toast = "Couldn't catch the plant — showing matches") }
-        }
-    }
-
-    private companion object {
-        /** Minimum match confidence before a spoken plant is auto-added to the cart. */
-        const val CONFIDENT_MATCH = 0.5
+        val product = best?.let { mm -> products.find { it.name == mm.candidate } }
+            ?: products.first()
+        addProduct(product)
+        _ui.update { it.copy(query = "", toast = "Added ${product.name} to cart") }
     }
 
     // ── Quick Add ──

@@ -85,11 +85,18 @@ fun CartSheetContent(
         // ── Cart lines ──
         state.lines.forEach { line ->
             Column(Modifier.padding(vertical = Dimens.sm)) {
+                // Name + line total on one row so the total always has room (the
+                // price field + stepper below would otherwise squeeze it to nothing).
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         line.product.name,
                         style = MaterialTheme.typography.titleMedium,
                         modifier = Modifier.weight(1f),
+                    )
+                    MoneyText(
+                        line.lineTotal,
+                        style = MaterialTheme.typography.titleMedium,
+                        modifier = Modifier.padding(start = Dimens.sm),
                     )
                     IconButton(onClick = { onRemoveLine(line.product.id) }) {
                         Icon(Icons.Rounded.Close, contentDescription = "Remove ${line.product.name}")
@@ -104,7 +111,7 @@ fun CartSheetContent(
                         onValueChange = { onSetUnitPrice(line.product.id, it) },
                         label = "Price",
                         keyboardType = KeyboardType.Decimal,
-                        modifier = Modifier.width(120.dp),
+                        modifier = Modifier.weight(1f),
                     )
                     QuantityStepper(
                         quantity = line.quantity,
@@ -112,8 +119,6 @@ fun CartSheetContent(
                         onIncrement = { onSetQuantity(line.product.id, line.quantity + 1) },
                         onQuantityChange = { q -> onSetQuantity(line.product.id, q) },
                     )
-                    Spacer(Modifier.weight(1f))
-                    MoneyText(line.lineTotal, style = MaterialTheme.typography.titleMedium)
                 }
             }
             HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f))
@@ -191,8 +196,8 @@ fun CartSheetContent(
         )
         Spacer(Modifier.height(Dimens.sm))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Dimens.lg)) {
-            PayPill("Cash", cash)
-            PayPill("UPI", upi)
+            PayPill("Cash", cash, Modifier.weight(1f))
+            PayPill("UPI", upi, Modifier.weight(1f))
         }
 
         // Scan-to-pay QR — appears whenever any amount is being collected via UPI.
@@ -287,8 +292,8 @@ private fun PaymentChip(label: String, selected: Boolean, onClick: () -> Unit) {
 }
 
 @Composable
-private fun PayPill(label: String, money: Money) {
-    Column {
+private fun PayPill(label: String, money: Money, modifier: Modifier = Modifier) {
+    Column(modifier) {
         Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         MoneyText(money, style = MaterialTheme.typography.titleMedium)
     }

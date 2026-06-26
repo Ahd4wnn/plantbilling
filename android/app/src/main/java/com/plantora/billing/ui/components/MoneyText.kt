@@ -10,7 +10,11 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import com.plantora.billing.domain.Money
 
-/** Large, legible rupee amount. Defaults to semibold for emphasis on numbers. */
+/**
+ * Large, legible rupee amount. Defaults to semibold for emphasis on numbers.
+ * Always a single line — a long amount (e.g. ₹1,23,456.00) never wraps into a
+ * stacked, one-character-per-line mess. Give it room via the surrounding layout.
+ */
 @Composable
 fun MoneyText(
     money: Money,
@@ -25,5 +29,7 @@ fun MoneyText(
         style = style,
         color = color,
         fontWeight = if (emphasize) FontWeight.SemiBold else null,
+        maxLines = 1,
+        softWrap = false,
     )
 }

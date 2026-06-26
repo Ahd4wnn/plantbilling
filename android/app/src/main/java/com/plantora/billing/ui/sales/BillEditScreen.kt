@@ -111,6 +111,7 @@ private fun EditBody(ui: BillEditUiState, viewModel: BillEditViewModel, modifier
             Column(Modifier.padding(vertical = Dimens.sm)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(line.product.name, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+                    MoneyText(line.lineTotal, style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(start = Dimens.sm))
                     IconButton(onClick = { viewModel.removeLine(line.product.id) }) {
                         Icon(Icons.Rounded.Close, contentDescription = "Remove ${line.product.name}")
                     }
@@ -121,7 +122,7 @@ private fun EditBody(ui: BillEditUiState, viewModel: BillEditViewModel, modifier
                         onValueChange = { viewModel.setUnitPrice(line.product.id, it) },
                         label = "Price",
                         keyboardType = KeyboardType.Decimal,
-                        modifier = Modifier.width(120.dp),
+                        modifier = Modifier.weight(1f),
                     )
                     QuantityStepper(
                         quantity = line.quantity,
@@ -129,8 +130,6 @@ private fun EditBody(ui: BillEditUiState, viewModel: BillEditViewModel, modifier
                         onIncrement = { viewModel.setQuantity(line.product.id, line.quantity + 1) },
                         onQuantityChange = { q -> viewModel.setQuantity(line.product.id, q) },
                     )
-                    Spacer(Modifier.weight(1f))
-                    MoneyText(line.lineTotal, style = MaterialTheme.typography.titleMedium)
                 }
             }
             HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f))
@@ -179,8 +178,8 @@ private fun EditBody(ui: BillEditUiState, viewModel: BillEditViewModel, modifier
         PlantoraTextField(ui.dueInput, viewModel::setDueInput, label = "Due (owed later, optional)", keyboardType = KeyboardType.Decimal)
         Spacer(Modifier.height(Dimens.sm))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Dimens.lg)) {
-            PayPill("Cash", cash)
-            PayPill("UPI", upi)
+            PayPill("Cash", cash, Modifier.weight(1f))
+            PayPill("UPI", upi, Modifier.weight(1f))
         }
 
         Spacer(Modifier.height(Dimens.md))
@@ -203,8 +202,8 @@ private fun EditBody(ui: BillEditUiState, viewModel: BillEditViewModel, modifier
 }
 
 @Composable
-private fun PayPill(label: String, money: Money) {
-    Column {
+private fun PayPill(label: String, money: Money, modifier: Modifier = Modifier) {
+    Column(modifier) {
         Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         MoneyText(money, style = MaterialTheme.typography.titleMedium)
     }

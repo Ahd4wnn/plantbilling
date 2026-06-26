@@ -55,41 +55,56 @@ object PhoneticMatcher {
         return if (union > 0) intersection.toDouble() / union else 0.0
     }
 
-    /** Best matching candidate above a confidence threshold, or null. */
-    fun findBestMatch(transcript: String, candidates: List<String>): Match? {
-        if (candidates.isEmpty()) return null
+    /**
+     * Similarity of a spoken phrase to one product name, combining exact /
+     * substring / word-overlap / phonetic / edit-distance heuristics. Range 0..1.
+     */
+    fun score(transcript: String, candidate: String): Double {
         val text = transcript.lowercase().trim()
-        var best = ""
-        var highest = -1.0
+        val cand = candidate.lowercase().trim()
+        if (text.isEmpty() || cand.isEmpty()) return 0.0
+        if (text == cand) return 1.0
 
-        for (candidate in candidates) {
-            val cand = candidate.lowercase().trim()
-
-            if (text == cand) return Match(candidate, 1.0)
-
-            if (cand.contains(text) || text.contains(cand)) {
-                val score = 0.8 + 0.15 * (min(text.length, cand.length).toDouble() / max(text.length, cand.length))
-                if (score > highest) { highest = score; best = candidate }
-                continue
-            }
-
-            val wordsText = text.split(Regex("\\s+")).toSet()
-            val wordsCand = cand.split(Regex("\\s+")).toSet()
-            val inter = wordsText.count { it in wordsCand }
-            val union = wordsText.size + wordsCand.size - inter
-            val wordScore = if (union > 0) (inter.toDouble() / union) * 0.9 else 0.0
-            if (wordScore > highest && wordScore > THRESHOLD) { highest = wordScore; best = candidate; continue }
-
-            val phon = phoneticMatchScore(text, cand) * 0.95
-            if (phon > highest && phon > THRESHOLD) { highest = phon; best = candidate; continue }
-
-            val dist = levenshtein(text, cand)
-            val maxLen = max(text.length, cand.length)
-            val lev = if (maxLen > 0) (1 - dist.toDouble() / maxLen) * 0.85 else 0.0
-            if (lev > highest && lev > THRESHOLD) { highest = lev; best = candidate }
+        if (cand.contains(text) || text.contains(cand)) {
+            return 0.8 + 0.15 * (min(text.length, cand.length).toDouble() / max(text.length, cand.length))
         }
 
-        return if (highest > THRESHOLD) Match(best, highest) else null
+        val wordsText = text.split(Regex("\\s+")).toSet()
+        val wordsCand = cand.split(Regex("\\s+")).toSet()
+        val inter = wordsText.count { it in wordsCand }
+        val union = wordsText.size + wordsCand.size - inter
+        val wordScore = if (union > 0) (inter.toDouble() / union) * 0.9 else 0.0
+
+        val phon = phoneticMatchScore(text, cand) * 0.95
+
+        val dist = levenshtein(text, cand)
+        val maxLen = max(text.length, cand.length)
+        val lev = if (maxLen > 0) (1 - dist.toDouble() / maxLen) * 0.85 else 0.0
+
+        return maxOf(wordScore, phon, lev)
+    }
+
+    /** Best matching candidate above a confidence threshold, or null. */
+    fun findBestMatch(transcript: String, candidates: List<String>): Match? {
+        val m = findClosest(transcript, candidates) ?: return null
+        return if (m.score > THRESHOLD) m else null
+    }
+
+    /**
+     * The single closest product name to what was spoken — ALWAYS returns a plant
+     * when the catalog isn't empty, with no confidence floor. The mic is restricted
+     * to the shop's own products, so any utterance snaps to the nearest plant name
+     * instead of leaking arbitrary words into a text search.
+     */
+    fun findClosest(transcript: String, candidates: List<String>): Match? {
+        if (candidates.isEmpty()) return null
+        var best = candidates.first()
+        var highest = -1.0
+        for (candidate in candidates) {
+            val s = score(transcript, candidate)
+            if (s > highest) { highest = s; best = candidate }
+        }
+        return Match(best, highest)
     }
 
     /** Forgiving confidence floor — snap noisy speech to the nearest plant name. */
