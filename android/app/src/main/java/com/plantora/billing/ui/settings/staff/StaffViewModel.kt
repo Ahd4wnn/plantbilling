@@ -26,11 +26,22 @@ data class CreateForm(
     val canSave: Boolean get() = email.contains("@") && password.length >= 8 && !saving
 }
 
+/** Reset a specific salesperson's password to a chosen (or generated) value. */
+data class ResetForm(
+    val sp: Salesperson,
+    val password: String = generatePassword(),
+    val saving: Boolean = false,
+    val error: String? = null,
+) {
+    val canSave: Boolean get() = password.length >= 8 && !saving
+}
+
 data class StaffUiState(
     val loading: Boolean = true,
     val error: String? = null,
     val staff: List<Salesperson> = emptyList(),
     val createForm: CreateForm? = null,
+    val resetForm: ResetForm? = null,
     val credentials: CredentialResult? = null,
     val message: String? = null,
 )
@@ -57,7 +68,8 @@ class StaffViewModel @Inject constructor(
     fun openCreate() = _ui.update { it.copy(createForm = CreateForm()) }
     fun closeCreate() = _ui.update { it.copy(createForm = null) }
     fun setEmail(v: String) = _ui.update { it.copy(createForm = it.createForm?.copy(email = v, error = null)) }
-    fun regeneratePassword() = _ui.update { it.copy(createForm = it.createForm?.copy(password = generatePassword())) }
+    fun setPassword(v: String) = _ui.update { it.copy(createForm = it.createForm?.copy(password = v, error = null)) }
+    fun regeneratePassword() = _ui.update { it.copy(createForm = it.createForm?.copy(password = generatePassword(), error = null)) }
     fun dismissCredentials() = _ui.update { it.copy(credentials = null) }
     fun dismissMessage() = _ui.update { it.copy(message = null) }
 
@@ -83,12 +95,21 @@ class StaffViewModel @Inject constructor(
         }
     }
 
-    fun resetPassword(sp: Salesperson) {
-        val newPass = generatePassword()
+    fun openReset(sp: Salesperson) = _ui.update { it.copy(resetForm = ResetForm(sp)) }
+    fun closeReset() = _ui.update { it.copy(resetForm = null) }
+    fun setResetPassword(v: String) = _ui.update { it.copy(resetForm = it.resetForm?.copy(password = v, error = null)) }
+    fun regenerateResetPassword() = _ui.update { it.copy(resetForm = it.resetForm?.copy(password = generatePassword(), error = null)) }
+
+    fun confirmReset() {
+        val form = _ui.value.resetForm ?: return
+        if (!form.canSave) return
+        _ui.update { it.copy(resetForm = form.copy(saving = true, error = null)) }
         viewModelScope.launch {
-            runCatching { repo.resetPassword(sp.id, newPass) }
-                .onSuccess { _ui.update { it.copy(credentials = CredentialResult(sp.email, newPass, isReset = true)) } }
-                .onFailure { e -> _ui.update { it.copy(message = friendlyError(e)) } }
+            runCatching { repo.resetPassword(form.sp.id, form.password) }
+                .onSuccess {
+                    _ui.update { it.copy(resetForm = null, credentials = CredentialResult(form.sp.email, form.password, isReset = true)) }
+                }
+                .onFailure { e -> _ui.update { it.copy(resetForm = form.copy(saving = false, error = friendlyError(e))) } }
         }
     }
 

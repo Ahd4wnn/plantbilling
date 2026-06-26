@@ -110,6 +110,7 @@ fun CartSheetContent(
                         quantity = line.quantity,
                         onDecrement = { onSetQuantity(line.product.id, line.quantity - 1) },
                         onIncrement = { onSetQuantity(line.product.id, line.quantity + 1) },
+                        onQuantityChange = { q -> onSetQuantity(line.product.id, q) },
                     )
                     Spacer(Modifier.weight(1f))
                     MoneyText(line.lineTotal, style = MaterialTheme.typography.titleMedium)
@@ -156,13 +157,15 @@ fun CartSheetContent(
 
         Spacer(Modifier.height(Dimens.lg))
 
-        // ── Customer (optional, entered fresh) ──
-        SectionHeader("Customer (optional)")
+        // ── Customer (entered fresh; phone required when there's a due) ──
+        val hasDue = Money.parse(state.dueInput.ifBlank { "0" }).isPositive()
+        SectionHeader(if (hasDue) "Customer (required for due)" else "Customer (optional)")
         PlantoraTextField(state.customerName, onSetCustomerName, label = "Name")
         Spacer(Modifier.height(Dimens.sm))
         PlantoraTextField(
             state.customerPhone, onSetCustomerPhone,
-            label = "Phone (for receipts)", keyboardType = KeyboardType.Phone,
+            label = if (hasDue) "Phone (required — money owed)" else "Phone (for receipts)",
+            keyboardType = KeyboardType.Phone,
         )
 
         Spacer(Modifier.height(Dimens.lg))

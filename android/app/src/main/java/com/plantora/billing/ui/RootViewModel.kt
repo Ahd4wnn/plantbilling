@@ -28,5 +28,10 @@ class RootViewModel @Inject constructor(
 
     fun retryConnection() = viewModelScope.launch { networkMonitor.recheck() }
 
-    fun logout() = session.logout()
+    fun logout() {
+        // Clear any stale "server unreachable" flag from requests cancelled during
+        // teardown, so the login screen isn't blocked by the no-internet popup.
+        networkMonitor.reportSuccess()
+        session.logout()
+    }
 }

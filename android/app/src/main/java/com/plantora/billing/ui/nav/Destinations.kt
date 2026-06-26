@@ -28,11 +28,12 @@ enum class Tab(
 
 /**
  * Role-aware tab list, mirroring the web (`BottomNav.tsx`): the shop owner does
- * not bill directly, so the Bill tab is hidden for them. Salespeople see Bill.
+ * not bill directly, so the Bill tab is hidden for them. The salesperson only
+ * bills — product catalog management is owner-only, so Products is hidden for them.
  */
 fun tabsFor(role: Role): List<Tab> =
     if (role == Role.SHOP_OWNER) Tab.entries.filter { it != Tab.BILL }
-    else Tab.entries.toList()
+    else Tab.entries.filter { it != Tab.PRODUCTS }
 
 /** Landing tab after login (web `AppIndexRedirect`): owner→Products, others→Bill. */
 fun homeTabFor(role: Role): Tab =
@@ -41,6 +42,8 @@ fun homeTabFor(role: Role): Tab =
 object Routes {
     const val BILL_SUCCESS = "bill_success/{billId}"
     const val BILL_DETAIL = "bill_detail/{billId}"
+    const val BILL_EDIT = "bill_edit/{billId}"
+    const val DUES = "dues"
     const val CUSTOMER_DETAIL = "customer_detail/{customerId}"
     const val DETAILED_REPORT = "detailed_report"
     const val PRODUCT_EDIT = "product_edit"
@@ -51,5 +54,6 @@ object Routes {
 
     fun billSuccess(billId: String) = "bill_success/$billId"
     fun billDetail(billId: String) = "bill_detail/$billId"
+    fun billEdit(billId: String) = "bill_edit/$billId"
     fun customerDetail(customerId: String) = "customer_detail/$customerId"
 }

@@ -3,6 +3,7 @@ package com.plantora.billing.data
 import com.plantora.billing.data.remote.api.BillsApi
 import com.plantora.billing.data.remote.dto.BillCreateDto
 import com.plantora.billing.data.remote.dto.BillItemInDto
+import com.plantora.billing.data.remote.dto.BillUpdateDto
 import com.plantora.billing.data.remote.dto.NewCustomerDto
 import com.plantora.billing.domain.Bill
 import com.plantora.billing.domain.BillDetail
@@ -80,6 +81,65 @@ class BillRepository @Inject constructor(
             hasMore = dto.hasMore,
         )
     }
+
+    /** Outstanding dues across the whole shop (all staff), most recent first. */
+    suspend fun listDues(limit: Int = 100, offset: Int = 0): BillPage {
+        val dto = api.list(hasDue = true, limit = limit, offset = offset)
+        return BillPage(
+            // Defensive: also filter client-side so only genuine dues ever show,
+            // even if the server build doesn't yet honour the has_due filter.
+            items = dto.items.map { it.toDomain() }.filter { it.dueAmount.isPositive() },
+            offset = dto.offset,
+            hasMore = dto.hasMore,
+        )
+    }
+
+    /** Edit a bill's payment split and/or remarks (owner/admin). */
+    suspend fun updatePayment(
+        id: String,
+        cash: Money? = null,
+        upi: Money? = null,
+        due: Money? = null,
+        remarks: String? = null,
+    ): BillDetail = api.update(
+        id,
+        BillUpdateDto(
+            cashAmount = cash?.toWire(),
+            upiAmount = upi?.toWire(),
+            dueAmount = due?.toWire(),
+            remarks = remarks,
+        ),
+    ).toDomain()
+
+    /** Mark a bill's due as collected — moves the owed amount into the given channel. */
+    suspend fun settleDue(detail: BillDetail, viaUpi: Boolean): BillDetail {
+        val newCash = if (viaUpi) detail.cashAmount else detail.cashAmount + detail.dueAmount
+        val newUpi = if (viaUpi) detail.upiAmount + detail.dueAmount else detail.upiAmount
+        return updatePayment(detail.id, cash = newCash, upi = newUpi, due = Money.ZERO)
+    }
+
+    /** Owner edit: replace items/discount/payment and recompute server-side. */
+    suspend fun editBill(
+        id: String,
+        items: List<CheckoutItem>,
+        discountType: DiscountType,
+        discountValue: Money,
+        cash: Money,
+        upi: Money,
+        due: Money,
+        remarks: String?,
+    ): BillDetail = api.update(
+        id,
+        BillUpdateDto(
+            items = items.map { BillItemInDto(it.productId, it.quantity, it.unitPrice.toWire()) },
+            discountType = discountType.wire,
+            discountValue = discountValue.toWire(),
+            cashAmount = cash.toWire(),
+            upiAmount = upi.toWire(),
+            dueAmount = due.toWire(),
+            remarks = remarks?.takeIf { it.isNotBlank() }?.trim(),
+        ),
+    ).toDomain()
 
     suspend fun delete(id: String) = api.delete(id)
 }

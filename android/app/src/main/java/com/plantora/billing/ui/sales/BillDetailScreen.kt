@@ -12,6 +12,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.Print
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -42,9 +43,17 @@ import com.plantora.billing.ui.theme.Dimens
 @Composable
 fun BillDetailScreen(
     onBack: () -> Unit,
+    canEdit: Boolean = false,
+    onEdit: () -> Unit = {},
     viewModel: BillDetailViewModel = hiltViewModel(),
 ) {
     val ui by viewModel.ui.collectAsStateWithLifecycle()
+
+    // Refresh on return so an owner's edits show immediately.
+    androidx.lifecycle.compose.LifecycleResumeEffect(Unit) {
+        viewModel.load()
+        onPauseOrDispose { }
+    }
 
     Scaffold(
         contentWindowInsets = androidx.compose.foundation.layout.WindowInsets(0, 0, 0, 0),
@@ -54,6 +63,13 @@ fun BillDetailScreen(
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                actions = {
+                    if (canEdit && ui.detail != null) {
+                        IconButton(onClick = onEdit) {
+                            Icon(Icons.Rounded.Edit, contentDescription = "Edit bill")
+                        }
                     }
                 },
             )
@@ -67,6 +83,8 @@ fun BillDetailScreen(
                 printPhase = ui.printPhase,
                 printMessage = ui.printMessage,
                 onPrint = viewModel::print,
+                canEdit = canEdit,
+                onEdit = onEdit,
                 modifier = Modifier.padding(padding),
             )
         }
@@ -79,6 +97,8 @@ private fun BillDetailBody(
     printPhase: PrintPhase,
     printMessage: String?,
     onPrint: () -> Unit,
+    canEdit: Boolean = false,
+    onEdit: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -143,6 +163,14 @@ private fun BillDetailBody(
             }
         }
 
+        if (canEdit) {
+            com.plantora.billing.ui.components.SecondaryButton(
+                text = "Edit bill",
+                onClick = onEdit,
+                leadingIcon = Icons.Rounded.Edit,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
         PrimaryButton(
             text = if (printPhase == PrintPhase.DONE) "Print again" else "Print receipt",
             onClick = onPrint,

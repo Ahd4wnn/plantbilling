@@ -108,7 +108,7 @@ fun StaffManagementScreen(
                     StaffRow(
                         sp = sp,
                         onToggle = { viewModel.toggleActive(sp) },
-                        onReset = { viewModel.resetPassword(sp) },
+                        onReset = { viewModel.openReset(sp) },
                         onDelete = { pendingDelete = sp },
                     )
                 }
@@ -123,14 +123,57 @@ fun StaffManagementScreen(
                 Spacer(Modifier.height(Dimens.lg))
                 PlantoraTextField(form.email, viewModel::setEmail, label = "Login email")
                 Spacer(Modifier.height(Dimens.md))
+                PlantoraTextField(
+                    form.password,
+                    viewModel::setPassword,
+                    label = "Password (at least 8 characters)",
+                )
+                Spacer(Modifier.height(Dimens.sm))
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Password: ", style = MaterialTheme.typography.bodyLarge)
-                    Text(form.password, style = MaterialTheme.typography.bodyLarge, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-                    AssistChip(onClick = viewModel::regeneratePassword, label = { Text("Regenerate") })
+                    Text(
+                        "Set your own, or",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Spacer(Modifier.width(Dimens.sm))
+                    AssistChip(onClick = viewModel::regeneratePassword, label = { Text("Generate strong password") })
                 }
                 form.error?.let { Spacer(Modifier.height(Dimens.sm)); Text(it, color = MaterialTheme.colorScheme.error) }
                 Spacer(Modifier.height(Dimens.xl))
                 PrimaryButton("Create account", onClick = viewModel::createStaff, enabled = form.canSave, loading = form.saving)
+            }
+        }
+    }
+
+    ui.resetForm?.let { reset ->
+        ModalBottomSheet(onDismissRequest = viewModel::closeReset, sheetState = sheetState) {
+            Column(Modifier.fillMaxWidth().padding(horizontal = Dimens.lg).padding(bottom = Dimens.xl)) {
+                Text("Reset password", style = MaterialTheme.typography.headlineMedium)
+                Spacer(Modifier.height(Dimens.sm))
+                Text(
+                    reset.sp.email,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(Modifier.height(Dimens.lg))
+                PlantoraTextField(
+                    reset.password,
+                    viewModel::setResetPassword,
+                    label = "New password (at least 8 characters)",
+                )
+                Spacer(Modifier.height(Dimens.sm))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        "Set your own, or",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Spacer(Modifier.width(Dimens.sm))
+                    AssistChip(onClick = viewModel::regenerateResetPassword, label = { Text("Generate strong password") })
+                }
+                reset.error?.let { Spacer(Modifier.height(Dimens.sm)); Text(it, color = MaterialTheme.colorScheme.error) }
+                Spacer(Modifier.height(Dimens.xl))
+                PrimaryButton("Reset password", onClick = viewModel::confirmReset, enabled = reset.canSave, loading = reset.saving)
             }
         }
     }

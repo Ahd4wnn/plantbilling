@@ -23,7 +23,10 @@ class NetworkReportingInterceptor @Inject constructor(
             monitor.reportSuccess()
             response
         } catch (e: IOException) {
-            monitor.reportFailure()
+            // A cancelled call (e.g. screens torn down on logout) is NOT a server
+            // outage — reporting it would wrongly trigger the blocking "no internet"
+            // popup over the login screen and freeze it. Only real failures count.
+            if (!chain.call().isCanceled()) monitor.reportFailure()
             throw e
         }
     }

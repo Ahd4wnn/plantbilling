@@ -386,6 +386,7 @@ def list_bills(
     customer_id: uuid.UUID | None = Query(default=None),
     created_by: uuid.UUID | None = Query(default=None, description="Filter by salesperson user ID"),
     is_edited: bool | None = Query(default=None, description="Filter by whether the bill was edited"),
+    has_due: bool | None = Query(default=None, description="Only bills with money still owed (due > 0)"),
     shop_id: uuid.UUID | None = Query(default=None, description="Restrict to a shop (admin only)"),
     limit: int = Query(default=20, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
@@ -420,6 +421,8 @@ def list_bills(
         stmt = stmt.where(Bill.created_by == created_by)
     if is_edited is not None:
         stmt = stmt.where(Bill.is_edited == is_edited)
+    if has_due:
+        stmt = stmt.where(Bill.due_amount > ZERO)
     if user.role == "admin" and shop_id is not None:
         stmt = stmt.where(Bill.shop_id == shop_id)
 
@@ -445,6 +448,7 @@ def list_bills(
             created_at=r.created_at,
             bill_type=r.bill_type,
             total=r.total,
+            due_amount=r.due_amount,
             customer_name=r.customer_name,
             item_count=counts.get(r.id, 0),
             payment_method=_payment_method(r.cash_amount, r.upi_amount, r.due_amount),
@@ -519,12 +523,72 @@ def update_bill(
     db: Session = Depends(get_db),
     user: User = Depends(require_shop_owner_or_admin),
 ) -> BillDetailOut:
-    """Update a bill's payment split (Cash/UPI/Due) and remarks. Only shop owners and admins can edit bills."""
+    """Edit a bill: payment split (Cash/UPI/Due), remarks, and — for owners/admins —
+    the line items themselves (price, quantity, add/remove). Recomputes all money
+    server-side. Only shop owners and admins can edit bills; nobody but admins delete."""
     bill = db.execute(select(Bill).where(Bill.id == bill_id)).scalar_one_or_none()
     if bill is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Bill not found")
 
-    # Re-calculate the payment splits to verify they match the total.
+    # ── Optional: rewrite the line items and recompute the whole bill ──
+    if payload.items is not None:
+        product_ids = [it.product_id for it in payload.items]
+        products = {
+            p.id: p
+            for p in db.execute(select(Product).where(Product.id.in_(product_ids))).scalars()
+        }
+        computed_items: list[dict] = []
+        subtotal = Decimal("0.00")
+        for it in payload.items:
+            product = products.get(it.product_id)
+            if product is None:
+                raise _http422("One of the products is unavailable. Please remove it and try again.")
+            unit_price = q2(it.unit_price)
+            if unit_price < ZERO:
+                raise _http422(f"Enter a valid price for “{product.name}”.")
+            line_total = q2(unit_price * it.quantity)
+            subtotal += line_total
+            computed_items.append(
+                {"product": product, "unit_price": unit_price, "quantity": it.quantity, "line_total": line_total}
+            )
+        subtotal = q2(subtotal)
+
+        discount_type = payload.discount_type or bill.discount_type
+        discount_value = q2(payload.discount_value) if payload.discount_value is not None else bill.discount_value
+        if discount_type == "percent":
+            if discount_value > Decimal("100"):
+                raise _http422("Discount percentage cannot be more than 100%.")
+            discount_amount = q2(subtotal * discount_value / Decimal("100"))
+        else:
+            if discount_value > subtotal:
+                raise _http422("Discount cannot be more than the subtotal.")
+            discount_amount = discount_value
+        new_total = q2(subtotal - discount_amount)
+        if new_total < 0:
+            raise _http422("The total cannot be negative.")
+
+        bill.subtotal = subtotal
+        bill.discount_type = discount_type
+        bill.discount_value = discount_value
+        bill.discount_amount = discount_amount
+        bill.total = new_total
+
+        # Replace the item rows wholesale (denormalized name + price snapshot).
+        for old in db.execute(select(BillItem).where(BillItem.bill_id == bill.id)).scalars():
+            db.delete(old)
+        db.flush()
+        for ci in computed_items:
+            product = ci["product"]
+            db.add(BillItem(
+                bill_id=bill.id,
+                product_id=product.id,
+                product_name=product.name,
+                unit_price=ci["unit_price"],
+                quantity=ci["quantity"],
+                line_total=ci["line_total"],
+            ))
+
+    # Re-calculate the payment splits to verify they match the (possibly new) total.
     cash = q2(payload.cash_amount) if payload.cash_amount is not None else bill.cash_amount
     upi = q2(payload.upi_amount) if payload.upi_amount is not None else bill.upi_amount
     due = q2(payload.due_amount) if payload.due_amount is not None else bill.due_amount

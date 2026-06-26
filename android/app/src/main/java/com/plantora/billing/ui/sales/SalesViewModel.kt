@@ -37,10 +37,14 @@ data class ExpenseEditor(
     val canSave: Boolean get() = Money.parse(amount).isPositive() && reason.isNotBlank() && !saving
 }
 
+/** A salesperson and their sales total for the selected day (leaderboard row). */
+data class StaffSales(val salesperson: Salesperson, val sales: Money)
+
 data class SalesUiState(
     val date: LocalDate = todayInShopZone(),
     val isOwner: Boolean = false,
     val staff: List<Salesperson> = emptyList(),
+    val staffSales: List<StaffSales> = emptyList(),
     val selectedStaffId: String? = null,
     val summaryLoading: Boolean = true,
     val summary: DaySummary? = null,
@@ -78,7 +82,25 @@ class SalesViewModel @Inject constructor(
     private fun loadStaff() {
         viewModelScope.launch {
             runCatching { salespersonRepo.list() }
-                .onSuccess { list -> _ui.update { it.copy(staff = list) } }
+                .onSuccess { list -> _ui.update { it.copy(staff = list) }; refreshLeaderboard() }
+        }
+    }
+
+    /**
+     * Rank salespeople by their sales for the selected day so the owner can see who
+     * sold the most. Fans out one day-summary request per staff member (small N).
+     */
+    private fun refreshLeaderboard() {
+        val state = _ui.value
+        if (!state.isOwner || state.staff.isEmpty()) return
+        val date = state.date.toApiDate()
+        val staff = state.staff
+        viewModelScope.launch {
+            val rows = staff.map { sp ->
+                val sales = runCatching { billRepo.summary(date, sp.id).totalSales }.getOrDefault(Money.ZERO)
+                StaffSales(sp, sales)
+            }.sortedByDescending { it.sales }
+            _ui.update { it.copy(staffSales = rows.filter { r -> r.sales.isPositive() }) }
         }
     }
 
@@ -96,6 +118,7 @@ class SalesViewModel @Inject constructor(
                 .onSuccess { p -> _ui.update { it.copy(billsLoading = false, bills = p.items, hasMore = p.hasMore) } }
                 .onFailure { e -> _ui.update { it.copy(billsLoading = false, error = friendlyError(e)) } }
         }
+        refreshLeaderboard()
     }
 
     fun loadMore() {

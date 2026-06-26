@@ -25,7 +25,9 @@ import com.plantora.billing.ui.customers.CustomersScreen
 import com.plantora.billing.ui.printer.PrinterScreen
 import com.plantora.billing.ui.products.ProductsScreen
 import com.plantora.billing.ui.sales.BillDetailScreen
+import com.plantora.billing.ui.sales.BillEditScreen
 import com.plantora.billing.ui.sales.DetailedReportScreen
+import com.plantora.billing.ui.sales.DuesScreen
 import com.plantora.billing.ui.sales.SalesScreen
 import com.plantora.billing.ui.settings.MoreScreen
 import com.plantora.billing.ui.settings.ShopSettingsScreen
@@ -74,7 +76,16 @@ fun MainShell(
                                 contentDescription = tab.label,
                             )
                         },
-                        label = { Text(tab.label, style = MaterialTheme.typography.labelMedium) },
+                        label = {
+                            Text(
+                                tab.label,
+                                style = MaterialTheme.typography.labelMedium,
+                                maxLines = 1,
+                                softWrap = false,
+                                overflow = androidx.compose.ui.text.style.TextOverflow.Visible,
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                            )
+                        },
                         alwaysShowLabel = true,
                     )
                 }
@@ -96,10 +107,17 @@ fun MainShell(
                 SalesScreen(
                     onOpenBill = { id -> navController.navigate(Routes.billDetail(id)) },
                     onOpenReport = { navController.navigate(Routes.DETAILED_REPORT) },
+                    onOpenDues = { navController.navigate(Routes.DUES) },
                 )
             }
             composable(Routes.DETAILED_REPORT) {
                 DetailedReportScreen(onBack = { navController.popBackStack() })
+            }
+            composable(Routes.DUES) {
+                DuesScreen(
+                    onBack = { navController.popBackStack() },
+                    onOpenBill = { id -> navController.navigate(Routes.billDetail(id)) },
+                )
             }
             composable(Tab.CUSTOMERS.route) {
                 CustomersScreen(onOpenCustomer = { id -> navController.navigate(Routes.customerDetail(id)) })
@@ -107,8 +125,22 @@ fun MainShell(
             composable(
                 route = Routes.BILL_DETAIL,
                 arguments = listOf(navArgument("billId") { type = NavType.StringType }),
+            ) { entry ->
+                val billId = entry.arguments?.getString("billId").orEmpty()
+                BillDetailScreen(
+                    onBack = { navController.popBackStack() },
+                    canEdit = isOwner,
+                    onEdit = { navController.navigate(Routes.billEdit(billId)) },
+                )
+            }
+            composable(
+                route = Routes.BILL_EDIT,
+                arguments = listOf(navArgument("billId") { type = NavType.StringType }),
             ) {
-                BillDetailScreen(onBack = { navController.popBackStack() })
+                BillEditScreen(
+                    onBack = { navController.popBackStack() },
+                    onSaved = { navController.popBackStack() },
+                )
             }
             composable(
                 route = Routes.CUSTOMER_DETAIL,

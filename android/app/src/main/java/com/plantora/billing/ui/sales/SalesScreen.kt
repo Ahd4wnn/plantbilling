@@ -13,7 +13,9 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
+import androidx.compose.material.icons.rounded.AccountBalanceWallet
 import androidx.compose.material.icons.rounded.BarChart
+import androidx.compose.material.icons.rounded.EmojiEvents
 import androidx.compose.material.icons.rounded.Group
 import androidx.compose.material.icons.rounded.ReceiptLong
 import androidx.compose.material3.DropdownMenu
@@ -54,6 +56,7 @@ import com.plantora.billing.ui.theme.Dimens
 fun SalesScreen(
     onOpenBill: (String) -> Unit,
     onOpenReport: () -> Unit = {},
+    onOpenDues: () -> Unit = {},
     viewModel: SalesViewModel = hiltViewModel(),
 ) {
     val ui by viewModel.ui.collectAsStateWithLifecycle()
@@ -74,14 +77,30 @@ fun SalesScreen(
             verticalArrangement = Arrangement.spacedBy(Dimens.md),
         ) {
             item {
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Text("Sales", style = MaterialTheme.typography.headlineLarge, modifier = Modifier.weight(1f))
-                    SecondaryButton(text = "Reports", onClick = onOpenReport, leadingIcon = Icons.Rounded.BarChart)
+                Text("Sales", style = MaterialTheme.typography.headlineLarge)
+            }
+            item {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Dimens.sm)) {
+                    SecondaryButton(
+                        text = "Dues",
+                        onClick = onOpenDues,
+                        leadingIcon = Icons.Rounded.AccountBalanceWallet,
+                        modifier = Modifier.weight(1f),
+                    )
+                    SecondaryButton(
+                        text = "Reports",
+                        onClick = onOpenReport,
+                        leadingIcon = Icons.Rounded.BarChart,
+                        modifier = Modifier.weight(1f),
+                    )
                 }
             }
 
             if (ui.isOwner) {
                 item { StaffFilter(ui) { id -> viewModel.selectStaff(id) } }
+                if (ui.staffSales.isNotEmpty()) {
+                    item { StaffLeaderboard(ui.staffSales) }
+                }
             }
 
             item {
@@ -157,6 +176,35 @@ private fun StaffFilter(ui: SalesUiState, onSelect: (String?) -> Unit) {
             DropdownMenuItem(text = { Text("All staff") }, onClick = { onSelect(null); expanded = false })
             ui.staff.forEach { sp ->
                 DropdownMenuItem(text = { Text(sp.email) }, onClick = { onSelect(sp.id); expanded = false })
+            }
+        }
+    }
+}
+
+@Composable
+private fun StaffLeaderboard(rows: List<StaffSales>) {
+    PlantoraCard {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Rounded.EmojiEvents, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+            Text(
+                "Top sellers today",
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.padding(start = Dimens.sm),
+            )
+        }
+        rows.forEachIndexed { i, row ->
+            Row(
+                Modifier.fillMaxWidth().padding(top = Dimens.sm),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text("${i + 1}.", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.outline)
+                Text(
+                    row.salesperson.email,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = if (i == 0) FontWeight.SemiBold else FontWeight.Normal,
+                    modifier = Modifier.weight(1f).padding(horizontal = Dimens.sm),
+                )
+                MoneyText(row.sales, style = MaterialTheme.typography.titleMedium)
             }
         }
     }

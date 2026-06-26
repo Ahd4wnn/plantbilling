@@ -36,6 +36,9 @@ data class BillUpdateDto(
     @SerialName("upi_amount") val upiAmount: String? = null,
     @SerialName("due_amount") val dueAmount: String? = null,
     val remarks: String? = null,
+    val items: List<BillItemInDto>? = null,
+    @SerialName("discount_type") val discountType: String? = null,
+    @SerialName("discount_value") val discountValue: String? = null,
 )
 
 // ── Response ─────────────────────────────────────────────────────────────────
@@ -105,6 +108,7 @@ data class BillListItemDto(
     @SerialName("created_at") val createdAt: String,
     @SerialName("bill_type") val billType: String,
     val total: String,
+    @SerialName("due_amount") val dueAmount: String = "0",
     @SerialName("customer_name") val customerName: String? = null,
     @SerialName("item_count") val itemCount: Int,
     @SerialName("payment_method") val paymentMethod: String,

@@ -63,7 +63,10 @@ class SessionRepository @Inject constructor(
     /** Returns null on success, or a friendly error message on failure. */
     suspend fun login(email: String, password: String): Result<Unit> {
         return runCatching {
-            val token = authApi.login(LoginRequestDto(email.trim(), password))
+            // Email never contains whitespace; strip any (e.g. autofill newlines).
+            val cleanEmail = email.filterNot { it.isWhitespace() }
+            val cleanPassword = password.filterNot { it == '\n' || it == '\r' }
+            val token = authApi.login(LoginRequestDto(cleanEmail, cleanPassword))
             tokenStore.token = token.accessToken
             val me = authApi.me()
             _state.value = me.toAuthState()

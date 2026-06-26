@@ -49,6 +49,7 @@ fun QuickAddSheet(
                 quantity = state.quantity,
                 onDecrement = { onQuantity(state.quantity - 1) },
                 onIncrement = { onQuantity(state.quantity + 1) },
+                onQuantityChange = { q -> onQuantity(q) },
             )
         }
         state.error?.let {

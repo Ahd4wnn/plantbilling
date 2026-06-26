@@ -134,13 +134,22 @@ class BillingViewModel @Inject constructor(
             val m = com.plantora.billing.ui.billing.voice.PhoneticMatcher.findBestMatch(alt, names)
             if (m != null && (best == null || m.score > best!!.score)) best = m
         }
-        val product = best?.let { mm -> products.find { it.name == mm.candidate } }
+        val confident = best != null && best!!.score >= CONFIDENT_MATCH
+        val product = best?.takeIf { confident }?.let { mm -> products.find { it.name == mm.candidate } }
         if (product != null) {
+            // Only auto-add when we're sure which plant was said, so a mumbled or
+            // unrelated phrase never drops a random item into the cart.
             addProduct(product)
-            _ui.update { it.copy(query = "", toast = "Added ${product.name}") }
+            _ui.update { it.copy(query = "", toast = "Added ${product.name} to cart") }
         } else {
-            _ui.update { it.copy(query = alternatives.first(), toast = "No close match — showing results") }
+            // Not confident — don't add anything; just run it as a text search.
+            _ui.update { it.copy(query = alternatives.first(), toast = "Couldn't catch the plant — showing matches") }
         }
+    }
+
+    private companion object {
+        /** Minimum match confidence before a spoken plant is auto-added to the cart. */
+        const val CONFIDENT_MATCH = 0.5
     }
 
     // ── Quick Add ──
@@ -229,6 +238,13 @@ class BillingViewModel @Inject constructor(
         if (state.isCartEmpty || state.checkout == CheckoutPhase.SUBMITTING) return
         val (cash, upi) = state.payment
         val due = Money.parse(state.dueInput.ifBlank { "0" }).let { if (it > state.totals.total) state.totals.total else it }
+
+        // A due means money owed later — we must be able to reach the customer, so
+        // their phone number is compulsory whenever any amount is left unpaid.
+        if (due.isPositive() && state.customerPhone.filter { it.isDigit() }.length < 10) {
+            _ui.update { it.copy(checkoutError = "Enter the customer's phone number — it's required when there's a due (money owed).") }
+            return
+        }
 
         _ui.update { it.copy(checkout = CheckoutPhase.SUBMITTING, checkoutError = null) }
         viewModelScope.launch {

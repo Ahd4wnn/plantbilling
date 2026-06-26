@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import datetime as dt
 import uuid
+from decimal import Decimal
 from typing import Annotated, Literal
 
 from pydantic import BaseModel, Field, StringConstraints
@@ -48,6 +49,13 @@ class BillUpdate(BaseModel):
     upi_amount: MoneyIn | None = None
     due_amount: MoneyIn | None = None
     remarks: str | None = None
+    # Owners (and admins) may also correct the line items themselves — edit a
+    # price, change a quantity, add or remove a plant. When `items` is provided the
+    # server recomputes subtotal/discount/total and rewrites the bill's items. The
+    # payment split sent alongside must balance to the new total.
+    items: list[BillItemIn] | None = Field(default=None, min_length=1)
+    discount_type: Literal["flat", "percent"] | None = None
+    discount_value: MoneyIn | None = None
 
 
 # ── Response ─────────────────────────────────────────────────────────────────
@@ -114,6 +122,7 @@ class BillListItem(BaseModel):
     created_at: dt.datetime
     bill_type: str
     total: MoneyOut
+    due_amount: MoneyOut = Decimal("0.00")  # type: ignore[assignment]
     customer_name: str | None = None
     item_count: int
     payment_method: PaymentMethod

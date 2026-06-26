@@ -31,6 +31,7 @@ interface BillsApi {
         @Query("customer_id") customerId: String? = null,
         @Query("created_by") createdBy: String? = null,
         @Query("is_edited") isEdited: Boolean? = null,
+        @Query("has_due") hasDue: Boolean? = null,
         @Query("limit") limit: Int = 20,
         @Query("offset") offset: Int = 0,
     ): BillListDto

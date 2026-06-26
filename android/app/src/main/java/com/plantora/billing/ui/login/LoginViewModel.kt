@@ -29,8 +29,13 @@ class LoginViewModel @Inject constructor(
     private val _ui = MutableStateFlow(LoginUiState())
     val ui: StateFlow<LoginUiState> = _ui.asStateFlow()
 
-    fun onEmailChange(value: String) = _ui.update { it.copy(email = value, error = null) }
-    fun onPasswordChange(value: String) = _ui.update { it.copy(password = value, error = null) }
+    // Strip whitespace/newlines — autofill sometimes injects a trailing U+000A,
+    // which the email field's singleLine filter doesn't catch (autofill sets the
+    // value directly), and which the backend rejects as an invalid email.
+    fun onEmailChange(value: String) =
+        _ui.update { it.copy(email = value.filterNot(Char::isWhitespace), error = null) }
+    fun onPasswordChange(value: String) =
+        _ui.update { it.copy(password = value.filterNot { c -> c == '\n' || c == '\r' }, error = null) }
 
     fun submit() {
         val state = _ui.value

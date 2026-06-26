@@ -25,6 +25,7 @@ data class BillListEntry(
     val id: String,
     val createdAt: String,
     val total: Money,
+    val dueAmount: Money,
     val customerName: String?,
     val itemCount: Int,
     val paymentMethod: PaymentMethod,
