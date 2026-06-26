@@ -12,10 +12,13 @@ import { MorePage } from "@/pages/shop/MorePage";
 import { StyleGuide } from "@/pages/StyleGuide";
 import { NotFound } from "@/pages/NotFound";
 import { ShopsPage } from "@/pages/admin/ShopsPage";
+import { OwnersPage } from "@/pages/admin/OwnersPage";
 import { CustomersPage } from "@/pages/admin/CustomersPage";
 import { CustomersPage as ShopCustomersPage } from "@/pages/shop/CustomersPage";
-import { SalesPage as AdminSalesPage } from "@/pages/admin/SalesPage";
 import { PublicBillReceiptPage } from "@/pages/shop/PublicBillReceiptPage";
+import { OwnerLayout } from "@/layouts/OwnerLayout";
+import { OwnerDashboard } from "@/pages/owner/OwnerDashboard";
+import { OwnerShopDetail } from "@/pages/owner/OwnerShopDetail";
 
 /** Sends an already-authenticated user away from /login to their role home. */
 function RootRedirect() {
@@ -27,7 +30,7 @@ function RootRedirect() {
 
 function AppIndexRedirect() {
   const user = useAuth((s) => s.user);
-  const target = user?.role === "shop_owner" ? "/app/products" : "/app/bill";
+  const target = user?.role === "manager" ? "/app/products" : "/app/bill";
   return <Navigate to={target} replace />;
 }
 
@@ -50,7 +53,7 @@ export default function App() {
         {import.meta.env.DEV && <Route path="/_styleguide" element={<StyleGuide />} />}
 
         {/* Shop owner & salesperson area */}
-        <Route element={<ProtectedRoute role={["shop_owner", "salesperson"]} />}>
+        <Route element={<ProtectedRoute role={["manager", "salesperson"]} />}>
           <Route path="/app" element={<ShopLayout />}>
             <Route index element={<AppIndexRedirect />} />
             <Route path="bill" element={<BillPage />} />
@@ -61,13 +64,21 @@ export default function App() {
           </Route>
         </Route>
 
-        {/* Admin area */}
+        {/* Multi-shop owner area */}
+        <Route element={<ProtectedRoute role="owner" />}>
+          <Route path="/owner" element={<OwnerLayout />}>
+            <Route index element={<OwnerDashboard />} />
+            <Route path="shops/:shopId" element={<OwnerShopDetail />} />
+          </Route>
+        </Route>
+
+        {/* Admin area (Sales removed — admin no longer views sales) */}
         <Route element={<ProtectedRoute role="admin" />}>
           <Route path="/admin" element={<AdminLayout />}>
             <Route index element={<Navigate to="/admin/shops" replace />} />
             <Route path="shops" element={<ShopsPage />} />
+            <Route path="owners" element={<OwnersPage />} />
             <Route path="customers" element={<CustomersPage />} />
-            <Route path="sales" element={<AdminSalesPage />} />
           </Route>
         </Route>
 

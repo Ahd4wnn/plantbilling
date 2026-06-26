@@ -11,8 +11,34 @@ class ShopCreateRequest(BaseModel):
     name: str = Field(min_length=1)
     owner_name: str | None = None
     owner_phone: str | None = None
+    # Login for the shop's first MANAGER (the per-shop operator).
     owner_email: EmailStr
     owner_password: str = Field(min_length=8)
+    # Optionally link the shop to an existing multi-shop owner account.
+    owner_id: uuid.UUID | None = None
+
+
+class OwnerAccountCreate(BaseModel):
+    """Create a multi-shop owner login (no shop attached at creation)."""
+
+    email: EmailStr
+    password: str = Field(min_length=8)
+
+
+class OwnerAccountInfo(BaseModel):
+    id: uuid.UUID
+    email: EmailStr
+    is_active: bool
+    created_at: dt.datetime
+    shop_count: int = 0
+
+    model_config = {"from_attributes": True}
+
+
+class AssignOwnerRequest(BaseModel):
+    """Set (or clear, with null) the business owner of a shop."""
+
+    owner_id: uuid.UUID | None = None
 
 
 class OwnerInfo(BaseModel):
@@ -30,6 +56,7 @@ class OwnerInfo(BaseModel):
 class ShopSummary(BaseModel):
     id: uuid.UUID
     name: str
+    owner_id: uuid.UUID | None = None
     owner_name: str | None
     owner_phone: str | None
     is_active: bool
@@ -55,9 +82,11 @@ class ShopListRow(BaseModel):
 
     id: uuid.UUID
     name: str
+    owner_id: uuid.UUID | None = None
+    owner_email_account: EmailStr | None = None  # the linked multi-shop owner's login
     owner_name: str | None
     owner_phone: str | None
-    owner_email: EmailStr | None
+    owner_email: EmailStr | None  # the shop's manager login
     is_active: bool
     created_at: dt.datetime
     whatsapp_auto_send: bool

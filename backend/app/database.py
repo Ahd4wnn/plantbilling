@@ -37,7 +37,9 @@ engine = create_engine(
 SessionLocal = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False, future=True)
 
 
-def _apply_rls_context(session: Session, *, role: str, shop_id: str | None) -> None:
+def _apply_rls_context(
+    session: Session, *, role: str, shop_id: str | None, user_id: str | None = None
+) -> None:
     """Set the transaction-local RLS variables for this session.
 
     Must be called as the first statement(s) of the transaction so every
@@ -47,9 +49,16 @@ def _apply_rls_context(session: Session, *, role: str, shop_id: str | None) -> N
         text("SELECT set_config('app.user_role', :role, true)"),
         {"role": role},
     )
-    # Only set the shop id when present. For admin we intentionally leave it
-    # unset (NULL); the policies short-circuit on the 'admin' role and never
-    # evaluate the shop_id comparison, so no cast of NULL/'' is attempted.
+    # The caller's user id powers the multi-shop owner RLS branch (an owner sees
+    # rows whose shop_id is in SELECT id FROM shops WHERE owner_id = this id).
+    if user_id is not None:
+        session.execute(
+            text("SELECT set_config('app.current_user_id', :uid, true)"),
+            {"uid": str(user_id)},
+        )
+    # Only set the shop id when present. For admin/owner we leave it unset (NULL);
+    # the policies short-circuit before evaluating the shop_id comparison, so no
+    # cast of NULL/'' is attempted.
     if shop_id is not None:
         session.execute(
             text("SELECT set_config('app.current_shop_id', :sid, true)"),
@@ -57,7 +66,7 @@ def _apply_rls_context(session: Session, *, role: str, shop_id: str | None) -> N
         )
 
 
-def get_rls_session(role: str, shop_id: str | None) -> Iterator[Session]:
+def get_rls_session(role: str, shop_id: str | None, user_id: str | None = None) -> Iterator[Session]:
     """Generator yielding a session whose transaction has RLS context applied.
 
     This is the standard way authenticated routes obtain a DB session. The
@@ -69,7 +78,7 @@ def get_rls_session(role: str, shop_id: str | None) -> Iterator[Session]:
     """
     session = SessionLocal()
     try:
-        _apply_rls_context(session, role=role, shop_id=shop_id)
+        _apply_rls_context(session, role=role, shop_id=shop_id, user_id=user_id)
         yield session
         session.commit()
     except Exception:

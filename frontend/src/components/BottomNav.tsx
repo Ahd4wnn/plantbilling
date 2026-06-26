@@ -29,7 +29,7 @@ export function BottomNav() {
   const user = useAuth((s) => s.user);
 
   const filteredItems = items.filter(
-    (item) => !(item.to === "/app/bill" && user?.role === "shop_owner")
+    (item) => !(item.to === "/app/bill" && user?.role === "manager")
   );
 
   return (

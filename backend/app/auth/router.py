@@ -9,7 +9,7 @@ from app.auth.dependencies import get_current_user, get_db
 from app.auth.security import create_access_token, verify_password
 from app.database import privileged_session
 from app.models.shop import Shop
-from app.models.user import ROLE_SHOP_OWNER, User
+from app.models.user import ROLE_MANAGER, ROLE_SALESPERSON, User
 from app.schemas.auth import CurrentUser, LoginRequest, Token
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -39,7 +39,7 @@ def login(payload: LoginRequest) -> Token:
                 status_code=status.HTTP_403_FORBIDDEN, detail="User account is inactive"
             )
 
-        if user.role == ROLE_SHOP_OWNER:
+        if user.role in (ROLE_MANAGER, ROLE_SALESPERSON):
             shop = db.execute(select(Shop).where(Shop.id == user.shop_id)).scalar_one_or_none()
             if shop is None or not shop.is_active:
                 raise HTTPException(

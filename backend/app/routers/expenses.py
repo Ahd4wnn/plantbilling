@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.auth.dependencies import get_db, require_shop_owner, require_shop_owner_or_admin
+from app.auth.dependencies import get_db, require_shop_staff, require_manager_or_admin
 from app.models.expense import Expense
 from app.models.user import User
 from app.schemas.expense import ExpenseCreate, ExpenseOut, ExpenseUpdate
@@ -17,7 +17,7 @@ router = APIRouter(prefix="/expenses", tags=["expenses"])
 def create_expense(
     payload: ExpenseCreate,
     db: Session = Depends(get_db),
-    user: User = Depends(require_shop_owner),
+    user: User = Depends(require_shop_staff),
 ) -> Expense:
     """Create a new expense for the nursery.
 
@@ -44,7 +44,7 @@ def create_expense(
 @router.get("", response_model=list[ExpenseOut])
 def list_expenses(
     db: Session = Depends(get_db),
-    user: User = Depends(require_shop_owner),
+    user: User = Depends(require_shop_staff),
     limit: int = Query(default=100, ge=1, le=1000),
     offset: int = Query(default=0, ge=0),
 ) -> list[Expense]:
@@ -73,7 +73,7 @@ def list_expenses(
 def delete_expense(
     expense_id: uuid.UUID,
     db: Session = Depends(get_db),
-    user: User = Depends(require_shop_owner_or_admin),
+    user: User = Depends(require_manager_or_admin),
 ):
     """Delete an expense by ID.
 
@@ -106,7 +106,7 @@ def update_expense(
     expense_id: uuid.UUID,
     payload: ExpenseUpdate,
     db: Session = Depends(get_db),
-    user: User = Depends(require_shop_owner_or_admin),
+    user: User = Depends(require_manager_or_admin),
 ) -> Expense:
     """Update an expense by ID.
 

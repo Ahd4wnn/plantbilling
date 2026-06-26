@@ -28,7 +28,7 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.auth.dependencies import get_db, require_shop_owner
+from app.auth.dependencies import get_db, require_shop_staff
 from app.media import (
     IMAGE_CONTENT_TYPES,
     MAX_IMAGE_BYTES,
@@ -84,7 +84,7 @@ def _get_owned_product_or_404(db: Session, product_id: uuid.UUID) -> Product:
 def create_product(
     payload: ProductCreate,
     db: Session = Depends(get_db),
-    owner: User = Depends(require_shop_owner),
+    owner: User = Depends(require_shop_staff),
 ) -> ProductOut:
     product = Product(
         shop_id=owner.shop_id,  # from JWT, not the request body
@@ -102,7 +102,7 @@ def create_product(
 @router.get("", response_model=list[ProductOut])
 def list_products(
     db: Session = Depends(get_db),
-    _owner: User = Depends(require_shop_owner),
+    _owner: User = Depends(require_shop_staff),
     q: str | None = Query(default=None, description="Case-insensitive name search"),
     category: str | None = Query(default=None, description="Exact category filter"),
     active: str = Query(
@@ -136,7 +136,7 @@ def list_products(
 def get_product(
     product_id: uuid.UUID,
     db: Session = Depends(get_db),
-    _owner: User = Depends(require_shop_owner),
+    _owner: User = Depends(require_shop_staff),
 ) -> ProductOut:
     return _out(_get_owned_product_or_404(db, product_id))
 
@@ -146,7 +146,7 @@ def update_product(
     product_id: uuid.UUID,
     payload: ProductUpdate,
     db: Session = Depends(get_db),
-    _owner: User = Depends(require_shop_owner),
+    _owner: User = Depends(require_shop_staff),
 ) -> ProductOut:
     product = _get_owned_product_or_404(db, product_id)
 
@@ -172,7 +172,7 @@ def update_product(
 def delete_product(
     product_id: uuid.UUID,
     db: Session = Depends(get_db),
-    _owner: User = Depends(require_shop_owner),
+    _owner: User = Depends(require_shop_staff),
     hard: bool = Query(default=False, description="Permanently delete (only if no sales history)"),
 ) -> ProductDeleteResponse:
     product = _get_owned_product_or_404(db, product_id)
@@ -209,7 +209,7 @@ def delete_product(
 async def upload_product_image(
     product_id: uuid.UUID,
     db: Session = Depends(get_db),
-    _owner: User = Depends(require_shop_owner),
+    _owner: User = Depends(require_shop_staff),
     file: UploadFile = File(...),
 ) -> ProductOut:
     product = _get_owned_product_or_404(db, product_id)
@@ -256,7 +256,7 @@ async def upload_product_image(
 def delete_product_image(
     product_id: uuid.UUID,
     db: Session = Depends(get_db),
-    _owner: User = Depends(require_shop_owner),
+    _owner: User = Depends(require_shop_staff),
 ) -> ProductOut:
     product = _get_owned_product_or_404(db, product_id)
     if product.photo_path:
@@ -381,7 +381,7 @@ def parse_bulk_file(file_content: bytes, filename: str) -> list[dict]:
 
 @router.get("/sample-file")
 def download_sample_file(
-    _owner: User = Depends(require_shop_owner),
+    _owner: User = Depends(require_shop_staff),
 ):
     """Download a sample CSV file for bulk product upload."""
     sample_content = (
@@ -402,7 +402,7 @@ def download_sample_file(
 async def bulk_upload_products(
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
-    owner: User = Depends(require_shop_owner),
+    owner: User = Depends(require_shop_staff),
 ) -> list[ProductOut]:
     """Bulk upload products from a CSV or Excel file."""
     content = await file.read()
@@ -452,7 +452,7 @@ async def bulk_upload_products(
 def bulk_delete_products(
     payload: BulkDeleteRequest,
     db: Session = Depends(get_db),
-    _owner: User = Depends(require_shop_owner),
+    _owner: User = Depends(require_shop_staff),
 ) -> BulkDeleteResponse:
     """Bulk delete or deactivate products.
     
@@ -499,7 +499,7 @@ def bulk_delete_products(
 async def bulk_upload_photos(
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
-    owner: User = Depends(require_shop_owner),
+    owner: User = Depends(require_shop_staff),
 ) -> BulkPhotosResponse:
     """Bulk upload product images from a ZIP archive.
     

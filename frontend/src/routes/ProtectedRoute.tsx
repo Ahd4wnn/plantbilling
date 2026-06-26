@@ -19,7 +19,8 @@ function FullScreenLoader() {
 
 export function roleHome(role: Role | undefined): string {
   if (role === "admin") return "/admin";
-  if (role === "shop_owner") return "/app/products";
+  if (role === "owner") return "/owner";
+  if (role === "manager") return "/app/products";
   return "/app/bill";
 }
 

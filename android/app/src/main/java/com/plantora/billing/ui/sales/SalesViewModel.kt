@@ -73,7 +73,7 @@ class SalesViewModel @Inject constructor(
     val ui: StateFlow<SalesUiState> = _ui.asStateFlow()
 
     init {
-        val owner = (session.state.value as? AuthState.Authenticated)?.user?.role == Role.SHOP_OWNER
+        val owner = (session.state.value as? AuthState.Authenticated)?.user?.role == Role.MANAGER
         _ui.update { it.copy(isOwner = owner) }
         if (owner) loadStaff()
         load()

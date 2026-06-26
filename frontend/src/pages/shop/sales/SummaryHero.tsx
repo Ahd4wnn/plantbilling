@@ -35,7 +35,7 @@ export function SummaryHero({
   const salesLabel = label === "Today" ? "Today's Summary" : `Summary · ${label}`;
   const [expenseOpen, setExpenseOpen] = useState(false);
   const user = useAuth((s) => s.user);
-  const isOwner = user?.role === "shop_owner" || user?.role === "admin";
+  const isOwner = user?.role === "manager" || user?.role === "admin";
 
   const [editingExpense, setEditingExpense] = useState<ExpenseRow | null>(null);
 

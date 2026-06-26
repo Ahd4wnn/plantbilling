@@ -116,7 +116,7 @@ export function BillDetailView({ billId, onClose, onUpdated }: BillDetailViewPro
   const [deleting, setDeleting] = useState(false);
 
   const user = useAuth((s) => s.user);
-  const canEdit = user?.role === "shop_owner" || user?.role === "admin";
+  const canEdit = user?.role === "manager" || user?.role === "admin";
   const canDelete = user?.role === "admin";
 
   useEffect(() => {

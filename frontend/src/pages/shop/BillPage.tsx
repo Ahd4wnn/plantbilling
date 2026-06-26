@@ -24,7 +24,7 @@ import { CartForm } from "./bill/CartForm";
 
 export function BillPage() {
   const user = useAuth((s) => s.user);
-  if (user?.role === "shop_owner") {
+  if (user?.role === "manager") {
     return <Navigate to="/app/products" replace />;
   }
 

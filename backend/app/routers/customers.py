@@ -12,7 +12,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
-from app.auth.dependencies import get_db, require_shop_owner, require_shop_owner_or_admin, require_shop_or_admin
+from app.auth.dependencies import get_db, require_shop_staff, require_manager_or_admin, require_shop_or_admin
 from app.models.customer import Customer
 from app.models.user import User
 from app.schemas.customer import CustomerCreate, CustomerOut
@@ -24,7 +24,7 @@ router = APIRouter(prefix="/customers", tags=["customers"])
 @router.get("", response_model=list[CustomerOut])
 def list_customers(
     db: Session = Depends(get_db),
-    _owner: User = Depends(require_shop_owner),
+    _owner: User = Depends(require_shop_staff),
     q: str | None = Query(default=None, description="Case-insensitive name/phone search"),
 ) -> list[Customer]:
     stmt = select(Customer)
@@ -38,7 +38,7 @@ def list_customers(
 @router.get("/download")
 def download_customers_csv(
     db: Session = Depends(get_db),
-    user: User = Depends(require_shop_owner_or_admin),
+    user: User = Depends(require_manager_or_admin),
     q: str | None = Query(default=None),
     shop_id: uuid.UUID | None = Query(default=None),
 ):
@@ -92,7 +92,7 @@ def download_customers_csv(
 def create_customer(
     payload: CustomerCreate,
     db: Session = Depends(get_db),
-    owner: User = Depends(require_shop_owner),
+    owner: User = Depends(require_shop_staff),
 ) -> Customer:
     customer = Customer(
         shop_id=owner.shop_id,  # from JWT, not the request body
@@ -110,7 +110,7 @@ def create_customer(
 def whatsapp_optout(
     customer_id: uuid.UUID,
     db: Session = Depends(get_db),
-    _owner: User = Depends(require_shop_owner),
+    _owner: User = Depends(require_shop_staff),
 ) -> Customer:
     """Permanently suppress WhatsApp sending to this customer ("stop sending me these").
 

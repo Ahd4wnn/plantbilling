@@ -54,7 +54,7 @@ fun MoreScreen(
         }
 
         MenuRow(Icons.Rounded.Store, "Shop details", "Name, address, UPI — shown on receipts", onOpenShop)
-        if (user.role == com.plantora.billing.domain.Role.SHOP_OWNER) {
+        if (user.role == com.plantora.billing.domain.Role.MANAGER) {
             MenuRow(Icons.Rounded.Groups, "Salespeople", "Add and manage counter staff", onOpenStaff)
         }
         // The printer lives on the billing device, so only the salesperson sets it up.

@@ -18,10 +18,13 @@ from app.auth.dependencies import get_db, require_admin
 from app.auth.security import hash_password
 from app.models.customer import Customer
 from app.models.shop import Shop
-from app.models.user import ROLE_SHOP_OWNER, User
+from app.models.user import ROLE_MANAGER, ROLE_OWNER, User
 from app.schemas.admin import (
     AdminCustomerList,
     AdminCustomerRow,
+    AssignOwnerRequest,
+    OwnerAccountCreate,
+    OwnerAccountInfo,
     OwnerInfo,
     ResetPasswordRequest,
     ShopCreateRequest,
@@ -50,19 +53,28 @@ def create_shop(payload: ShopCreateRequest, db: Session = Depends(get_db)) -> Sh
             detail="A user with this email already exists",
         )
 
+    # Optional: link the shop to an existing multi-shop owner account.
+    if payload.owner_id is not None:
+        owner_acct = db.execute(
+            select(User).where(User.id == payload.owner_id, User.role == ROLE_OWNER)
+        ).scalar_one_or_none()
+        if owner_acct is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Owner account not found")
+
     shop = Shop(
         name=payload.name,
+        owner_id=payload.owner_id,
         owner_name=payload.owner_name,
         owner_phone=payload.owner_phone,
     )
     db.add(shop)
-    db.flush()  # assign shop.id before creating the owner
+    db.flush()  # assign shop.id before creating the manager
 
     owner = User(
         shop_id=shop.id,
         email=str(payload.owner_email),
         password_hash=hash_password(payload.owner_password),
-        role=ROLE_SHOP_OWNER,
+        role=ROLE_MANAGER,
     )
     db.add(owner)
 
@@ -91,24 +103,32 @@ def list_shops(db: Session = Depends(get_db)) -> list[ShopListRow]:
     Stats (product/bill counts, sales) are intentionally omitted for now to keep
     this query fast — a future enhancement if the dashboard needs them.
     """
+    from sqlalchemy.orm import aliased
+
+    OwnerAcct = aliased(User)  # the linked multi-shop owner account (shops.owner_id)
     rows = db.execute(
         select(
             Shop.id,
             Shop.name,
+            Shop.owner_id,
             Shop.owner_name,
             Shop.owner_phone,
             Shop.is_active,
             Shop.created_at,
             Shop.settings,
             User.email.label("owner_email"),
+            OwnerAcct.email.label("owner_email_account"),
         )
-        .outerjoin(User, (User.shop_id == Shop.id) & (User.role == ROLE_SHOP_OWNER))
+        .outerjoin(User, (User.shop_id == Shop.id) & (User.role == ROLE_MANAGER))
+        .outerjoin(OwnerAcct, OwnerAcct.id == Shop.owner_id)
         .order_by(Shop.created_at.desc())
     ).all()
     return [
         ShopListRow(
             id=r.id,
             name=r.name,
+            owner_id=r.owner_id,
+            owner_email_account=r.owner_email_account,
             owner_name=r.owner_name,
             owner_phone=r.owner_phone,
             owner_email=r.owner_email,
@@ -118,6 +138,62 @@ def list_shops(db: Session = Depends(get_db)) -> list[ShopListRow]:
         )
         for r in rows
     ]
+
+
+# ── Multi-shop owner accounts ─────────────────────────────────────────────────
+@router.post("/owners", response_model=OwnerAccountInfo, status_code=status.HTTP_201_CREATED)
+def create_owner(payload: OwnerAccountCreate, db: Session = Depends(get_db)) -> OwnerAccountInfo:
+    """Create a multi-shop owner login (no shop attached). Assign shops separately."""
+    if db.execute(select(User).where(User.email == str(payload.email))).scalar_one_or_none() is not None:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="A user with this email already exists")
+    owner = User(
+        shop_id=None,
+        email=str(payload.email),
+        password_hash=hash_password(payload.password),
+        role=ROLE_OWNER,
+    )
+    db.add(owner)
+    try:
+        db.flush()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="A user with this email already exists")
+    db.refresh(owner)
+    return OwnerAccountInfo(id=owner.id, email=owner.email, is_active=owner.is_active, created_at=owner.created_at, shop_count=0)
+
+
+@router.get("/owners", response_model=list[OwnerAccountInfo])
+def list_owners(db: Session = Depends(get_db)) -> list[OwnerAccountInfo]:
+    owners = db.execute(
+        select(User).where(User.role == ROLE_OWNER).order_by(User.created_at.desc())
+    ).scalars().all()
+    counts = dict(
+        db.execute(
+            select(Shop.owner_id, func.count()).where(Shop.owner_id.is_not(None)).group_by(Shop.owner_id)
+        ).all()
+    )
+    return [
+        OwnerAccountInfo(id=o.id, email=o.email, is_active=o.is_active, created_at=o.created_at, shop_count=counts.get(o.id, 0))
+        for o in owners
+    ]
+
+
+@router.post("/shops/{shop_id}/assign-owner", response_model=ShopSummary)
+def assign_owner(shop_id: uuid.UUID, payload: AssignOwnerRequest, db: Session = Depends(get_db)) -> Shop:
+    """Set (or clear, with null) the business owner of a shop."""
+    shop = db.execute(select(Shop).where(Shop.id == shop_id)).scalar_one_or_none()
+    if shop is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Shop not found")
+    if payload.owner_id is not None:
+        owner_acct = db.execute(
+            select(User).where(User.id == payload.owner_id, User.role == ROLE_OWNER)
+        ).scalar_one_or_none()
+        if owner_acct is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Owner account not found")
+    shop.owner_id = payload.owner_id
+    db.flush()
+    db.refresh(shop)
+    return shop
 
 
 @router.get("/customers", response_model=AdminCustomerList)
@@ -252,7 +328,7 @@ def reset_owner_password(
 ) -> User:
     """Set a new password for the given shop's owner."""
     owner = db.execute(
-        select(User).where(User.shop_id == shop_id, User.role == ROLE_SHOP_OWNER)
+        select(User).where(User.shop_id == shop_id, User.role == ROLE_MANAGER)
     ).scalar_one_or_none()
     if owner is None:
         raise HTTPException(

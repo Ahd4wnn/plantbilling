@@ -32,12 +32,12 @@ enum class Tab(
  * bills — product catalog management is owner-only, so Products is hidden for them.
  */
 fun tabsFor(role: Role): List<Tab> =
-    if (role == Role.SHOP_OWNER) Tab.entries.filter { it != Tab.BILL }
+    if (role == Role.MANAGER) Tab.entries.filter { it != Tab.BILL }
     else Tab.entries.filter { it != Tab.PRODUCTS }
 
 /** Landing tab after login (web `AppIndexRedirect`): owner→Products, others→Bill. */
 fun homeTabFor(role: Role): Tab =
-    if (role == Role.SHOP_OWNER) Tab.PRODUCTS else Tab.BILL
+    if (role == Role.MANAGER) Tab.PRODUCTS else Tab.BILL
 
 object Routes {
     const val BILL_SUCCESS = "bill_success/{billId}"

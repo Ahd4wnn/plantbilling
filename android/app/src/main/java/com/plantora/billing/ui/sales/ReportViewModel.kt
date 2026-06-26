@@ -58,7 +58,7 @@ class ReportViewModel @Inject constructor(
     val ui: StateFlow<ReportUiState> = _ui.asStateFlow()
 
     init {
-        val owner = (session.state.value as? AuthState.Authenticated)?.user?.role == Role.SHOP_OWNER
+        val owner = (session.state.value as? AuthState.Authenticated)?.user?.role == Role.MANAGER
         _ui.update { it.copy(isOwner = owner) }
         if (owner) viewModelScope.launch {
             runCatching { salespersonRepo.list() }.onSuccess { list -> _ui.update { it.copy(staff = list) } }

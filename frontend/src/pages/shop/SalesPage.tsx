@@ -21,7 +21,7 @@ const PAGE_SIZE = 20;
 
 export function SalesPage() {
   const user = useAuth((s) => s.user);
-  const isOwner = user?.role === "shop_owner";
+  const isOwner = user?.role === "manager";
 
   // Staff listing & filtering state (Owner only)
   const [staffList, setStaffList] = useState<Salesperson[]>([]);

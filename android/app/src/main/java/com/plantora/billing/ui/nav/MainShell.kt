@@ -46,7 +46,7 @@ fun MainShell(
     val navController = rememberNavController()
     val tabs = tabsFor(user.role)
     val homeRoute = homeTabFor(user.role).route
-    val isOwner = user.role == com.plantora.billing.domain.Role.SHOP_OWNER
+    val isOwner = user.role == com.plantora.billing.domain.Role.MANAGER
 
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = backStackEntry?.destination

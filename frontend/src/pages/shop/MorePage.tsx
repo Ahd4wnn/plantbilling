@@ -53,7 +53,7 @@ export function MorePage() {
   const [deleteUser, setDeleteUser] = useState<Salesperson | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
 
-  const isOwner = user?.role === "shop_owner";
+  const isOwner = user?.role === "manager";
 
   const [settings, setSettings] = useState<ShopSettings | null>(null);
   const [settingsLoading, setSettingsLoading] = useState(false);
@@ -191,7 +191,7 @@ export function MorePage() {
           <div className="flex justify-between text-base">
             <span className="text-ink-soft">Account Role:</span>
             <span className="font-semibold capitalize text-primary-700 bg-primary-50 px-2.5 py-0.5 rounded-full text-sm">
-              {user?.role === "shop_owner" ? "Nursery Owner" : "Salesperson"}
+              {user?.role === "manager" ? "Manager" : "Salesperson"}
             </span>
           </div>
         </div>

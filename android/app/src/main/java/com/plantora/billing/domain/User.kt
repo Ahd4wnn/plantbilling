@@ -1,11 +1,13 @@
 package com.plantora.billing.domain
 
 enum class Role {
-    SHOP_OWNER, SALESPERSON, ADMIN, UNKNOWN;
+    OWNER, MANAGER, SALESPERSON, ADMIN, UNKNOWN;
 
     companion object {
         fun from(raw: String?): Role = when (raw) {
-            "shop_owner" -> SHOP_OWNER
+            "owner" -> OWNER
+            // "shop_owner" is the legacy name for the per-shop operator, now "manager".
+            "manager", "shop_owner" -> MANAGER
             "salesperson" -> SALESPERSON
             "admin" -> ADMIN
             else -> UNKNOWN
@@ -24,6 +26,7 @@ data class User(
     val businessName: String?,
     val businessUpi: String?,
 ) {
-    val canUseApp: Boolean get() = role == Role.SHOP_OWNER || role == Role.SALESPERSON
+    val canUseApp: Boolean get() = role == Role.OWNER || role == Role.MANAGER || role == Role.SALESPERSON
+    val isOwner: Boolean get() = role == Role.OWNER
     val displayShop: String get() = businessName ?: shopName ?: "Your shop"
 }

@@ -22,7 +22,7 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.auth.dependencies import get_db, require_shop_owner, require_shop_or_admin, require_shop_owner_only, require_shop_owner_or_admin, require_admin
+from app.auth.dependencies import get_db, require_shop_staff, require_shop_or_admin, require_manager_or_admin, require_admin
 from app.database import privileged_session
 from app.config import get_settings
 from app.models.bill import Bill, BillItem
@@ -144,7 +144,7 @@ async def create_bill(
     payload: BillCreate,
     response: Response,
     db: Session = Depends(get_db),
-    owner: User = Depends(require_shop_owner),
+    owner: User = Depends(require_shop_staff),
 ) -> BillOut:
     # 1) Idempotent replay: if this key already produced a bill, return it as-is.
     existing = db.execute(
@@ -521,7 +521,7 @@ def update_bill(
     bill_id: uuid.UUID,
     payload: BillUpdate,
     db: Session = Depends(get_db),
-    user: User = Depends(require_shop_owner_or_admin),
+    user: User = Depends(require_manager_or_admin),
 ) -> BillDetailOut:
     """Edit a bill: payment split (Cash/UPI/Due), remarks, and — for owners/admins —
     the line items themselves (price, quantity, add/remove). Recomputes all money
@@ -676,7 +676,7 @@ def delete_bill(
 async def send_whatsapp(
     bill_id: uuid.UUID,
     db: Session = Depends(get_db),
-    owner: User = Depends(require_shop_owner),
+    owner: User = Depends(require_shop_staff),
 ) -> SendWhatsAppResult:
     """Manually trigger sending this bill's WhatsApp invoice immediately."""
     bill = db.execute(select(Bill).where(Bill.id == bill_id)).scalar_one_or_none()
@@ -706,7 +706,7 @@ async def send_whatsapp(
 async def resend_whatsapp(
     bill_id: uuid.UUID,
     db: Session = Depends(get_db),
-    owner: User = Depends(require_shop_owner),
+    owner: User = Depends(require_shop_staff),
 ) -> SendWhatsAppResult:
     """Manually resend this bill's WhatsApp invoice. Resets retry count and uses existing PDF."""
     bill = db.execute(select(Bill).where(Bill.id == bill_id)).scalar_one_or_none()
@@ -729,7 +729,7 @@ async def resend_whatsapp(
 def get_whatsapp_status(
     bill_id: uuid.UUID,
     db: Session = Depends(get_db),
-    owner: User = Depends(require_shop_owner),
+    owner: User = Depends(require_shop_staff),
 ) -> Bill:
     """Get the live WhatsApp delivery and retry status for a bill."""
     bill = db.execute(select(Bill).where(Bill.id == bill_id)).scalar_one_or_none()

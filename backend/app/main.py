@@ -21,6 +21,7 @@ from app.routers.products import router as products_router
 from app.routers.shop import router as shop_router
 from app.routers.shop_users import router as shop_users_router
 from app.routers.expenses import router as expenses_router
+from app.routers.owner import router as owner_router
 from app.services.whatsapp.worker import start_whatsapp_worker, stop_whatsapp_worker
 import logging
 import sys
@@ -98,3 +99,4 @@ app.include_router(bills_router)
 app.include_router(shop_router)
 app.include_router(shop_users_router)
 app.include_router(expenses_router)
+app.include_router(owner_router)

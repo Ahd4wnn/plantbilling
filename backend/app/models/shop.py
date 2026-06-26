@@ -3,8 +3,8 @@ from __future__ import annotations
 import datetime as dt
 import uuid
 
-from sqlalchemy import Boolean, Text, text
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy import Boolean, ForeignKey, Text, text
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base, created_at_col, uuid_pk
@@ -15,6 +15,13 @@ class Shop(Base):
 
     id: Mapped[uuid.UUID] = uuid_pk()
     name: Mapped[str] = mapped_column(Text, nullable=False)
+    # The multi-shop business owner (a users.id with role 'owner'). Optional —
+    # a shop may run with just a manager and no owner.
+    owner_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
     owner_name: Mapped[str | None] = mapped_column(Text, nullable=True)
     owner_phone: Mapped[str | None] = mapped_column(Text, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))

@@ -213,7 +213,7 @@ export function SalesPage() {
             <option value="">All Staff</option>
             {staffList.map((sp) => (
               <option key={sp.id} value={sp.id}>
-                {sp.email} ({sp.role === "shop_owner" ? "Owner" : "Staff"})
+                {sp.email} ({sp.role === "manager" ? "Owner" : "Staff"})
               </option>
             ))}
           </select>

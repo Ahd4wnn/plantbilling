@@ -96,4 +96,9 @@ object NetworkModule {
     @Provides
     @Singleton
     fun provideSalespeopleApi(retrofit: Retrofit): SalespeopleApi = retrofit.create(SalespeopleApi::class.java)
+
+    @Provides
+    @Singleton
+    fun provideOwnerApi(retrofit: Retrofit): com.plantora.billing.data.remote.api.OwnerApi =
+        retrofit.create(com.plantora.billing.data.remote.api.OwnerApi::class.java)
 }

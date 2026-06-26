@@ -10,7 +10,8 @@ from sqlalchemy.orm import Mapped, mapped_column
 from app.models.base import Base, created_at_col, uuid_pk
 
 ROLE_ADMIN = "admin"
-ROLE_SHOP_OWNER = "shop_owner"
+ROLE_OWNER = "owner"          # multi-shop business owner (oversight only)
+ROLE_MANAGER = "manager"      # per-shop operator (formerly "shop_owner")
 ROLE_SALESPERSON = "salesperson"
 
 

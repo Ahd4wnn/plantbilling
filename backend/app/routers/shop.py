@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.auth.dependencies import get_db, require_shop_owner
+from app.auth.dependencies import get_db, require_shop_staff
 from app.models.shop import Shop
 from app.models.user import User
 from app.schemas.shop import ShopSettingsOut, ShopSettingsUpdate
@@ -15,7 +15,7 @@ router = APIRouter(prefix="/shop", tags=["shop"])
 @router.get("", response_model=ShopSettingsOut)
 def get_shop_settings(
     db: Session = Depends(get_db),
-    owner: User = Depends(require_shop_owner),
+    owner: User = Depends(require_shop_staff),
 ) -> Shop:
     """Fetch the settings and profile for the authenticated user's shop."""
     if owner.shop_id is None:
@@ -37,7 +37,7 @@ def get_shop_settings(
 def update_shop_settings(
     payload: ShopSettingsUpdate,
     db: Session = Depends(get_db),
-    owner: User = Depends(require_shop_owner),
+    owner: User = Depends(require_shop_staff),
 ) -> Shop:
     """Update settings for the authenticated user's shop."""
     if owner.shop_id is None:

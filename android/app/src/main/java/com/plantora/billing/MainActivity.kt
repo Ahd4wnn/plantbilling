@@ -49,7 +49,12 @@ private fun PlantoraRoot(viewModel: RootViewModel = hiltViewModel()) {
         when (s) {
             is AuthState.Loading -> LoadingState()
             is AuthState.Unauthenticated -> LoginScreen()
-            is AuthState.Authenticated -> MainShell(user = s.user, onLogout = viewModel::logout)
+            is AuthState.Authenticated ->
+                if (s.user.isOwner) {
+                    com.plantora.billing.ui.owner.OwnerShell(user = s.user, onLogout = viewModel::logout)
+                } else {
+                    MainShell(user = s.user, onLogout = viewModel::logout)
+                }
             is AuthState.UnsupportedRole -> UnsupportedRoleScreen(onLogout = viewModel::logout)
         }
     }

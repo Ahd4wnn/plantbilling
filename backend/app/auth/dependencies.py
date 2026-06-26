@@ -18,7 +18,13 @@ from sqlalchemy.orm import Session
 from app.database import get_rls_session
 from app.auth.security import decode_access_token
 from app.models.shop import Shop
-from app.models.user import ROLE_ADMIN, ROLE_SHOP_OWNER, ROLE_SALESPERSON, User
+from app.models.user import (
+    ROLE_ADMIN,
+    ROLE_MANAGER,
+    ROLE_OWNER,
+    ROLE_SALESPERSON,
+    User,
+)
 from app.schemas.auth import TokenData
 
 _bearer = HTTPBearer(auto_error=True)
@@ -46,7 +52,9 @@ def get_db(token: TokenData = Depends(get_token_data)) -> Session:
     and rolled back on error.
     """
     shop_id = str(token.shop_id) if token.shop_id is not None else None
-    yield from get_rls_session(role=token.role, shop_id=shop_id)
+    yield from get_rls_session(
+        role=token.role, shop_id=shop_id, user_id=str(token.user_id)
+    )
 
 
 def get_current_user(
@@ -57,8 +65,9 @@ def get_current_user(
     if user is None or not user.is_active:
         raise _credentials_exc
 
-    # Reject shop users whose shop has been deactivated.
-    if user.role in (ROLE_SHOP_OWNER, ROLE_SALESPERSON):
+    # Reject shop users (manager/salesperson) whose shop has been deactivated.
+    # Admin and owner have no single shop, so this check does not apply to them.
+    if user.role in (ROLE_MANAGER, ROLE_SALESPERSON):
         shop = db.execute(select(Shop).where(Shop.id == user.shop_id)).scalar_one_or_none()
         if shop is None or not shop.is_active:
             raise HTTPException(
@@ -77,8 +86,9 @@ def require_admin(user: User = Depends(get_current_user)) -> User:
     return user
 
 
-def require_shop_owner(user: User = Depends(get_current_user)) -> User:
-    if user.role not in (ROLE_SHOP_OWNER, ROLE_SALESPERSON):
+def require_shop_staff(user: User = Depends(get_current_user)) -> User:
+    """Manager or salesperson — the counter staff who bill and run a shop."""
+    if user.role not in (ROLE_MANAGER, ROLE_SALESPERSON):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Shop access privileges required",
@@ -87,7 +97,7 @@ def require_shop_owner(user: User = Depends(get_current_user)) -> User:
 
 
 def require_shop_or_admin(user: User = Depends(get_current_user)) -> User:
-    if user.role not in (ROLE_ADMIN, ROLE_SHOP_OWNER, ROLE_SALESPERSON):
+    if user.role not in (ROLE_ADMIN, ROLE_MANAGER, ROLE_SALESPERSON):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Access privileges required",
@@ -95,19 +105,38 @@ def require_shop_or_admin(user: User = Depends(get_current_user)) -> User:
     return user
 
 
-def require_shop_owner_only(user: User = Depends(get_current_user)) -> User:
-    if user.role != ROLE_SHOP_OWNER:
+def require_manager_only(user: User = Depends(get_current_user)) -> User:
+    if user.role != ROLE_MANAGER:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Shop owner privileges required",
+            detail="Manager privileges required",
         )
     return user
 
 
-def require_shop_owner_or_admin(user: User = Depends(get_current_user)) -> User:
-    if user.role not in (ROLE_ADMIN, ROLE_SHOP_OWNER):
+def require_manager_or_admin(user: User = Depends(get_current_user)) -> User:
+    if user.role not in (ROLE_ADMIN, ROLE_MANAGER):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Shop owner or admin privileges required",
+            detail="Manager or admin privileges required",
+        )
+    return user
+
+
+def require_owner(user: User = Depends(get_current_user)) -> User:
+    """The multi-shop business owner (oversight + business details + staff)."""
+    if user.role != ROLE_OWNER:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Owner privileges required",
+        )
+    return user
+
+
+def require_owner_or_admin(user: User = Depends(get_current_user)) -> User:
+    if user.role not in (ROLE_ADMIN, ROLE_OWNER):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Owner or admin privileges required",
         )
     return user

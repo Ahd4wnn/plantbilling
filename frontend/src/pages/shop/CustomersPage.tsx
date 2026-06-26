@@ -12,7 +12,7 @@ function formatDate(iso: string): string {
 
 export function CustomersPage() {
   const user = useAuth((s) => s.user);
-  const isOwner = user?.role === "shop_owner";
+  const isOwner = user?.role === "manager";
   const [customers, setCustomers] = useState<ShopCustomer[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

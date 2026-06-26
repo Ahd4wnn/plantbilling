@@ -7,7 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.auth.dependencies import get_db, require_shop_owner_only
+from app.auth.dependencies import get_db, require_manager_only
 from app.auth.security import hash_password
 from app.models.user import ROLE_SALESPERSON, User
 from app.schemas.shop_user import (
@@ -20,14 +20,14 @@ from app.schemas.shop_user import (
 router = APIRouter(
     prefix="/shop/users",
     tags=["shop_users"],
-    dependencies=[Depends(require_shop_owner_only)],
+    dependencies=[Depends(require_manager_only)],
 )
 
 
 @router.get("", response_model=list[SalespersonOut])
 def list_salespeople(
     db: Session = Depends(get_db),
-    _owner: User = Depends(require_shop_owner_only),
+    _owner: User = Depends(require_manager_only),
 ) -> list[User]:
     """List all salespeople in the shop. RLS enforces shop isolation."""
     stmt = select(User).where(User.role == ROLE_SALESPERSON).order_by(User.created_at.desc())
@@ -38,7 +38,7 @@ def list_salespeople(
 def create_salesperson(
     payload: SalespersonCreate,
     db: Session = Depends(get_db),
-    owner: User = Depends(require_shop_owner_only),
+    owner: User = Depends(require_manager_only),
 ) -> User:
     """Create a new salesperson account under the owner's shop."""
     existing = db.execute(
@@ -89,7 +89,7 @@ def update_salesperson_status(
     user_id: uuid.UUID,
     payload: SalespersonActivateRequest,
     db: Session = Depends(get_db),
-    _owner: User = Depends(require_shop_owner_only),
+    _owner: User = Depends(require_manager_only),
 ) -> User:
     """Activate/Deactivate a salesperson."""
     salesperson = _get_salesperson_or_404(db, user_id)
@@ -104,7 +104,7 @@ def reset_salesperson_password(
     user_id: uuid.UUID,
     payload: SalespersonResetPasswordRequest,
     db: Session = Depends(get_db),
-    _owner: User = Depends(require_shop_owner_only),
+    _owner: User = Depends(require_manager_only),
 ) -> User:
     """Reset a salesperson's password."""
     salesperson = _get_salesperson_or_404(db, user_id)
@@ -118,7 +118,7 @@ def reset_salesperson_password(
 def delete_salesperson(
     user_id: uuid.UUID,
     db: Session = Depends(get_db),
-    _owner: User = Depends(require_shop_owner_only),
+    _owner: User = Depends(require_manager_only),
 ):
     """Delete a salesperson. RLS enforces shop isolation."""
     salesperson = _get_salesperson_or_404(db, user_id)

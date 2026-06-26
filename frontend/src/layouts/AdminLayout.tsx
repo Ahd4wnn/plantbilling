@@ -4,8 +4,8 @@ import { Wordmark } from "@/components/LeafMark";
 
 const NAV = [
   { to: "/admin/shops", label: "Shops" },
+  { to: "/admin/owners", label: "Owners" },
   { to: "/admin/customers", label: "Customers" },
-  { to: "/admin/sales", label: "Sales" },
 ];
 
 /**

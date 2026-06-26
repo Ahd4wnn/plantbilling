@@ -3,9 +3,11 @@ import { api } from "./client";
 export interface ShopRow {
   id: string;
   name: string;
+  owner_id: string | null;
+  owner_email_account: string | null; // linked multi-shop owner's login
   owner_name: string | null;
   owner_phone: string | null;
-  owner_email: string | null;
+  owner_email: string | null; // the shop's manager login
   is_active: boolean;
   whatsapp_auto_send: boolean;
   created_at: string;
@@ -43,6 +45,15 @@ export interface ShopCreatePayload {
   owner_phone?: string | null;
   owner_email: string;
   owner_password: string;
+  owner_id?: string | null; // optional link to a multi-shop owner account
+}
+
+export interface OwnerAccount {
+  id: string;
+  email: string;
+  is_active: boolean;
+  created_at: string;
+  shop_count: number;
 }
 
 export interface AdminCustomerRow {
@@ -116,6 +127,21 @@ export async function listAdminCustomers(params: AdminCustomerParams): Promise<A
 export async function listShopUsers(shopId: string): Promise<OwnerInfo[]> {
   const { data } = await api.get<OwnerInfo[]>(`/admin/shops/${shopId}/users`);
   return data;
+}
+
+// ── Multi-shop owner accounts ────────────────────────────────────────────────
+export async function listOwners(): Promise<OwnerAccount[]> {
+  const { data } = await api.get<OwnerAccount[]>("/admin/owners");
+  return data;
+}
+
+export async function createOwner(email: string, password: string): Promise<OwnerAccount> {
+  const { data } = await api.post<OwnerAccount>("/admin/owners", { email, password });
+  return data;
+}
+
+export async function assignShopOwner(shopId: string, ownerId: string | null): Promise<void> {
+  await api.post(`/admin/shops/${shopId}/assign-owner`, { owner_id: ownerId });
 }
 
 export async function downloadAdminCustomersCSV(params: AdminCustomerParams): Promise<void> {
