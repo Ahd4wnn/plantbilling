@@ -124,6 +124,7 @@ class BillListItem(BaseModel):
     total: MoneyOut
     due_amount: MoneyOut = Decimal("0.00")  # type: ignore[assignment]
     customer_name: str | None = None
+    customer_phone: str | None = None
     item_count: int
     payment_method: PaymentMethod
     is_edited: bool = False

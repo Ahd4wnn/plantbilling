@@ -22,7 +22,7 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.auth.dependencies import get_db, require_shop_staff, require_shop_or_admin, require_manager_or_admin, require_admin
+from app.auth.dependencies import get_db, require_shop_staff, require_shop_or_admin, require_manager_or_admin
 from app.database import privileged_session
 from app.config import get_settings
 from app.models.bill import Bill, BillItem
@@ -404,6 +404,7 @@ def list_bills(
             Bill.upi_amount,
             Bill.due_amount,
             Customer.name.label("customer_name"),
+            Customer.phone.label("customer_phone"),
             Bill.is_edited,
         )
         .outerjoin(Customer, Customer.id == Bill.customer_id)
@@ -450,6 +451,7 @@ def list_bills(
             total=r.total,
             due_amount=r.due_amount,
             customer_name=r.customer_name,
+            customer_phone=r.customer_phone,
             item_count=counts.get(r.id, 0),
             payment_method=_payment_method(r.cash_amount, r.upi_amount, r.due_amount),
             is_edited=r.is_edited,
@@ -661,9 +663,10 @@ def update_bill(
 def delete_bill(
     bill_id: uuid.UUID,
     db: Session = Depends(get_db),
-    user: User = Depends(require_admin),
+    user: User = Depends(require_manager_or_admin),
 ):
-    """Delete a bill. Only admins can delete bills."""
+    """Delete a bill. Only the shop manager (or an admin) can delete bills —
+    salespeople cannot."""
     bill = db.execute(select(Bill).where(Bill.id == bill_id)).scalar_one_or_none()
     if bill is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Bill not found")

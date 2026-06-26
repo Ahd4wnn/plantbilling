@@ -89,6 +89,7 @@ fun BillListItemDto.toDomain() = BillListEntry(
     total = Money.parse(total),
     dueAmount = Money.parse(dueAmount),
     customerName = customerName,
+    customerPhone = customerPhone,
     itemCount = itemCount,
     paymentMethod = PaymentMethod.from(paymentMethod),
     isEdited = isEdited,

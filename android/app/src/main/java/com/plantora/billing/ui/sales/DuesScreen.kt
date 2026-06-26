@@ -116,7 +116,13 @@ private fun DueRow(
     PlantoraCard {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clickable(onClick = onOpen)) {
             Column(Modifier.weight(1f)) {
-                Text(entry.customerName ?: "Walk-in", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                // Show the phone number when no name was recorded — a due bill always
+                // has a phone (required at checkout), so this identifies the customer.
+                Text(
+                    entry.customerName ?: entry.customerPhone ?: "Walk-in",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                )
                 Text(
                     "${formatBillTime(entry.createdAt)} • bill ${entry.total.format()}",
                     style = MaterialTheme.typography.bodyMedium,

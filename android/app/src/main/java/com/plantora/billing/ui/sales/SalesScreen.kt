@@ -63,6 +63,13 @@ fun SalesScreen(
     val snackbar = remember { SnackbarHostState() }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
+    // Refresh every time the Sales tab is shown so a bill just made on the Bill tab
+    // (or a deleted/edited bill) appears immediately, despite saved nav state.
+    androidx.lifecycle.compose.LifecycleResumeEffect(Unit) {
+        viewModel.load()
+        onPauseOrDispose { }
+    }
+
     LaunchedEffect(ui.message) {
         ui.message?.let { snackbar.showSnackbar(it); viewModel.dismissMessage() }
     }

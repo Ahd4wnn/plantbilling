@@ -110,6 +110,7 @@ data class BillListItemDto(
     val total: String,
     @SerialName("due_amount") val dueAmount: String = "0",
     @SerialName("customer_name") val customerName: String? = null,
+    @SerialName("customer_phone") val customerPhone: String? = null,
     @SerialName("item_count") val itemCount: Int,
     @SerialName("payment_method") val paymentMethod: String,
     @SerialName("is_edited") val isEdited: Boolean = false,

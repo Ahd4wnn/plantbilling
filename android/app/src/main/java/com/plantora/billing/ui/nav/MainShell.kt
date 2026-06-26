@@ -130,6 +130,7 @@ fun MainShell(
                 BillDetailScreen(
                     onBack = { navController.popBackStack() },
                     canEdit = isOwner,
+                    canDelete = isOwner,
                     onEdit = { navController.navigate(Routes.billEdit(billId)) },
                 )
             }

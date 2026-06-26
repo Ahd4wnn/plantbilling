@@ -27,6 +27,7 @@ data class BillListEntry(
     val total: Money,
     val dueAmount: Money,
     val customerName: String?,
+    val customerPhone: String?,
     val itemCount: Int,
     val paymentMethod: PaymentMethod,
     val isEdited: Boolean,

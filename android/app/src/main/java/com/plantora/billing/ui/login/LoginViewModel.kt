@@ -43,6 +43,14 @@ class LoginViewModel @Inject constructor(
         _ui.update { it.copy(submitting = true, error = null) }
         viewModelScope.launch {
             session.login(state.email, state.password)
+                .onSuccess {
+                    // This VM is Activity-scoped, so it survives a later logout and
+                    // is reused on the next visit to the login screen. Reset to a
+                    // clean slate — otherwise `submitting` stays true and the Sign
+                    // in button is permanently greyed out after logging back in.
+                    // (Also clears the password from memory.)
+                    _ui.value = LoginUiState()
+                }
                 .onFailure { e ->
                     _ui.update {
                         it.copy(
@@ -51,8 +59,6 @@ class LoginViewModel @Inject constructor(
                         )
                     }
                 }
-            // On success, SessionRepository flips auth state and the root nav
-            // swaps to the main shell; nothing more to do here.
         }
     }
 }

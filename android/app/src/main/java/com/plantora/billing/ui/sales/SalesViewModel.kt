@@ -76,7 +76,11 @@ class SalesViewModel @Inject constructor(
         val owner = (session.state.value as? AuthState.Authenticated)?.user?.role == Role.MANAGER
         _ui.update { it.copy(isOwner = owner) }
         if (owner) loadStaff()
-        load()
+        // NOTE: the first/refresh load() is driven by the screen's resume effect
+        // (see SalesScreen). The bottom nav saves/restores this screen's state, so
+        // relying on init alone would show stale data — a bill made on the Bill tab
+        // wouldn't appear until the VM was recreated. Reloading on resume keeps the
+        // sales list and summary current every time the tab is opened.
     }
 
     private fun loadStaff() {

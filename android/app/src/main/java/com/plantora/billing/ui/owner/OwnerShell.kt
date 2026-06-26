@@ -90,7 +90,9 @@ private fun PeriodChips(period: OwnerPeriod, onSelect: (OwnerPeriod) -> Unit) {
 private fun KpiCard(label: String, value: String, modifier: Modifier = Modifier) {
     PlantoraCard(modifier = modifier) {
         Text(label.uppercase(), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
-        Text(value, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
+        // Large amounts (e.g. ₹13,40,000.00) must wrap within the card rather than
+        // overflow its bounds and break the row layout. Up to two lines, no clipping.
+        Text(value, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, maxLines = 2, softWrap = true)
     }
 }
 

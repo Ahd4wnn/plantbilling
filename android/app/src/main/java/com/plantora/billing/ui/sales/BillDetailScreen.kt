@@ -12,6 +12,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.Print
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -24,6 +25,9 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -44,15 +48,38 @@ import com.plantora.billing.ui.theme.Dimens
 fun BillDetailScreen(
     onBack: () -> Unit,
     canEdit: Boolean = false,
+    canDelete: Boolean = false,
     onEdit: () -> Unit = {},
     viewModel: BillDetailViewModel = hiltViewModel(),
 ) {
     val ui by viewModel.ui.collectAsStateWithLifecycle()
+    var confirmDelete by remember { mutableStateOf(false) }
 
     // Refresh on return so an owner's edits show immediately.
     androidx.lifecycle.compose.LifecycleResumeEffect(Unit) {
         viewModel.load()
         onPauseOrDispose { }
+    }
+
+    // Once the bill is deleted, leave the screen.
+    androidx.compose.runtime.LaunchedEffect(ui.deleted) {
+        if (ui.deleted) onBack()
+    }
+
+    if (confirmDelete) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { confirmDelete = false },
+            title = { Text("Delete this bill?") },
+            text = { Text("This permanently removes the bill and its items. This can't be undone.") },
+            confirmButton = {
+                androidx.compose.material3.TextButton(onClick = { confirmDelete = false; viewModel.delete() }) {
+                    Text("Delete", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                androidx.compose.material3.TextButton(onClick = { confirmDelete = false }) { Text("Cancel") }
+            },
+        )
     }
 
     Scaffold(
@@ -69,6 +96,15 @@ fun BillDetailScreen(
                     if (canEdit && ui.detail != null) {
                         IconButton(onClick = onEdit) {
                             Icon(Icons.Rounded.Edit, contentDescription = "Edit bill")
+                        }
+                    }
+                    if (canDelete && ui.detail != null) {
+                        IconButton(onClick = { confirmDelete = true }) {
+                            Icon(
+                                Icons.Rounded.Delete,
+                                contentDescription = "Delete bill",
+                                tint = MaterialTheme.colorScheme.error,
+                            )
                         }
                     }
                 },

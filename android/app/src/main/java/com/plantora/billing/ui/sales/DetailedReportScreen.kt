@@ -114,12 +114,18 @@ fun DetailedReportScreen(
     }
 }
 
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 private fun PeriodPicker(ui: ReportUiState, vm: ReportViewModel) {
     PlantoraCard {
         Text("Report period", style = MaterialTheme.typography.titleMedium)
         Spacer(Modifier.height(Dimens.sm))
-        Row(horizontalArrangement = Arrangement.spacedBy(Dimens.sm)) {
+        // FlowRow so all four chips (Daily/Weekly/Monthly/Custom) wrap onto a second
+        // line on narrow screens instead of the last "Custom" chip overflowing.
+        androidx.compose.foundation.layout.FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(Dimens.sm),
+            verticalArrangement = Arrangement.spacedBy(Dimens.sm),
+        ) {
             ReportPeriod.entries.forEach { p ->
                 FilterChip(
                     selected = ui.period == p,
@@ -217,7 +223,7 @@ private fun PaymentRow(report: DetailedReport) {
 private fun StatBox(label: String, value: String, color: Color, modifier: Modifier) {
     PlantoraCard(modifier = modifier, contentPadding = PaddingValues(Dimens.md)) {
         Text(label.uppercase(), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Text(value, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = color, maxLines = 1)
+        Text(value, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = color, maxLines = 2, softWrap = true)
     }
 }
 
