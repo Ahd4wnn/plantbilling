@@ -13,15 +13,18 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.time.LocalDate
 import javax.inject.Inject
 
-enum class OwnerPeriod(val label: String) { TODAY("Today"), WEEK("7 days"), MONTH("This month") }
+enum class OwnerPeriod(val label: String) { TODAY("Today"), WEEK("Week"), MONTH("Month"), CUSTOM("Custom") }
 
 data class OwnerDashboardState(
     val loading: Boolean = true,
     val error: String? = null,
     val overview: OwnerOverview? = null,
     val period: OwnerPeriod = OwnerPeriod.TODAY,
+    val customFrom: LocalDate = todayInShopZone().minusDays(6),
+    val customTo: LocalDate = todayInShopZone(),
 )
 
 @HiltViewModel
@@ -40,16 +43,28 @@ class OwnerDashboardViewModel @Inject constructor(
         load()
     }
 
+    fun setCustomFrom(d: LocalDate) {
+        _ui.update { it.copy(customFrom = d, customTo = if (d.isAfter(it.customTo)) d else it.customTo) }
+        if (_ui.value.period == OwnerPeriod.CUSTOM) load()
+    }
+
+    fun setCustomTo(d: LocalDate) {
+        _ui.update { it.copy(customTo = d, customFrom = if (d.isBefore(it.customFrom)) d else it.customFrom) }
+        if (_ui.value.period == OwnerPeriod.CUSTOM) load()
+    }
+
     fun load() {
         val today = todayInShopZone()
-        val from = when (_ui.value.period) {
-            OwnerPeriod.TODAY -> today
-            OwnerPeriod.WEEK -> today.minusDays(6)
-            OwnerPeriod.MONTH -> today.withDayOfMonth(1)
+        val s = _ui.value
+        val (from, to) = when (s.period) {
+            OwnerPeriod.TODAY -> today to today
+            OwnerPeriod.WEEK -> today.minusDays(6) to today
+            OwnerPeriod.MONTH -> today.withDayOfMonth(1) to today
+            OwnerPeriod.CUSTOM -> s.customFrom to s.customTo
         }
         _ui.update { it.copy(loading = true, error = null) }
         viewModelScope.launch {
-            runCatching { repo.overview(from.toApiDate(), today.toApiDate()) }
+            runCatching { repo.overview(from.toApiDate(), to.toApiDate()) }
                 .onSuccess { o -> _ui.update { it.copy(loading = false, overview = o) } }
                 .onFailure { e -> _ui.update { it.copy(loading = false, error = friendlyError(e)) } }
         }

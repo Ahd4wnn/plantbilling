@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.time.LocalDate
 import javax.inject.Inject
 
 data class NewStaffForm(
@@ -34,6 +35,8 @@ data class OwnerShopState(
     val shop: OwnerShop? = null,
     val report: DetailedReport? = null,
     val period: OwnerPeriod = OwnerPeriod.TODAY,
+    val customFrom: LocalDate = todayInShopZone().minusDays(6),
+    val customTo: LocalDate = todayInShopZone(),
     val staff: List<OwnerStaff> = emptyList(),
     val newStaff: NewStaffForm = NewStaffForm(),
     val message: String? = null,
@@ -67,15 +70,27 @@ class OwnerShopViewModel @Inject constructor(
         loadReport()
     }
 
+    fun setCustomFrom(d: LocalDate) {
+        _ui.update { it.copy(customFrom = d, customTo = if (d.isAfter(it.customTo)) d else it.customTo) }
+        if (_ui.value.period == OwnerPeriod.CUSTOM) loadReport()
+    }
+
+    fun setCustomTo(d: LocalDate) {
+        _ui.update { it.copy(customTo = d, customFrom = if (d.isBefore(it.customFrom)) d else it.customFrom) }
+        if (_ui.value.period == OwnerPeriod.CUSTOM) loadReport()
+    }
+
     private fun loadReport() {
         val today = todayInShopZone()
-        val from = when (_ui.value.period) {
-            OwnerPeriod.TODAY -> today
-            OwnerPeriod.WEEK -> today.minusDays(6)
-            OwnerPeriod.MONTH -> today.withDayOfMonth(1)
+        val s = _ui.value
+        val (from, to) = when (s.period) {
+            OwnerPeriod.TODAY -> today to today
+            OwnerPeriod.WEEK -> today.minusDays(6) to today
+            OwnerPeriod.MONTH -> today.withDayOfMonth(1) to today
+            OwnerPeriod.CUSTOM -> s.customFrom to s.customTo
         }
         viewModelScope.launch {
-            runCatching { repo.report(shopId, from.toApiDate(), today.toApiDate()) }
+            runCatching { repo.report(shopId, from.toApiDate(), to.toApiDate()) }
                 .onSuccess { r -> _ui.update { it.copy(report = r) } }
         }
     }

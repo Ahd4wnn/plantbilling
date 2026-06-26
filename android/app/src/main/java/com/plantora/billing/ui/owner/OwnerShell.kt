@@ -1,7 +1,9 @@
 package com.plantora.billing.ui.owner
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -10,10 +12,14 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowLeft
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.rounded.Logout
 import androidx.compose.material.icons.rounded.EmojiEvents
 import androidx.compose.material.icons.rounded.Storefront
@@ -33,8 +39,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavType
@@ -47,6 +56,7 @@ import com.plantora.billing.domain.OwnerStaff
 import com.plantora.billing.domain.ShopOverviewRow
 import com.plantora.billing.domain.StaffPerf
 import com.plantora.billing.domain.User
+import com.plantora.billing.domain.toDisplay
 import com.plantora.billing.ui.components.ErrorState
 import com.plantora.billing.ui.components.LoadingState
 import com.plantora.billing.ui.components.MoneyText
@@ -77,11 +87,126 @@ fun OwnerShell(user: User, onLogout: () -> Unit) {
     }
 }
 
+/**
+ * Period selector: four equal-width chips (Today / Week / Month / Custom) — each
+ * takes the same width via weight(1f). When Custom is chosen, two date steppers
+ * appear for an arbitrary range.
+ */
 @Composable
-private fun PeriodChips(period: OwnerPeriod, onSelect: (OwnerPeriod) -> Unit) {
-    Row(horizontalArrangement = Arrangement.spacedBy(Dimens.sm)) {
-        OwnerPeriod.entries.forEach { p ->
-            FilterChip(selected = period == p, onClick = { onSelect(p) }, label = { Text(p.label) })
+private fun PeriodSelector(
+    period: OwnerPeriod,
+    customFrom: java.time.LocalDate,
+    customTo: java.time.LocalDate,
+    onPeriod: (OwnerPeriod) -> Unit,
+    onFrom: (java.time.LocalDate) -> Unit,
+    onTo: (java.time.LocalDate) -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(Dimens.sm)) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Dimens.xs)) {
+            OwnerPeriod.entries.forEach { p ->
+                FilterChip(
+                    selected = period == p,
+                    onClick = { onPeriod(p) },
+                    label = {
+                        Text(
+                            p.label,
+                            maxLines = 1,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    },
+                    modifier = Modifier.weight(1f),
+                )
+            }
+        }
+        if (period == OwnerPeriod.CUSTOM) {
+            DateStepper("From", customFrom, onFrom)
+            DateStepper("To", customTo, onTo)
+        }
+    }
+}
+
+@Composable
+private fun DateStepper(label: String, date: java.time.LocalDate, onChange: (java.time.LocalDate) -> Unit) {
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Text(
+            label,
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.width(44.dp),
+        )
+        IconButton(onClick = { onChange(date.minusDays(1)) }) {
+            Icon(Icons.AutoMirrored.Rounded.KeyboardArrowLeft, contentDescription = "Earlier")
+        }
+        Text(
+            date.toDisplay(),
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.weight(1f),
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+        )
+        IconButton(
+            onClick = { onChange(date.plusDays(1)) },
+            enabled = date.isBefore(com.plantora.billing.domain.todayInShopZone()),
+        ) {
+            Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, contentDescription = "Later")
+        }
+    }
+}
+
+/** Horizontal comparison of each shop's sales for the selected period. */
+@Composable
+private fun SalesByShopCard(shops: List<ShopOverviewRow>) {
+    PlantoraCard {
+        Text("Sales by shop", style = MaterialTheme.typography.titleMedium)
+        Spacer(Modifier.height(Dimens.md))
+        com.plantora.billing.ui.components.charts.BarChart(
+            data = shops.map {
+                com.plantora.billing.ui.components.charts.BarDatum(
+                    label = it.shopName,
+                    value = it.totalSales.amount.toFloat(),
+                    valueLabel = it.totalSales.format(),
+                    sub = "${it.billCount} bills",
+                )
+            },
+        )
+    }
+}
+
+/** Cash vs UPI vs Due split across all owned shops. */
+@Composable
+private fun PaymentMixCard(cash: Money, upi: Money, due: Money) {
+    val total = (cash.amount + upi.amount + due.amount).toFloat().coerceAtLeast(0.0001f)
+    PlantoraCard {
+        Text("Payment mix", style = MaterialTheme.typography.titleMedium)
+        Spacer(Modifier.height(Dimens.md))
+        MixBar("Cash", cash, cash.amount.toFloat() / total, com.plantora.billing.ui.theme.CashGreen)
+        Spacer(Modifier.height(Dimens.sm))
+        MixBar("UPI", upi, upi.amount.toFloat() / total, com.plantora.billing.ui.theme.UpiBlue)
+        Spacer(Modifier.height(Dimens.sm))
+        MixBar("Due", due, due.amount.toFloat() / total, MaterialTheme.colorScheme.error)
+    }
+}
+
+@Composable
+private fun MixBar(label: String, money: Money, frac: Float, color: androidx.compose.ui.graphics.Color) {
+    Column(Modifier.fillMaxWidth()) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text(label, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            MoneyText(money, style = MaterialTheme.typography.bodyLarge)
+        }
+        Spacer(Modifier.height(Dimens.xs))
+        androidx.compose.foundation.layout.Box(
+            Modifier
+                .fillMaxWidth()
+                .height(8.dp)
+                .background(MaterialTheme.colorScheme.surfaceVariant, androidx.compose.foundation.shape.RoundedCornerShape(4.dp)),
+        ) {
+            androidx.compose.foundation.layout.Box(
+                Modifier
+                    .fillMaxWidth(frac.coerceIn(0f, 1f))
+                    .height(8.dp)
+                    .background(color, androidx.compose.foundation.shape.RoundedCornerShape(4.dp)),
+            )
         }
     }
 }
@@ -126,7 +251,16 @@ private fun OwnerDashboardScreen(
                     contentPadding = PaddingValues(Dimens.screenPadding),
                     verticalArrangement = Arrangement.spacedBy(Dimens.md),
                 ) {
-                    item { PeriodChips(ui.period, viewModel::setPeriod) }
+                    item {
+                        PeriodSelector(
+                            period = ui.period,
+                            customFrom = ui.customFrom,
+                            customTo = ui.customTo,
+                            onPeriod = viewModel::setPeriod,
+                            onFrom = viewModel::setCustomFrom,
+                            onTo = viewModel::setCustomTo,
+                        )
+                    }
                     if (o != null) {
                         item {
                             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Dimens.sm)) {
@@ -139,6 +273,13 @@ private fun OwnerDashboardScreen(
                                 KpiCard("Expenses", o.totalExpenses.format(), Modifier.weight(1f))
                                 KpiCard("Bills", o.billCount.toString(), Modifier.weight(1f))
                             }
+                        }
+                        // Graphs: per-shop comparison + payment split for the period.
+                        if (o.shops.any { it.totalSales.isPositive() }) {
+                            item { SalesByShopCard(o.shops) }
+                        }
+                        if ((o.cashTotal.amount + o.upiTotal.amount + o.dueTotal.amount).signum() > 0) {
+                            item { PaymentMixCard(o.cashTotal, o.upiTotal, o.dueTotal) }
                         }
                         item { SectionHeader("Shops (${o.shopCount})") }
                         if (o.shops.isEmpty()) {
@@ -211,7 +352,16 @@ private fun OwnerShopScreen(
             contentPadding = PaddingValues(Dimens.screenPadding),
             verticalArrangement = Arrangement.spacedBy(Dimens.md),
         ) {
-            item { PeriodChips(ui.period, viewModel::setPeriod) }
+            item {
+                PeriodSelector(
+                    period = ui.period,
+                    customFrom = ui.customFrom,
+                    customTo = ui.customTo,
+                    onPeriod = viewModel::setPeriod,
+                    onFrom = viewModel::setCustomFrom,
+                    onTo = viewModel::setCustomTo,
+                )
+            }
             ui.report?.let { r ->
                 item {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Dimens.sm)) {
