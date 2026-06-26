@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="plantora_green">@color/md_green_700</color>
+    <color name="md_green_700">#2E7D46</color>
+    <color name="plantora_surface">#FBFAF7</color>
+    <color name="ic_launcher_background">#FFFFFF</color>
+</resources>

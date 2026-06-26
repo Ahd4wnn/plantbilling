@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Base application theme. The real colours come from the Compose
+         M3 theme (ui/theme); this provides a sane splash/background before
+         Compose draws and a green status bar. -->
+    <style name="Theme.Plantora" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:statusBarColor">@color/plantora_green</item>
+        <item name="android:windowBackground">@color/plantora_surface</item>
+    </style>
+</resources>
