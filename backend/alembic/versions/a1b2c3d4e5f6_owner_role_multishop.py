@@ -112,6 +112,13 @@ def _recreate_policies(*, with_owner: bool) -> None:
 
 
 def upgrade() -> None:
+    # Migrations run under FORCE ROW LEVEL SECURITY, which applies to the
+    # privileged owner role too. DDL bypasses RLS, but the role-rename UPDATE
+    # below is DML and would silently match zero rows without an admin GUC,
+    # leaving stale `shop_owner` rows that then violate the new CHECK. Set the
+    # admin role for this transaction so DML sees every row.
+    op.execute("SELECT set_config('app.user_role', 'admin', true);")
+
     # 1. shops.owner_id — links a shop to its multi-shop owner (optional).
     op.execute(
         "ALTER TABLE shops ADD COLUMN owner_id UUID REFERENCES users(id) ON DELETE SET NULL;"
@@ -142,6 +149,9 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    # See upgrade(): DML below must run with the admin GUC under FORCE RLS.
+    op.execute("SELECT set_config('app.user_role', 'admin', true);")
+
     # Restore admin/shop-only policies.
     _recreate_policies(with_owner=False)
 
