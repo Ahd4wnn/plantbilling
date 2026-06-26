@@ -47,10 +47,16 @@ fun LoginScreen(viewModel: LoginViewModel = hiltViewModel()) {
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
+            // Use the launcher FOREGROUND (a PNG). The adaptive icon mipmaps
+            // (ic_launcher / ic_launcher_round) resolve to an XML adaptive-icon on
+            // Android 8+, which Compose's painterResource cannot render — it throws
+            // "Only VectorDrawables and rasterized asset types are supported",
+            // crashing the app on launch. The foreground is PNG-only, so it's safe.
+            // Sized up to offset the adaptive-icon safe-zone padding.
             Image(
-                painter = painterResource(id = com.plantora.billing.R.mipmap.ic_launcher_round),
+                painter = painterResource(id = com.plantora.billing.R.mipmap.ic_launcher_foreground),
                 contentDescription = "PlantBill",
-                modifier = Modifier.size(96.dp),
+                modifier = Modifier.size(132.dp),
             )
             Spacer(Modifier.height(Dimens.lg))
             Text(
