@@ -14,6 +14,7 @@ import { NotFound } from "@/pages/NotFound";
 import { ShopsPage } from "@/pages/admin/ShopsPage";
 import { OwnersPage } from "@/pages/admin/OwnersPage";
 import { CustomersPage } from "@/pages/admin/CustomersPage";
+import { CrashReportsPage } from "@/pages/admin/CrashReportsPage";
 import { CustomersPage as ShopCustomersPage } from "@/pages/shop/CustomersPage";
 import { PublicBillReceiptPage } from "@/pages/shop/PublicBillReceiptPage";
 import { OwnerLayout } from "@/layouts/OwnerLayout";
@@ -79,6 +80,7 @@ export default function App() {
             <Route path="shops" element={<ShopsPage />} />
             <Route path="owners" element={<OwnersPage />} />
             <Route path="customers" element={<CustomersPage />} />
+            <Route path="crashes" element={<CrashReportsPage />} />
           </Route>
         </Route>
 
