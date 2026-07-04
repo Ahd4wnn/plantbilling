@@ -1,10 +1,14 @@
 import { api } from "./client";
 
+export interface ShopOwnerLink {
+  id: string;
+  email: string;
+}
+
 export interface ShopRow {
   id: string;
   name: string;
-  owner_id: string | null;
-  owner_email_account: string | null; // linked multi-shop owner's login
+  owners: ShopOwnerLink[]; // linked multi-shop owner accounts (0..many)
   owner_name: string | null;
   owner_phone: string | null;
   owner_email: string | null; // the shop's manager login
@@ -140,8 +144,22 @@ export async function createOwner(email: string, password: string): Promise<Owne
   return data;
 }
 
-export async function assignShopOwner(shopId: string, ownerId: string | null): Promise<void> {
-  await api.post(`/admin/shops/${shopId}/assign-owner`, { owner_id: ownerId });
+export async function listShopOwners(shopId: string): Promise<ShopOwnerLink[]> {
+  const { data } = await api.get<ShopOwnerLink[]>(`/admin/shops/${shopId}/owners`);
+  return data;
+}
+
+/** Link a multi-shop owner to a shop (a shop may have several owners). Returns
+ *  the shop's updated owner list. */
+export async function addShopOwner(shopId: string, ownerId: string): Promise<ShopOwnerLink[]> {
+  const { data } = await api.post<ShopOwnerLink[]>(`/admin/shops/${shopId}/owners`, { owner_id: ownerId });
+  return data;
+}
+
+/** Unlink a multi-shop owner from a shop. Returns the updated owner list. */
+export async function removeShopOwner(shopId: string, ownerId: string): Promise<ShopOwnerLink[]> {
+  const { data } = await api.delete<ShopOwnerLink[]>(`/admin/shops/${shopId}/owners/${ownerId}`);
+  return data;
 }
 
 export async function downloadAdminCustomersCSV(params: AdminCustomerParams): Promise<void> {

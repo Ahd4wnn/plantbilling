@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useState } from "react";
 import {
-  assignShopOwner,
+  addShopOwner,
+  removeShopOwner,
   createOwner,
   listOwners,
   listShops,
   type OwnerAccount,
   type ShopRow,
 } from "@/api/admin";
+import { X } from "lucide-react";
 import { friendlyError } from "@/api/client";
 import { Spinner } from "@/components/Spinner";
 import { Button } from "@/components/Button";
@@ -65,15 +67,32 @@ export function OwnersPage() {
     }
   };
 
-  const assign = async (shop: ShopRow, ownerId: string) => {
+  const flash = (msg: string, ms = 3000) => {
+    setToast(msg);
+    setTimeout(() => setToast(null), ms);
+  };
+
+  const addOwner = async (shop: ShopRow, ownerId: string) => {
+    if (!ownerId) return;
     try {
-      await assignShopOwner(shop.id, ownerId || null);
-      setToast(ownerId ? `Assigned ${shop.name} to an owner.` : `Removed owner from ${shop.name}.`);
-      setTimeout(() => setToast(null), 3000);
-      await load();
+      const owners = await addShopOwner(shop.id, ownerId);
+      // Update just this shop's owners in place; refresh counts in the background.
+      setShops((prev) => prev.map((s) => (s.id === shop.id ? { ...s, owners } : s)));
+      flash(`Added an owner to ${shop.name}.`);
+      void load();
     } catch (e) {
-      setToast(friendlyError(e, "Couldn't assign owner."));
-      setTimeout(() => setToast(null), 3500);
+      flash(friendlyError(e, "Couldn't add owner."), 3500);
+    }
+  };
+
+  const dropOwner = async (shop: ShopRow, ownerId: string) => {
+    try {
+      const owners = await removeShopOwner(shop.id, ownerId);
+      setShops((prev) => prev.map((s) => (s.id === shop.id ? { ...s, owners } : s)));
+      flash(`Removed an owner from ${shop.name}.`);
+      void load();
+    } catch (e) {
+      flash(friendlyError(e, "Couldn't remove owner."), 3500);
     }
   };
 
@@ -144,30 +163,58 @@ export function OwnersPage() {
             )}
           </section>
 
-          {/* Assign shops */}
+          {/* Assign shops — a shop can have several owners */}
           <section>
             <h2 className="mb-2 text-lg font-bold text-ink">Assign shops to owners</h2>
+            <p className="mb-2 text-sm text-ink-soft">A shop can have more than one owner. Add as many as needed; remove with the ✕.</p>
             <div className="overflow-hidden rounded-card border border-border bg-surface">
-              {shops.map((s) => (
-                <div key={s.id} className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-3 last:border-0">
-                  <div className="min-w-0">
-                    <div className="font-semibold text-ink">{s.name}</div>
-                    <div className="text-sm text-ink-soft">Manager: {s.owner_email ?? "—"}</div>
+              {shops.map((s) => {
+                const linkedIds = new Set(s.owners.map((o) => o.id));
+                const available = owners.filter((o) => !linkedIds.has(o.id));
+                return (
+                  <div key={s.id} className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-3 last:border-0">
+                    <div className="min-w-0 flex-1">
+                      <div className="font-semibold text-ink">{s.name}</div>
+                      <div className="text-sm text-ink-soft">Manager: {s.owner_email ?? "—"}</div>
+                      <div className="mt-2 flex flex-wrap gap-1.5">
+                        {s.owners.length === 0 ? (
+                          <span className="text-sm text-ink-soft">No owners</span>
+                        ) : (
+                          s.owners.map((o) => (
+                            <span
+                              key={o.id}
+                              className="inline-flex items-center gap-1 rounded-full bg-primary-50 py-1 pl-3 pr-1.5 text-sm font-semibold text-primary-700"
+                            >
+                              {o.email}
+                              <button
+                                type="button"
+                                onClick={() => dropOwner(s, o.id)}
+                                aria-label={`Remove ${o.email}`}
+                                className="rounded-full p-0.5 text-primary-700 hover:bg-primary-100"
+                              >
+                                <X className="h-3.5 w-3.5" />
+                              </button>
+                            </span>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                    <select
+                      value=""
+                      onChange={(e) => addOwner(s, e.target.value)}
+                      disabled={available.length === 0}
+                      className="h-10 rounded-control border-2 border-border bg-white px-3 text-sm focus:border-primary-600 focus:outline-none disabled:opacity-50"
+                    >
+                      <option value="">{available.length === 0 ? "All owners added" : "+ Add owner…"}</option>
+                      {available.map((o) => (
+                        <option key={o.id} value={o.id}>
+                          {o.email}
+                        </option>
+                      ))}
+                    </select>
                   </div>
-                  <select
-                    value={s.owner_id ?? ""}
-                    onChange={(e) => assign(s, e.target.value)}
-                    className="h-10 rounded-control border-2 border-border bg-white px-3 text-sm focus:border-primary-600 focus:outline-none"
-                  >
-                    <option value="">— No owner —</option>
-                    {owners.map((o) => (
-                      <option key={o.id} value={o.id}>
-                        {o.email}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </section>
         </>

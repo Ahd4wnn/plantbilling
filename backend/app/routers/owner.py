@@ -1,6 +1,6 @@
 """Multi-shop owner area: oversight analytics + business details + staff.
 
-The owner role has shop_id NULL and owns shops via shops.owner_id. RLS lets an
+The owner role has shop_id NULL and owns shops via the shop_owners join. RLS lets an
 owner read/write rows for every shop they own, so — unlike the single-shop
 endpoints — every query here is explicit about shop_id (otherwise an owner with
 several shops would see them mixed together).
@@ -24,6 +24,7 @@ from app.auth.security import hash_password
 from app.models.bill import Bill
 from app.models.expense import Expense
 from app.models.shop import Shop
+from app.models.shop_owner import ShopOwner
 from app.models.user import ROLE_MANAGER, ROLE_SALESPERSON, User
 from app.routers.bills import (
     SHOP_TZ,
@@ -51,9 +52,12 @@ ZERO = Decimal("0.00")
 
 
 def _owned_shop_or_404(db: Session, owner: User, shop_id: uuid.UUID) -> Shop:
-    """Fetch a shop the owner owns, or 404. RLS already hides non-owned shops."""
+    """Fetch a shop the owner owns, or 404. RLS already hides non-owned shops;
+    the join to shop_owners is an explicit app-level guard on top."""
     shop = db.execute(
-        select(Shop).where(Shop.id == shop_id, Shop.owner_id == owner.id)
+        select(Shop)
+        .join(ShopOwner, ShopOwner.shop_id == Shop.id)
+        .where(Shop.id == shop_id, ShopOwner.owner_id == owner.id)
     ).scalar_one_or_none()
     if shop is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Shop not found")
@@ -64,7 +68,10 @@ def _owned_shop_or_404(db: Session, owner: User, shop_id: uuid.UUID) -> Shop:
 @router.get("/shops", response_model=list[OwnerShop])
 def list_owned_shops(db: Session = Depends(get_db), owner: User = Depends(require_owner)) -> list[Shop]:
     rows = db.execute(
-        select(Shop).where(Shop.owner_id == owner.id).order_by(Shop.name.asc())
+        select(Shop)
+        .join(ShopOwner, ShopOwner.shop_id == Shop.id)
+        .where(ShopOwner.owner_id == owner.id)
+        .order_by(Shop.name.asc())
     ).scalars().all()
     return list(rows)
 
@@ -125,7 +132,10 @@ def overview(
     start, end = _ist_day_bounds_utc(d_from)[0], _ist_day_bounds_utc(d_to)[1]
 
     shops = db.execute(
-        select(Shop).where(Shop.owner_id == owner.id).order_by(Shop.name.asc())
+        select(Shop)
+        .join(ShopOwner, ShopOwner.shop_id == Shop.id)
+        .where(ShopOwner.owner_id == owner.id)
+        .order_by(Shop.name.asc())
     ).scalars().all()
     shop_name = {s.id: s.name for s in shops}
     shop_ids = list(shop_name.keys())

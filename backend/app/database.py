@@ -74,7 +74,7 @@ def _apply_rls_context(
         {"role": role},
     )
     # The caller's user id powers the multi-shop owner RLS branch (an owner sees
-    # rows whose shop_id is in SELECT id FROM shops WHERE owner_id = this id).
+    # rows whose shop_id is in SELECT shop_id FROM shop_owners WHERE owner_id = this id).
     if user_id is not None:
         session.execute(
             text("SELECT set_config('app.current_user_id', :uid, true)"),

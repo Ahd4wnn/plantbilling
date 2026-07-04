@@ -18,11 +18,12 @@ from app.auth.dependencies import get_db, require_admin
 from app.auth.security import hash_password
 from app.models.customer import Customer
 from app.models.shop import Shop
+from app.models.shop_owner import ShopOwner
 from app.models.user import ROLE_MANAGER, ROLE_OWNER, User
 from app.schemas.admin import (
+    AddOwnerRequest,
     AdminCustomerList,
     AdminCustomerRow,
-    AssignOwnerRequest,
     OwnerAccountCreate,
     OwnerAccountInfo,
     OwnerInfo,
@@ -30,6 +31,7 @@ from app.schemas.admin import (
     ShopCreateRequest,
     ShopCreateResponse,
     ShopListRow,
+    ShopOwnerRow,
     ShopSummary,
     ShopUpdateRequest,
 )
@@ -63,12 +65,15 @@ def create_shop(payload: ShopCreateRequest, db: Session = Depends(get_db)) -> Sh
 
     shop = Shop(
         name=payload.name,
-        owner_id=payload.owner_id,
         owner_name=payload.owner_name,
         owner_phone=payload.owner_phone,
     )
     db.add(shop)
     db.flush()  # assign shop.id before creating the manager
+
+    # Optionally link the shop to a multi-shop owner account (many-to-many).
+    if payload.owner_id is not None:
+        db.add(ShopOwner(shop_id=shop.id, owner_id=payload.owner_id))
 
     owner = User(
         shop_id=shop.id,
@@ -97,38 +102,41 @@ def create_shop(payload: ShopCreateRequest, db: Session = Depends(get_db)) -> Sh
 
 @router.get("/shops", response_model=list[ShopListRow])
 def list_shops(db: Session = Depends(get_db)) -> list[ShopListRow]:
-    """All shops (newest first), each joined to its owner's login email.
+    """All shops (newest first), each with its manager login + linked owners.
 
-    The owner is the shop's single shop_owner user created alongside the shop.
-    Stats (product/bill counts, sales) are intentionally omitted for now to keep
-    this query fast — a future enhancement if the dashboard needs them.
+    A shop can now have several multi-shop owners (via shop_owners), so owners are
+    fetched separately and grouped per shop. Stats (product/bill counts, sales) are
+    intentionally omitted to keep this query fast.
     """
-    from sqlalchemy.orm import aliased
-
-    OwnerAcct = aliased(User)  # the linked multi-shop owner account (shops.owner_id)
     rows = db.execute(
         select(
             Shop.id,
             Shop.name,
-            Shop.owner_id,
             Shop.owner_name,
             Shop.owner_phone,
             Shop.is_active,
             Shop.created_at,
             Shop.settings,
             User.email.label("owner_email"),
-            OwnerAcct.email.label("owner_email_account"),
         )
         .outerjoin(User, (User.shop_id == Shop.id) & (User.role == ROLE_MANAGER))
-        .outerjoin(OwnerAcct, OwnerAcct.id == Shop.owner_id)
         .order_by(Shop.created_at.desc())
     ).all()
+
+    # Linked owner accounts, grouped by shop.
+    owner_rows = db.execute(
+        select(ShopOwner.shop_id, User.id, User.email)
+        .join(User, User.id == ShopOwner.owner_id)
+    ).all()
+    owners_by_shop: dict[uuid.UUID, list[ShopOwnerRow]] = {}
+    for shop_id, oid, oemail in owner_rows:
+        owners_by_shop.setdefault(shop_id, []).append(ShopOwnerRow(id=oid, email=oemail))
+
     return [
         ShopListRow(
             id=r.id,
             name=r.name,
-            owner_id=r.owner_id,
-            owner_email_account=r.owner_email_account,
+            owners=owners_by_shop.get(r.id, []),
             owner_name=r.owner_name,
             owner_phone=r.owner_phone,
             owner_email=r.owner_email,
@@ -169,7 +177,7 @@ def list_owners(db: Session = Depends(get_db)) -> list[OwnerAccountInfo]:
     ).scalars().all()
     counts = dict(
         db.execute(
-            select(Shop.owner_id, func.count()).where(Shop.owner_id.is_not(None)).group_by(Shop.owner_id)
+            select(ShopOwner.owner_id, func.count()).group_by(ShopOwner.owner_id)
         ).all()
     )
     return [
@@ -178,22 +186,54 @@ def list_owners(db: Session = Depends(get_db)) -> list[OwnerAccountInfo]:
     ]
 
 
-@router.post("/shops/{shop_id}/assign-owner", response_model=ShopSummary)
-def assign_owner(shop_id: uuid.UUID, payload: AssignOwnerRequest, db: Session = Depends(get_db)) -> Shop:
-    """Set (or clear, with null) the business owner of a shop."""
-    shop = db.execute(select(Shop).where(Shop.id == shop_id)).scalar_one_or_none()
-    if shop is None:
+def _shop_owner_rows(db: Session, shop_id: uuid.UUID) -> list[ShopOwnerRow]:
+    rows = db.execute(
+        select(User.id, User.email)
+        .join(ShopOwner, ShopOwner.owner_id == User.id)
+        .where(ShopOwner.shop_id == shop_id)
+        .order_by(User.email.asc())
+    ).all()
+    return [ShopOwnerRow(id=oid, email=email) for oid, email in rows]
+
+
+@router.get("/shops/{shop_id}/owners", response_model=list[ShopOwnerRow])
+def list_shop_owners(shop_id: uuid.UUID, db: Session = Depends(get_db)) -> list[ShopOwnerRow]:
+    """The multi-shop owner accounts linked to a shop (0..many)."""
+    if db.execute(select(Shop.id).where(Shop.id == shop_id)).scalar_one_or_none() is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Shop not found")
-    if payload.owner_id is not None:
-        owner_acct = db.execute(
-            select(User).where(User.id == payload.owner_id, User.role == ROLE_OWNER)
-        ).scalar_one_or_none()
-        if owner_acct is None:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Owner account not found")
-    shop.owner_id = payload.owner_id
-    db.flush()
-    db.refresh(shop)
-    return shop
+    return _shop_owner_rows(db, shop_id)
+
+
+@router.post("/shops/{shop_id}/owners", response_model=list[ShopOwnerRow], status_code=status.HTTP_201_CREATED)
+def add_shop_owner(shop_id: uuid.UUID, payload: AddOwnerRequest, db: Session = Depends(get_db)) -> list[ShopOwnerRow]:
+    """Link a multi-shop owner to this shop. A shop may have several owners."""
+    if db.execute(select(Shop.id).where(Shop.id == shop_id)).scalar_one_or_none() is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Shop not found")
+    owner_acct = db.execute(
+        select(User).where(User.id == payload.owner_id, User.role == ROLE_OWNER)
+    ).scalar_one_or_none()
+    if owner_acct is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Owner account not found")
+    # Idempotent: linking an already-linked owner is a no-op, not an error.
+    exists = db.execute(
+        select(ShopOwner).where(ShopOwner.shop_id == shop_id, ShopOwner.owner_id == payload.owner_id)
+    ).scalar_one_or_none()
+    if exists is None:
+        db.add(ShopOwner(shop_id=shop_id, owner_id=payload.owner_id))
+        db.flush()
+    return _shop_owner_rows(db, shop_id)
+
+
+@router.delete("/shops/{shop_id}/owners/{owner_id}", response_model=list[ShopOwnerRow])
+def remove_shop_owner(shop_id: uuid.UUID, owner_id: uuid.UUID, db: Session = Depends(get_db)) -> list[ShopOwnerRow]:
+    """Unlink a multi-shop owner from this shop."""
+    link = db.execute(
+        select(ShopOwner).where(ShopOwner.shop_id == shop_id, ShopOwner.owner_id == owner_id)
+    ).scalar_one_or_none()
+    if link is not None:
+        db.delete(link)
+        db.flush()
+    return _shop_owner_rows(db, shop_id)
 
 
 @router.get("/customers", response_model=AdminCustomerList)

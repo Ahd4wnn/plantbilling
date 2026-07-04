@@ -35,10 +35,19 @@ class OwnerAccountInfo(BaseModel):
     model_config = {"from_attributes": True}
 
 
-class AssignOwnerRequest(BaseModel):
-    """Set (or clear, with null) the business owner of a shop."""
+class AddOwnerRequest(BaseModel):
+    """Link a multi-shop owner account to a shop (many owners allowed per shop)."""
 
-    owner_id: uuid.UUID | None = None
+    owner_id: uuid.UUID
+
+
+class ShopOwnerRow(BaseModel):
+    """A multi-shop owner linked to a shop (account id + login email)."""
+
+    id: uuid.UUID
+    email: EmailStr
+
+    model_config = {"from_attributes": True}
 
 
 class OwnerInfo(BaseModel):
@@ -56,7 +65,6 @@ class OwnerInfo(BaseModel):
 class ShopSummary(BaseModel):
     id: uuid.UUID
     name: str
-    owner_id: uuid.UUID | None = None
     owner_name: str | None
     owner_phone: str | None
     is_active: bool
@@ -82,8 +90,7 @@ class ShopListRow(BaseModel):
 
     id: uuid.UUID
     name: str
-    owner_id: uuid.UUID | None = None
-    owner_email_account: EmailStr | None = None  # the linked multi-shop owner's login
+    owners: list[ShopOwnerRow] = []  # linked multi-shop owner accounts (0..many)
     owner_name: str | None
     owner_phone: str | None
     owner_email: EmailStr | None  # the shop's manager login
