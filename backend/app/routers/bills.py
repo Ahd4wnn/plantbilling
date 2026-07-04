@@ -26,6 +26,7 @@ from app.auth.dependencies import get_db, require_shop_staff, require_shop_or_ad
 from app.database import privileged_session
 from app.config import get_settings
 from app.models.bill import Bill, BillItem
+from app.models.bill_audit import BillAuditLog
 from app.models.customer import Customer
 from app.models.product import Product
 from app.models.shop import Shop
@@ -137,6 +138,31 @@ def _user_email(db: Session, user_id: uuid.UUID | None) -> str | None:
         return None
     u = db.execute(select(User).where(User.id == user_id)).scalar_one_or_none()
     return u.email if u else None
+
+
+def _record_bill_audit(
+    db: Session,
+    *,
+    bill: Bill,
+    action: str,
+    actor: User,
+    summary: str,
+    details: dict,
+) -> None:
+    """Append an edit/delete entry to the bill audit log (powers the report's
+    edit & delete log). Written inside the request transaction, so it commits
+    atomically with the change itself."""
+    db.add(
+        BillAuditLog(
+            shop_id=bill.shop_id,
+            bill_id=bill.id,
+            action=action,
+            changed_by=actor.id,
+            changed_by_email=actor.email,
+            summary=summary,
+            details=details,
+        )
+    )
 
 
 @router.post("", response_model=BillOut)
@@ -532,6 +558,18 @@ def update_bill(
     if bill is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Bill not found")
 
+    # Snapshot the pre-edit state so the audit log can show before -> after.
+    _before_items = db.execute(
+        select(func.count()).select_from(BillItem).where(BillItem.bill_id == bill.id)
+    ).scalar_one()
+    _before = {
+        "total": str(bill.total),
+        "cash": str(bill.cash_amount),
+        "upi": str(bill.upi_amount),
+        "due": str(bill.due_amount),
+        "items": int(_before_items),
+    }
+
     # ── Optional: rewrite the line items and recompute the whole bill ──
     if payload.items is not None:
         product_ids = [it.product_id for it in payload.items]
@@ -620,6 +658,24 @@ def update_bill(
         ).scalars()
     )
 
+    # Record the edit (before -> after) for the report's edit & delete log.
+    _after = {
+        "total": str(bill.total),
+        "cash": str(bill.cash_amount),
+        "upi": str(bill.upi_amount),
+        "due": str(bill.due_amount),
+        "items": len(items),
+    }
+    _record_bill_audit(
+        db,
+        bill=bill,
+        action="edit",
+        actor=user,
+        summary=f"Total INR {_before['total']} -> INR {_after['total']}",
+        details={"before": _before, "after": _after},
+    )
+    db.flush()
+
     customer_name: str | None = None
     customer_phone: str | None = None
     if bill.customer_id is not None:
@@ -670,6 +726,31 @@ def delete_bill(
     bill = db.execute(select(Bill).where(Bill.id == bill_id)).scalar_one_or_none()
     if bill is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Bill not found")
+
+    # Snapshot the bill before it's gone, so the report's delete log can show what
+    # was removed (the audit row survives — bill_id has no FK).
+    _cust_name = _customer_name(db, bill.customer_id)
+    _item_count = db.execute(
+        select(func.count()).select_from(BillItem).where(BillItem.bill_id == bill.id)
+    ).scalar_one()
+    _record_bill_audit(
+        db,
+        bill=bill,
+        action="delete",
+        actor=user,
+        summary=f"Deleted bill of INR {bill.total}" + (f" - {_cust_name}" if _cust_name else ""),
+        details={
+            "total": str(bill.total),
+            "cash": str(bill.cash_amount),
+            "upi": str(bill.upi_amount),
+            "due": str(bill.due_amount),
+            "items": int(_item_count),
+            "customer": _cust_name,
+            "created_by": _user_email(db, bill.created_by),
+            "created_at": bill.created_at.isoformat() if bill.created_at else None,
+        },
+    )
+    db.flush()
 
     db.delete(bill)
     db.flush()
@@ -977,51 +1058,169 @@ def download_detailed_report(
     shop = db.execute(select(Shop).where(Shop.id == target_shop_id)).scalar_one_or_none()
     shop_name = shop.name if shop else "Nursery"
 
+    start_utc, end_utc = _ist_day_bounds_utc(d_from)[0], _ist_day_bounds_utc(d_to)[1]
+
+    # ── Every bill in range, with its customer + the staff who made it ──
+    bstmt = (
+        select(
+            Bill,
+            Customer.name.label("cname"),
+            Customer.phone.label("cphone"),
+            User.email.label("staff"),
+        )
+        .outerjoin(Customer, Customer.id == Bill.customer_id)
+        .outerjoin(User, User.id == Bill.created_by)
+        .where(Bill.shop_id == target_shop_id, Bill.created_at >= start_utc, Bill.created_at < end_utc)
+        .order_by(Bill.created_at.asc())
+    )
+    if created_by is not None:
+        bstmt = bstmt.where(Bill.created_by == created_by)
+    bill_rows = db.execute(bstmt).all()
+
+    bill_ids = [r.Bill.id for r in bill_rows]
+    items_by_bill: dict = {}
+    if bill_ids:
+        for it in db.execute(
+            select(BillItem).where(BillItem.bill_id.in_(bill_ids)).order_by(BillItem.id.asc())
+        ).scalars():
+            items_by_bill.setdefault(it.bill_id, []).append(it)
+
+    def short_id(bid) -> str:
+        return str(bid).split("-")[0].upper() if bid else "—"
+
+    def ist(dtv) -> str:
+        return dtv.astimezone(SHOP_TZ).strftime("%Y-%m-%d %H:%M") if dtv else ""
+
+    def items_summary(bid) -> str:
+        return "; ".join(f"{i.product_name} x{i.quantity}" for i in items_by_bill.get(bid, []))
+
     output = io.StringIO()
-    writer = csv.writer(output)
+    w = csv.writer(output)
 
-    writer.writerow(["Detailed Sales Report", shop_name])
-    writer.writerow(["Period", f"{d_from} to {d_to}"])
-    writer.writerow([])
-    writer.writerow(["Summary Metrics"])
-    writer.writerow(["Total Sales", f"INR {report.total_sales:.2f}"])
-    writer.writerow(["Total Bills", report.bill_count])
-    writer.writerow(["Average Bill Value", f"INR {report.average_bill_value:.2f}"])
-    writer.writerow(["Cash Collected", f"INR {report.cash_total:.2f}"])
-    writer.writerow(["UPI Collected", f"INR {report.upi_total:.2f}"])
-    writer.writerow(["Due Amount", f"INR {report.due_total:.2f}"])
-    writer.writerow(["Total Expenses", f"INR {report.total_expenses:.2f}"])
-    writer.writerow(["Net Income", f"INR {report.net_sales:.2f}"])
-    writer.writerow([])
+    # 1) Header / who generated it, when, for what period
+    w.writerow(["PLANTBILL - SALES REPORT"])
+    w.writerow(["Shop", shop_name])
+    w.writerow(["Period", f"{d_from} to {d_to}"])
+    w.writerow(["Generated by", user.email])
+    w.writerow(["Generated at", dt.datetime.now(tz=SHOP_TZ).strftime("%Y-%m-%d %H:%M") + " IST"])
+    if created_by is not None:
+        w.writerow(["Filtered to staff", _user_email(db, created_by) or str(created_by)])
+    w.writerow([])
 
-    writer.writerow(["Sales by Category"])
-    writer.writerow(["Category", "Quantity Sold", "Total Revenue"])
-    for cat in report.categories:
-        writer.writerow([cat.category, cat.quantity, f"INR {cat.total_sales:.2f}"])
-    writer.writerow([])
+    # 2) Summary + payment breakdown
+    w.writerow(["SUMMARY"])
+    w.writerow(["Total Sales", f"INR {report.total_sales:.2f}"])
+    w.writerow(["Total Bills", report.bill_count])
+    w.writerow(["Average Bill", f"INR {report.average_bill_value:.2f}"])
+    w.writerow(["Cash Collected", f"INR {report.cash_total:.2f}"])
+    w.writerow(["UPI Collected", f"INR {report.upi_total:.2f}"])
+    w.writerow(["Due Outstanding", f"INR {report.due_total:.2f}"])
+    w.writerow(["Total Expenses", f"INR {report.total_expenses:.2f}"])
+    w.writerow(["Net Income", f"INR {report.net_sales:.2f}"])
+    w.writerow([])
 
-    writer.writerow(["Top Products"])
-    writer.writerow(["Product Name", "Quantity Sold", "Total Revenue"])
-    for prod in report.top_products:
-        writer.writerow([prod.product_name, prod.quantity, f"INR {prod.total_sales:.2f}"])
-
-    writer.writerow([])
-    writer.writerow(["Detailed Expenses Log"])
-    writer.writerow(["Date & Time", "Recorded By", "Reason / Description", "Amount"])
+    # 3) Detailed expenses
+    w.writerow(["EXPENSES (DETAILED)"])
+    w.writerow(["Date & Time", "Recorded By", "Reason", "Amount"])
     for exp in report.expenses:
-        creator_email = _user_email(db, exp.created_by) or "System"
-        date_str = exp.created_at.astimezone(SHOP_TZ).strftime("%Y-%m-%d %H:%M")
-        writer.writerow([date_str, creator_email, exp.reason, f"INR {exp.amount:.2f}"])
+        w.writerow([ist(exp.created_at), _user_email(db, exp.created_by) or "-", exp.reason, f"INR {exp.amount:.2f}"])
+    if not report.expenses:
+        w.writerow(["(no expenses in this period)"])
+    w.writerow([])
+
+    # 4) Every bill (ledger) — no bill omitted, walk-ins included
+    w.writerow(["ALL BILLS"])
+    w.writerow(["Bill No", "Date & Time", "Staff", "Customer", "Phone", "Items",
+                "Subtotal", "Discount", "Total", "Cash", "UPI", "Due", "Payment", "Edited"])
+    for r in bill_rows:
+        b = r.Bill
+        w.writerow([
+            short_id(b.id), ist(b.created_at), r.staff or "-",
+            r.cname or "Walk-in", r.cphone or "-", items_summary(b.id),
+            f"{b.subtotal:.2f}", f"{b.discount_amount:.2f}", f"{b.total:.2f}",
+            f"{b.cash_amount:.2f}", f"{b.upi_amount:.2f}", f"{b.due_amount:.2f}",
+            _payment_method(b.cash_amount, b.upi_amount, b.due_amount),
+            "Yes" if b.is_edited else "",
+        ])
+    if not bill_rows:
+        w.writerow(["(no bills in this period)"])
+    w.writerow([])
+
+    # 5) Full line items per bill
+    w.writerow(["BILL LINE ITEMS"])
+    w.writerow(["Bill No", "Date & Time", "Product", "Unit Price", "Qty", "Line Total"])
+    for r in bill_rows:
+        b = r.Bill
+        for it in items_by_bill.get(b.id, []):
+            w.writerow([short_id(b.id), ist(b.created_at), it.product_name,
+                        f"{it.unit_price:.2f}", it.quantity, f"{it.line_total:.2f}"])
+    w.writerow([])
+
+    # 6) Customer report — purchases grouped by customer (+ staff who served them)
+    w.writerow(["CUSTOMER REPORT"])
+    w.writerow(["Customer", "Phone", "Bills", "Total Purchased", "Total Due", "Staff Handled"])
+    cust_agg: dict = {}
+    for r in bill_rows:
+        b = r.Bill
+        key = (r.cname or "Walk-in / no contact", r.cphone or "")
+        agg = cust_agg.setdefault(key, {"bills": 0, "total": ZERO, "due": ZERO, "staff": set()})
+        agg["bills"] += 1
+        agg["total"] += b.total
+        agg["due"] += b.due_amount
+        if r.staff:
+            agg["staff"].add(r.staff)
+    for (name, phone), agg in sorted(cust_agg.items(), key=lambda kv: kv[1]["total"], reverse=True):
+        w.writerow([name, phone or "-", agg["bills"], f"INR {agg['total']:.2f}",
+                    f"INR {agg['due']:.2f}", ", ".join(sorted(agg["staff"])) or "-"])
+    if not cust_agg:
+        w.writerow(["(no bills in this period)"])
+    w.writerow([])
+
+    # 7) Staff report — who sold the most
+    w.writerow(["STAFF REPORT"])
+    w.writerow(["Staff", "Bills", "Total Sales", "Cash", "UPI", "Due"])
+    staff_agg: dict = {}
+    for r in bill_rows:
+        b = r.Bill
+        key = r.staff or "-"
+        agg = staff_agg.setdefault(key, {"bills": 0, "total": ZERO, "cash": ZERO, "upi": ZERO, "due": ZERO})
+        agg["bills"] += 1
+        agg["total"] += b.total
+        agg["cash"] += b.cash_amount
+        agg["upi"] += b.upi_amount
+        agg["due"] += b.due_amount
+    for staff, agg in sorted(staff_agg.items(), key=lambda kv: kv[1]["total"], reverse=True):
+        w.writerow([staff, agg["bills"], f"INR {agg['total']:.2f}", f"INR {agg['cash']:.2f}",
+                    f"INR {agg['upi']:.2f}", f"INR {agg['due']:.2f}"])
+    if not staff_agg:
+        w.writerow(["(no bills in this period)"])
+    w.writerow([])
+
+    # 8) Bill edit & delete log (from the audit table — starts at this feature's deploy)
+    w.writerow(["BILL EDIT & DELETE LOG"])
+    w.writerow(["Date & Time", "Action", "Bill No", "By", "Details"])
+    audit_rows = db.execute(
+        select(BillAuditLog).where(
+            BillAuditLog.shop_id == target_shop_id,
+            BillAuditLog.created_at >= start_utc,
+            BillAuditLog.created_at < end_utc,
+        ).order_by(BillAuditLog.created_at.asc())
+    ).scalars().all()
+    for a in audit_rows:
+        w.writerow([ist(a.created_at), a.action, short_id(a.bill_id), a.changed_by_email or "-", a.summary or ""])
+    if not audit_rows:
+        w.writerow(["(no edits or deletions in this period)"])
 
     output.seek(0)
-
     headers = {
         "Content-Disposition": f"attachment; filename=sales_report_{d_from}_to_{d_to}.csv"
     }
+    # utf-8-sig writes a BOM so Excel opens Indian names / plant names correctly
+    # (without it Excel guesses the encoding and mangles non-ASCII text).
     return StreamingResponse(
-        io.BytesIO(output.getvalue().encode("utf-8")),
+        io.BytesIO(output.getvalue().encode("utf-8-sig")),
         media_type="text/csv",
-        headers=headers
+        headers=headers,
     )
 
 
