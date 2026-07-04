@@ -117,11 +117,10 @@ private fun EditBody(ui: BillEditUiState, viewModel: BillEditViewModel, modifier
                     }
                 }
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Dimens.md)) {
-                    PlantoraTextField(
+                    com.plantora.billing.ui.components.NumberField(
                         value = line.unitPrice.toInput(),
                         onValueChange = { viewModel.setUnitPrice(line.id, it) },
                         label = "Price",
-                        keyboardType = KeyboardType.Number,
                         modifier = Modifier.weight(1f),
                     )
                     QuantityStepper(

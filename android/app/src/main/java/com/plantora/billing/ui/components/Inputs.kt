@@ -15,9 +15,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.input.VisualTransformation
 
 /** Large, legible labeled text field with plain-language error support. */
@@ -65,5 +69,48 @@ fun PlantoraTextField(
         supportingText = errorText?.let {
             { Text(it, color = MaterialTheme.colorScheme.error) }
         },
+    )
+}
+
+/**
+ * A number field that selects its whole contents when focused, so the first digit
+ * REPLACES the pre-filled value instead of appending to it. This is the fix for the
+ * "₹250 becomes ₹2500" / "qty 1 becomes 11" mistake: with a price already shown,
+ * tapping and typing used to prepend to the existing number. Now a tap highlights
+ * everything and the next keystroke starts clean.
+ */
+@Composable
+fun NumberField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    label: String,
+    modifier: Modifier = Modifier,
+) {
+    // Own a TextFieldValue so we control the selection. Keep it in sync with the
+    // external string (which changes via +/- steppers, resets, or recomputes).
+    var field by remember { mutableStateOf(TextFieldValue(value, TextRange(value.length))) }
+    LaunchedEffect(value) {
+        if (value != field.text) field = TextFieldValue(value, TextRange(value.length))
+    }
+
+    OutlinedTextField(
+        value = field,
+        onValueChange = { new ->
+            field = new
+            if (new.text != value) onValueChange(new.text)
+        },
+        label = { Text(label) },
+        singleLine = true,
+        textStyle = MaterialTheme.typography.bodyLarge,
+        shape = MaterialTheme.shapes.medium,
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+        modifier = modifier
+            .fillMaxWidth()
+            .onFocusChanged { focus ->
+                // On focus, highlight the whole value so typing overwrites it.
+                if (focus.isFocused) {
+                    field = field.copy(selection = TextRange(0, field.text.length))
+                }
+            },
     )
 }

@@ -22,7 +22,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.plantora.billing.ui.theme.Dimens
@@ -54,24 +57,38 @@ fun QuantityStepper(
             Icon(Icons.Rounded.Remove, contentDescription = "Decrease quantity")
         }
         if (onQuantityChange != null) {
-            var text by remember { mutableStateOf(quantity.toString()) }
+            // TextFieldValue so we can select-all on focus: tapping the field
+            // highlights the whole number, so typing a new quantity REPLACES it
+            // instead of prepending (e.g. "1" + "0" was becoming "10" unintended).
+            var field by remember {
+                mutableStateOf(TextFieldValue(quantity.toString(), TextRange(quantity.toString().length)))
+            }
             // Re-sync when the value changes externally (the +/- buttons), but
             // don't clobber what the user is mid-typing.
             LaunchedEffect(quantity) {
-                if (text.toIntOrNull() != quantity) text = quantity.toString()
+                if (field.text.toIntOrNull() != quantity) {
+                    val s = quantity.toString()
+                    field = TextFieldValue(s, TextRange(s.length))
+                }
             }
             OutlinedTextField(
-                value = text,
+                value = field,
                 onValueChange = { input ->
-                    val digits = input.filter { it.isDigit() }.take(4)
-                    text = digits
+                    val digits = input.text.filter { it.isDigit() }.take(4)
+                    field = input.copy(text = digits, selection = TextRange(digits.length))
                     digits.toIntOrNull()?.let { if (it >= minValue) onQuantityChange(it) }
                 },
                 singleLine = true,
                 textStyle = MaterialTheme.typography.titleLarge.copy(textAlign = TextAlign.Center),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 shape = MaterialTheme.shapes.medium,
-                modifier = Modifier.width(80.dp),
+                modifier = Modifier
+                    .width(80.dp)
+                    .onFocusChanged { focus ->
+                        if (focus.isFocused) {
+                            field = field.copy(selection = TextRange(0, field.text.length))
+                        }
+                    },
             )
         } else {
             Text(

@@ -49,8 +49,11 @@ data class BillingUiState(
     val toast: String? = null,
     val businessUpi: String? = null,
     val businessName: String = "",
-    // Bumped every time an item is added so the screen can pop the review sheet.
-    val cartPulse: Int = 0,
+    // Whether the review sheet is open. Owned by the VM (not local screen state)
+    // so it can't desync from the cart: set true on every add, false on close.
+    // Surviving process death alongside the cart means a returning user never
+    // gets a spurious open, and an add always opens it.
+    val showReview: Boolean = false,
 ) {
     val discountValue: Money get() = Money.parse(discountInput.ifBlank { "0" })
     val totals: CartTotals get() = CartMath.totals(lines, discountType, discountValue)
@@ -185,8 +188,16 @@ class BillingViewModel @Inject constructor(
             quantity = quantity.coerceAtLeast(1),
             unitPrice = product.retailPrice,
         )
-        state.copy(lines = state.lines + line, cartPulse = state.cartPulse + 1)
+        // Open the review on every add; also clear the search box so the next
+        // product is searched from empty (no leftover "rose" to backspace).
+        state.copy(lines = state.lines + line, showReview = true, query = "")
     }
+
+    /** Open the review sheet from the cart bar. */
+    fun openReview() = _ui.update { it.copy(showReview = true) }
+
+    /** Close the review (✕ / Add item). Cart is untouched; next add reopens it. */
+    fun dismissReview() = _ui.update { it.copy(showReview = false) }
 
     fun setQuantity(lineId: String, quantity: Int) = _ui.update { state ->
         val newLines = if (quantity <= 0) {
@@ -219,6 +230,7 @@ class BillingViewModel @Inject constructor(
                 customerPhone = "",
                 remarks = "",
                 checkoutError = null,
+                showReview = false,
             )
         }
     }
