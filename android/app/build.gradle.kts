@@ -89,6 +89,8 @@ dependencies {
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.androidx.security.crypto)
     implementation(libs.coil.compose)
+    implementation(libs.acra.http)
+    implementation(libs.acra.toast)
     implementation("com.google.zxing:core:3.5.3")
     coreLibraryDesugaring(libs.desugar.jdk.libs)
 

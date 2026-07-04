@@ -6,6 +6,7 @@ import com.plantora.billing.data.BillRepository
 import com.plantora.billing.data.remote.friendlyError
 import com.plantora.billing.domain.BillListEntry
 import com.plantora.billing.domain.Money
+import com.plantora.billing.domain.daysSince
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -19,14 +20,40 @@ import javax.inject.Inject
  * bill still owing money; collecting it settles the due into cash or UPI so it
  * disappears from this list and is reflected in the day's takings.
  */
+/** Dues unpaid for at least this many days are flagged "priority" (overdue). */
+private const val PRIORITY_DAYS = 30
+
 data class DuesUiState(
     val loading: Boolean = true,
     val error: String? = null,
     val dues: List<BillListEntry> = emptyList(),
+    val query: String = "",
     val settlingId: String? = null,
     val message: String? = null,
 ) {
     val totalOwed: Money get() = dues.fold(Money.ZERO) { acc, b -> acc + b.dueAmount }
+
+    /** Dues matching the search box (by customer name or phone). */
+    private val filtered: List<BillListEntry>
+        get() {
+            val q = query.trim()
+            if (q.isBlank()) return dues
+            return dues.filter { e ->
+                e.customerName?.contains(q, ignoreCase = true) == true ||
+                    e.customerPhone?.contains(q) == true
+            }
+        }
+
+    /** Overdue (30+ days) dues, oldest first — shown in the priority section. */
+    val priorityDues: List<BillListEntry>
+        get() = filtered.filter { (daysSince(it.createdAt) ?: 0) >= PRIORITY_DAYS }
+            .sortedByDescending { daysSince(it.createdAt) ?: 0 }
+
+    /** The remaining (newer) dues. */
+    val otherDues: List<BillListEntry>
+        get() = filtered.filter { (daysSince(it.createdAt) ?: 0) < PRIORITY_DAYS }
+
+    val hasResults: Boolean get() = filtered.isNotEmpty()
 }
 
 @HiltViewModel
@@ -69,6 +96,8 @@ class DuesViewModel @Inject constructor(
                 .onFailure { e -> _ui.update { it.copy(settlingId = null, message = friendlyError(e, "Couldn't update the due.")) } }
         }
     }
+
+    fun setQuery(q: String) = _ui.update { it.copy(query = q) }
 
     fun dismissMessage() = _ui.update { it.copy(message = null) }
 }

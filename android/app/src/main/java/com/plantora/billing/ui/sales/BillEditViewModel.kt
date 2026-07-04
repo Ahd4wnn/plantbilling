@@ -84,7 +84,9 @@ class BillEditViewModel @Inject constructor(
             val pid = item.productId ?: return@mapNotNull null
             val product = catalog.find { it.id == pid }
                 ?: Product(id = pid, name = item.productName, category = null, retailPrice = item.unitPrice, photoUrl = null, isActive = true)
-            CartLine(product = product, quantity = item.quantity, unitPrice = item.unitPrice)
+            // Each saved item becomes its OWN line (unique id), so editing or removing
+            // one "Banana tree" line never affects another line of the same product.
+            CartLine(id = java.util.UUID.randomUUID().toString(), product = product, quantity = item.quantity, unitPrice = item.unitPrice)
         }
         val mode = when {
             detail.cashAmount.isPositive() && detail.upiAmount.isPositive() -> PaymentMode.SPLIT
@@ -105,25 +107,29 @@ class BillEditViewModel @Inject constructor(
         )
     }
 
-    fun setQuantity(productId: String, quantity: Int) = _ui.update { state ->
-        val lines = if (quantity <= 0) state.lines.filterNot { it.product.id == productId }
-        else state.lines.map { if (it.product.id == productId) it.copy(quantity = quantity) else it }
+    fun setQuantity(lineId: String, quantity: Int) = _ui.update { state ->
+        val lines = if (quantity <= 0) state.lines.filterNot { it.id == lineId }
+        else state.lines.map { if (it.id == lineId) it.copy(quantity = quantity) else it }
         state.copy(lines = lines)
     }
 
-    fun setUnitPrice(productId: String, priceInput: String) = _ui.update { state ->
+    fun setUnitPrice(lineId: String, priceInput: String) = _ui.update { state ->
         val price = Money.parse(priceInput.ifBlank { "0" })
-        state.copy(lines = state.lines.map { if (it.product.id == productId) it.copy(unitPrice = price) else it })
+        state.copy(lines = state.lines.map { if (it.id == lineId) it.copy(unitPrice = price) else it })
     }
 
-    fun removeLine(productId: String) = setQuantity(productId, 0)
+    fun removeLine(lineId: String) = setQuantity(lineId, 0)
 
+    // Always a NEW separate line (same product can appear several times at different
+    // prices) — matches the billing screen and keeps each line independently editable.
     fun addProduct(product: Product) = _ui.update { state ->
-        val existing = state.lines.find { it.product.id == product.id }
-        val lines = if (existing != null) {
-            state.lines.map { if (it.product.id == product.id) it.copy(quantity = it.quantity + 1) else it }
-        } else state.lines + CartLine(product, quantity = 1, unitPrice = product.retailPrice)
-        state.copy(lines = lines, showAddPicker = false)
+        val line = CartLine(
+            id = java.util.UUID.randomUUID().toString(),
+            product = product,
+            quantity = 1,
+            unitPrice = product.retailPrice,
+        )
+        state.copy(lines = state.lines + line, showAddPicker = false)
     }
 
     fun openAddPicker() = _ui.update { it.copy(showAddPicker = true) }

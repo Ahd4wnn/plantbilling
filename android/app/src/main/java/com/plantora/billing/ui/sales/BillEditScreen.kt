@@ -112,23 +112,23 @@ private fun EditBody(ui: BillEditUiState, viewModel: BillEditViewModel, modifier
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(line.product.name, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
                     MoneyText(line.lineTotal, style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(start = Dimens.sm))
-                    IconButton(onClick = { viewModel.removeLine(line.product.id) }) {
+                    IconButton(onClick = { viewModel.removeLine(line.id) }) {
                         Icon(Icons.Rounded.Close, contentDescription = "Remove ${line.product.name}")
                     }
                 }
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Dimens.md)) {
                     PlantoraTextField(
-                        value = line.unitPrice.toWire(),
-                        onValueChange = { viewModel.setUnitPrice(line.product.id, it) },
+                        value = line.unitPrice.toInput(),
+                        onValueChange = { viewModel.setUnitPrice(line.id, it) },
                         label = "Price",
-                        keyboardType = KeyboardType.Decimal,
+                        keyboardType = KeyboardType.Number,
                         modifier = Modifier.weight(1f),
                     )
                     QuantityStepper(
                         quantity = line.quantity,
-                        onDecrement = { viewModel.setQuantity(line.product.id, line.quantity - 1) },
-                        onIncrement = { viewModel.setQuantity(line.product.id, line.quantity + 1) },
-                        onQuantityChange = { q -> viewModel.setQuantity(line.product.id, q) },
+                        onDecrement = { viewModel.setQuantity(line.id, line.quantity - 1) },
+                        onIncrement = { viewModel.setQuantity(line.id, line.quantity + 1) },
+                        onQuantityChange = { q -> viewModel.setQuantity(line.id, q) },
                     )
                 }
             }

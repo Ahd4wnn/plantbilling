@@ -30,6 +30,12 @@ fun billDateInShopZone(raw: String): LocalDate? {
     }
 }
 
+/** Whole days between a server ISO datetime and today (shop zone). Null if unparsable. */
+fun daysSince(raw: String): Long? {
+    val date = billDateInShopZone(raw) ?: return null
+    return java.time.temporal.ChronoUnit.DAYS.between(date, todayInShopZone())
+}
+
 /** Parse a server ISO datetime (with or without offset) and render in shop time. */
 fun formatBillTime(raw: String): String {
     return try {

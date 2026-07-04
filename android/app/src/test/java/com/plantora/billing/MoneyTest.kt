@@ -26,8 +26,10 @@ class MoneyTest {
         assertEquals("300.00", (a * 3).toWire())
     }
 
-    @Test fun format_uses_rupee_and_grouping() {
-        assertEquals("₹1,234.50", Money.parse("1234.5").format())
+    @Test fun format_uses_rupee_and_grouping_no_decimals() {
+        // Display is whole rupees (paise rounded half-up); wire keeps full precision.
+        assertEquals("₹1,234", Money.parse("1234").format())
+        assertEquals("₹1,235", Money.parse("1234.50").format())
     }
 
     @Test fun comparisons() {

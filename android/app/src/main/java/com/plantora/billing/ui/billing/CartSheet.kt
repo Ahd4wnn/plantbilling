@@ -6,12 +6,14 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.DeleteSweep
 import androidx.compose.material3.FilterChip
@@ -49,7 +51,9 @@ fun CartSheetContent(
     onSetCustomerName: (String) -> Unit,
     onSetCustomerPhone: (String) -> Unit,
     onSetRemarks: (String) -> Unit,
+    onClose: () -> Unit,
     onClearCart: () -> Unit,
+    onAddItem: () -> Unit,
     onCheckout: () -> Unit,
 ) {
     val totals = state.totals
@@ -58,6 +62,9 @@ fun CartSheetContent(
     Column(
         Modifier
             .fillMaxWidth()
+            // imePadding lifts the sheet above the keyboard so the field being typed
+            // into (price, phone, remarks) is never hidden behind it.
+            .imePadding()
             .verticalScroll(rememberScrollState())
             .padding(horizontal = Dimens.lg)
             .padding(bottom = Dimens.xl),
@@ -79,6 +86,10 @@ fun CartSheetContent(
                 )
                 Text("Clear cart")
             }
+            // Explicit close — the sheet no longer dismisses on swipe/scrim.
+            IconButton(onClick = onClose) {
+                Icon(Icons.Rounded.Close, contentDescription = "Close review", modifier = Modifier.size(28.dp))
+            }
         }
         Spacer(Modifier.height(Dimens.md))
 
@@ -98,7 +109,7 @@ fun CartSheetContent(
                         style = MaterialTheme.typography.titleMedium,
                         modifier = Modifier.padding(start = Dimens.sm),
                     )
-                    IconButton(onClick = { onRemoveLine(line.product.id) }) {
+                    IconButton(onClick = { onRemoveLine(line.id) }) {
                         Icon(Icons.Rounded.Close, contentDescription = "Remove ${line.product.name}")
                     }
                 }
@@ -107,22 +118,33 @@ fun CartSheetContent(
                     horizontalArrangement = Arrangement.spacedBy(Dimens.md),
                 ) {
                     PlantoraTextField(
-                        value = line.unitPrice.toWire(),
-                        onValueChange = { onSetUnitPrice(line.product.id, it) },
+                        value = line.unitPrice.toInput(),
+                        onValueChange = { onSetUnitPrice(line.id, it) },
                         label = "Price",
-                        keyboardType = KeyboardType.Decimal,
+                        keyboardType = KeyboardType.Number,
                         modifier = Modifier.weight(1f),
                     )
                     QuantityStepper(
                         quantity = line.quantity,
-                        onDecrement = { onSetQuantity(line.product.id, line.quantity - 1) },
-                        onIncrement = { onSetQuantity(line.product.id, line.quantity + 1) },
-                        onQuantityChange = { q -> onSetQuantity(line.product.id, q) },
+                        onDecrement = { onSetQuantity(line.id, line.quantity - 1) },
+                        onIncrement = { onSetQuantity(line.id, line.quantity + 1) },
+                        onQuantityChange = { q -> onSetQuantity(line.id, q) },
                     )
                 }
             }
             HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f))
         }
+
+        Spacer(Modifier.height(Dimens.md))
+
+        // Minimizes the review so the owner can tap more products; the sheet pops
+        // back open automatically on the next add.
+        com.plantora.billing.ui.components.SecondaryButton(
+            text = "Add item",
+            onClick = onAddItem,
+            leadingIcon = Icons.Rounded.Add,
+            modifier = Modifier.fillMaxWidth(),
+        )
 
         Spacer(Modifier.height(Dimens.lg))
 

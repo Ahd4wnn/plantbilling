@@ -49,6 +49,8 @@ data class BillingUiState(
     val toast: String? = null,
     val businessUpi: String? = null,
     val businessName: String = "",
+    // Bumped every time an item is added so the screen can pop the review sheet.
+    val cartPulse: Int = 0,
 ) {
     val discountValue: Money get() = Money.parse(discountInput.ifBlank { "0" })
     val totals: CartTotals get() = CartMath.totals(lines, discountType, discountValue)
@@ -75,7 +77,8 @@ data class QuickAddState(
     val saving: Boolean = false,
     val error: String? = null,
 ) {
-    val canSave: Boolean get() = name.isNotBlank() && Money.parse(price).isPositive() && !saving
+    // Price may be ₹0 (e.g. a free item) — only a blank or negative price blocks it.
+    val canSave: Boolean get() = name.isNotBlank() && price.isNotBlank() && !Money.parse(price).isNegative() && !saving
 }
 
 @HiltViewModel
@@ -158,7 +161,7 @@ class BillingViewModel @Inject constructor(
                         val withProduct = state.copy(products = listOf(product) + state.products, quickAdd = null)
                         withProduct
                     }
-                    repeat(form.quantity) { addProduct(product) }
+                    addLine(product, form.quantity)
                     _ui.update { it.copy(toast = "Added ${product.name}") }
                 }
                 .onFailure { e -> _ui.update { it.copy(quickAdd = form.copy(saving = false, error = friendlyError(e, "Couldn't add the item."))) } }
@@ -167,31 +170,39 @@ class BillingViewModel @Inject constructor(
 
     fun dismissToast() = _ui.update { it.copy(toast = null) }
 
-    fun addProduct(product: Product) = _ui.update { state ->
-        val existing = state.lines.find { it.product.id == product.id }
-        val newLines = if (existing != null) {
-            state.lines.map { if (it.product.id == product.id) it.copy(quantity = it.quantity + 1) else it }
-        } else {
-            state.lines + CartLine(product, quantity = 1, unitPrice = product.retailPrice)
-        }
-        state.copy(lines = newLines)
+    /**
+     * Always appends a NEW line — tapping a product that's already in the cart does
+     * NOT increment the existing line. Same plant, different size = different price,
+     * so each tap is kept separate (the owner edits each line's price independently).
+     * Bumps [cartPulse] so the screen pops the review sheet on every add.
+     */
+    fun addProduct(product: Product) = addLine(product, quantity = 1)
+
+    private fun addLine(product: Product, quantity: Int) = _ui.update { state ->
+        val line = CartLine(
+            id = UUID.randomUUID().toString(),
+            product = product,
+            quantity = quantity.coerceAtLeast(1),
+            unitPrice = product.retailPrice,
+        )
+        state.copy(lines = state.lines + line, cartPulse = state.cartPulse + 1)
     }
 
-    fun setQuantity(productId: String, quantity: Int) = _ui.update { state ->
+    fun setQuantity(lineId: String, quantity: Int) = _ui.update { state ->
         val newLines = if (quantity <= 0) {
-            state.lines.filterNot { it.product.id == productId }
+            state.lines.filterNot { it.id == lineId }
         } else {
-            state.lines.map { if (it.product.id == productId) it.copy(quantity = quantity) else it }
+            state.lines.map { if (it.id == lineId) it.copy(quantity = quantity) else it }
         }
         state.copy(lines = newLines)
     }
 
-    fun setUnitPrice(productId: String, priceInput: String) = _ui.update { state ->
+    fun setUnitPrice(lineId: String, priceInput: String) = _ui.update { state ->
         val price = Money.parse(priceInput.ifBlank { "0" })
-        state.copy(lines = state.lines.map { if (it.product.id == productId) it.copy(unitPrice = price) else it })
+        state.copy(lines = state.lines.map { if (it.id == lineId) it.copy(unitPrice = price) else it })
     }
 
-    fun removeLine(productId: String) = setQuantity(productId, 0)
+    fun removeLine(lineId: String) = setQuantity(lineId, 0)
 
     /** Empty the cart and reset all bill inputs, keeping the loaded catalog. */
     fun clearCart() {

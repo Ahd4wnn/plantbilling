@@ -38,6 +38,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -54,13 +55,29 @@ import com.plantora.billing.ui.theme.Dimens
 @Composable
 fun BillScreen(viewModel: BillingViewModel = hiltViewModel()) {
     val state by viewModel.ui.collectAsStateWithLifecycle()
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    // Swipe-to-dismiss is disabled: the review closes only via the ✕ or "Add item"
+    // (confirmValueChange rejects the Hidden state the drag gesture targets).
+    val sheetState = rememberModalBottomSheetState(
+        skipPartiallyExpanded = true,
+        confirmValueChange = { it != androidx.compose.material3.SheetValue.Hidden },
+    )
     val quickAddSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var showSheet by remember { mutableStateOf(false) }
     val snackbar = remember { SnackbarHostState() }
 
     LaunchedEffect(state.success) { if (state.success != null) showSheet = false }
     LaunchedEffect(state.toast) { state.toast?.let { snackbar.showSnackbar(it); viewModel.dismissToast() } }
+    // Pop the review sheet open ONLY on a genuinely new add (tap, voice, quick-add).
+    // We track the last pulse we've already reacted to in saveable state so that
+    // switching tabs and coming back — which re-runs this effect with an unchanged
+    // pulse — does NOT reopen the sheet, and neither does any stray recomposition.
+    var lastPulse by rememberSaveable { mutableStateOf(0) }
+    LaunchedEffect(state.cartPulse) {
+        if (state.cartPulse > lastPulse) {
+            showSheet = true
+            lastPulse = state.cartPulse
+        }
+    }
 
     // Success replaces the whole screen, mirroring the web SuccessView.
     state.success?.let { bill ->
@@ -168,7 +185,12 @@ fun BillScreen(viewModel: BillingViewModel = hiltViewModel()) {
     }
 
     if (showSheet) {
-        ModalBottomSheet(onDismissRequest = { showSheet = false }, sheetState = sheetState) {
+        ModalBottomSheet(
+            // No-op: tapping the scrim or the back gesture must NOT close the review.
+            // It closes only through the ✕, "Add item", "Clear cart", or a saved bill.
+            onDismissRequest = { },
+            sheetState = sheetState,
+        ) {
             CartSheetContent(
                 state = state,
                 onSetQuantity = viewModel::setQuantity,
@@ -182,7 +204,9 @@ fun BillScreen(viewModel: BillingViewModel = hiltViewModel()) {
                 onSetCustomerName = viewModel::setCustomerName,
                 onSetCustomerPhone = viewModel::setCustomerPhone,
                 onSetRemarks = viewModel::setRemarks,
+                onClose = { showSheet = false },
                 onClearCart = { viewModel.clearCart(); showSheet = false },
+                onAddItem = { showSheet = false },
                 onCheckout = viewModel::checkout,
             )
         }

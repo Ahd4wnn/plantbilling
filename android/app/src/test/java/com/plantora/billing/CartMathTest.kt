@@ -13,7 +13,7 @@ class CartMathTest {
     private fun product(price: String) =
         Product(id = "p", name = "Plant", category = null, retailPrice = Money.parse(price), photoUrl = null, isActive = true)
 
-    private fun line(price: String, qty: Int) = CartLine(product(price), qty, Money.parse(price))
+    private fun line(price: String, qty: Int) = CartLine("l", product(price), qty, Money.parse(price))
 
     @Test fun subtotal_sums_line_totals() {
         val lines = listOf(line("100.00", 2), line("50.00", 1))

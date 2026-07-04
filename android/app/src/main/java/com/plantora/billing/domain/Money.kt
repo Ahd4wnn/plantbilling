@@ -18,8 +18,12 @@ value class Money(val amount: BigDecimal) : Comparable<Money> {
     /** API wire value: exactly 2 decimals, e.g. "120.00". */
     fun toWire(): String = q2().toPlainString()
 
-    /** Display value, e.g. "₹1,234.50" (en-IN grouping). */
-    fun format(): String = "₹" + inrFormat.format(q2())
+    /** Display value in whole rupees, e.g. "₹1,234" (en-IN grouping). Paise are
+     *  rounded away for display only; the wire value keeps full precision. */
+    fun format(): String = "₹" + inrFormat.format(amount.setScale(0, RoundingMode.HALF_UP))
+
+    /** Editable-field value with no decimals, e.g. "120" (for price inputs). */
+    fun toInput(): String = amount.setScale(0, RoundingMode.HALF_UP).toPlainString()
 
     operator fun plus(other: Money) = Money(amount + other.amount)
     operator fun minus(other: Money) = Money(amount - other.amount)
@@ -27,6 +31,7 @@ value class Money(val amount: BigDecimal) : Comparable<Money> {
 
     fun isZero() = q2().signum() == 0
     fun isPositive() = q2().signum() > 0
+    fun isNegative() = q2().signum() < 0
 
     private fun q2(): BigDecimal = amount.setScale(2, RoundingMode.HALF_UP)
 
@@ -49,8 +54,8 @@ value class Money(val amount: BigDecimal) : Comparable<Money> {
 
         private val inrFormat: NumberFormat =
             NumberFormat.getNumberInstance(Locale("en", "IN")).apply {
-                minimumFractionDigits = 2
-                maximumFractionDigits = 2
+                minimumFractionDigits = 0
+                maximumFractionDigits = 0
             }
     }
 }

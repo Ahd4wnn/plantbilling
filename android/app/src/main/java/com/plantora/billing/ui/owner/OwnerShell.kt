@@ -366,6 +366,7 @@ private fun OwnerShopScreen(
                 item {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Dimens.sm)) {
                         KpiCard("Sales", r.totalSales.format(), Modifier.weight(1f))
+                        KpiCard("Expenses", r.totalExpenses.format(), Modifier.weight(1f))
                         KpiCard("Net", r.netSales.format(), Modifier.weight(1f))
                     }
                 }
@@ -374,6 +375,16 @@ private fun OwnerShopScreen(
                         KpiCard("Cash", r.cashTotal.format(), Modifier.weight(1f))
                         KpiCard("UPI", r.upiTotal.format(), Modifier.weight(1f))
                         KpiCard("Due", r.dueTotal.format(), Modifier.weight(1f))
+                    }
+                }
+                // Expense breakdown for the period so the owner can see where money went.
+                if (r.expenses.isNotEmpty()) {
+                    item { SectionHeader("Expenses") }
+                    items(r.expenses, key = { it.id }) { e ->
+                        Row(Modifier.fillMaxWidth().padding(vertical = Dimens.xs), verticalAlignment = Alignment.CenterVertically) {
+                            Text(e.reason, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+                            MoneyText(e.amount, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.error)
+                        }
                     }
                 }
                 if (r.topProducts.isNotEmpty()) {

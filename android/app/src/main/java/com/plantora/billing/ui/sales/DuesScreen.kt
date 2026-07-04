@@ -13,10 +13,14 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.AccountBalanceWallet
+import androidx.compose.material.icons.rounded.PriorityHigh
+import androidx.compose.material.icons.rounded.ReceiptLong
+import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -32,6 +36,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.plantora.billing.domain.BillListEntry
+import com.plantora.billing.domain.daysSince
 import com.plantora.billing.domain.formatBillTime
 import com.plantora.billing.ui.components.EmptyState
 import com.plantora.billing.ui.components.ErrorState
@@ -91,14 +96,74 @@ fun DuesScreen(
                         )
                     }
                 }
-                items(ui.dues, key = { it.id }) { entry ->
-                    DueRow(
-                        entry = entry,
-                        settling = ui.settlingId == entry.id,
-                        onOpen = { onOpenBill(entry.id) },
-                        onCash = { viewModel.markPaid(entry, viaUpi = false) },
-                        onUpi = { viewModel.markPaid(entry, viaUpi = true) },
+                item {
+                    OutlinedTextField(
+                        value = ui.query,
+                        onValueChange = viewModel::setQuery,
+                        placeholder = { Text("Search by name or phone") },
+                        leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null) },
+                        singleLine = true,
+                        shape = MaterialTheme.shapes.medium,
+                        modifier = Modifier.fillMaxWidth(),
                     )
+                }
+
+                if (!ui.hasResults) {
+                    item {
+                        Text(
+                            "No dues match \"${ui.query}\".",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(top = Dimens.md),
+                        )
+                    }
+                }
+
+                // Priority: overdue 30+ days, oldest first — chase these first.
+                if (ui.priorityDues.isNotEmpty()) {
+                    item {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Rounded.PriorityHigh, contentDescription = null, tint = MaterialTheme.colorScheme.error)
+                            Text(
+                                "  Priority — overdue 30+ days",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.error,
+                            )
+                        }
+                    }
+                    items(ui.priorityDues, key = { it.id }) { entry ->
+                        DueRow(
+                            entry = entry,
+                            settling = ui.settlingId == entry.id,
+                            overdue = true,
+                            onOpen = { onOpenBill(entry.id) },
+                            onCash = { viewModel.markPaid(entry, viaUpi = false) },
+                            onUpi = { viewModel.markPaid(entry, viaUpi = true) },
+                        )
+                    }
+                }
+
+                if (ui.otherDues.isNotEmpty()) {
+                    if (ui.priorityDues.isNotEmpty()) {
+                        item {
+                            Text(
+                                "Other dues",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold,
+                            )
+                        }
+                    }
+                    items(ui.otherDues, key = { it.id }) { entry ->
+                        DueRow(
+                            entry = entry,
+                            settling = ui.settlingId == entry.id,
+                            overdue = false,
+                            onOpen = { onOpenBill(entry.id) },
+                            onCash = { viewModel.markPaid(entry, viaUpi = false) },
+                            onUpi = { viewModel.markPaid(entry, viaUpi = true) },
+                        )
+                    }
                 }
             }
         }
@@ -109,10 +174,12 @@ fun DuesScreen(
 private fun DueRow(
     entry: BillListEntry,
     settling: Boolean,
+    overdue: Boolean,
     onOpen: () -> Unit,
     onCash: () -> Unit,
     onUpi: () -> Unit,
 ) {
+    val days = daysSince(entry.createdAt)
     PlantoraCard {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clickable(onClick = onOpen)) {
             Column(Modifier.weight(1f)) {
@@ -128,13 +195,26 @@ private fun DueRow(
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+                if (overdue && days != null) {
+                    Text(
+                        "Overdue $days days",
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
             }
             Column(horizontalAlignment = Alignment.End) {
                 Text("Owes", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 MoneyText(entry.dueAmount, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.error)
             }
         }
-        Row(Modifier.fillMaxWidth().padding(top = Dimens.md), horizontalArrangement = Arrangement.spacedBy(Dimens.sm)) {
+        // Explicit, discoverable way to open the underlying bill.
+        androidx.compose.material3.TextButton(onClick = onOpen, modifier = Modifier.padding(top = Dimens.xs)) {
+            Icon(Icons.Rounded.ReceiptLong, contentDescription = null, modifier = Modifier.padding(end = Dimens.xs))
+            Text("View bill")
+        }
+        Row(Modifier.fillMaxWidth().padding(top = Dimens.sm), horizontalArrangement = Arrangement.spacedBy(Dimens.sm)) {
             SecondaryButton(
                 text = if (settling) "Saving…" else "Paid in cash",
                 onClick = onCash,

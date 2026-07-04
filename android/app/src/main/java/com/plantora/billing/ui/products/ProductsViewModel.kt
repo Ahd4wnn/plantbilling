@@ -26,7 +26,9 @@ data class ProductFormState(
     val error: String? = null,
 ) {
     val isEdit: Boolean get() = id != null
-    val canSave: Boolean get() = name.isNotBlank() && Money.parse(priceInput).isPositive() && !saving
+    // Price may be ₹0 (e.g. a free giveaway plant) — only a blank or negative
+    // price blocks saving.
+    val canSave: Boolean get() = name.isNotBlank() && priceInput.isNotBlank() && !Money.parse(priceInput).isNegative() && !saving
 }
 
 data class ProductsUiState(

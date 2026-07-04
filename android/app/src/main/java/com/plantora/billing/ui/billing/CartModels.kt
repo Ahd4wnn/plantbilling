@@ -7,8 +7,11 @@ import java.math.BigDecimal
 import java.math.RoundingMode
 
 /** A line in the cart. The unit price is pre-filled from the product but is
- *  always editable (plants of the same kind sell at different prices by size). */
+ *  always editable (plants of the same kind sell at different prices by size).
+ *  Each line has its own [id]: tapping the same product twice makes TWO lines, so
+ *  e.g. two banana trees of different sizes can carry different prices. */
 data class CartLine(
+    val id: String,
     val product: Product,
     val quantity: Int,
     val unitPrice: Money,
