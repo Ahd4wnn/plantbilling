@@ -11,5 +11,6 @@ from app.models.product import Product
 from app.models.customer import Customer
 from app.models.bill import Bill, BillItem
 from app.models.expense import Expense
+from app.models.crash_report import CrashReport
 
-__all__ = ["Base", "Shop", "User", "Product", "Customer", "Bill", "BillItem", "Expense"]
+__all__ = ["Base", "Shop", "User", "Product", "Customer", "Bill", "BillItem", "Expense", "CrashReport"]

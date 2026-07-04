@@ -27,10 +27,34 @@ from app.config import get_settings
 
 settings = get_settings()
 
+# Per-connection server-side guards: no single query or stalled transaction may
+# pin a pooled connection forever (that's how a busy pool permanently wedges).
+# Passed as libpq "options"; applies to every new connection in the pool.
+_pg_options_parts = []
+if settings.DB_STATEMENT_TIMEOUT_MS > 0:
+    _pg_options_parts.append(f"-c statement_timeout={settings.DB_STATEMENT_TIMEOUT_MS}")
+if settings.DB_IDLE_TX_TIMEOUT_MS > 0:
+    _pg_options_parts.append(
+        f"-c idle_in_transaction_session_timeout={settings.DB_IDLE_TX_TIMEOUT_MS}"
+    )
+_connect_args = {"application_name": "plantora-api"}
+if _pg_options_parts:
+    _connect_args["options"] = " ".join(_pg_options_parts)
+
 # Runtime engine: connects as the limited app role (RLS is enforced).
+#
+# Pool sizing matters a lot: every in-flight request holds one connection for its
+# entire transaction (RLS context lives for the transaction), so the pool is the
+# real concurrency limit per worker. Defaults here are tuned for many small shops
+# billing concurrently; see config for the total-connections math and PgBouncer.
 engine = create_engine(
     settings.DATABASE_URL_APP,
     pool_pre_ping=True,
+    pool_size=settings.DB_POOL_SIZE,
+    max_overflow=settings.DB_MAX_OVERFLOW,
+    pool_timeout=settings.DB_POOL_TIMEOUT,
+    pool_recycle=settings.DB_POOL_RECYCLE,
+    connect_args=_connect_args,
     future=True,
 )
 

@@ -26,6 +26,25 @@ class Settings(BaseSettings):
     # Name of the limited app role; the initial migration grants it privileges.
     APP_DB_ROLE: str = "plantora_app"
 
+    # ── Database connection pool (per worker process) ─────────────────────────
+    # Each request holds one connection for its whole transaction (RLS context is
+    # transaction-scoped), so the pool caps how many requests a worker serves at
+    # once. Total DB connections = (gunicorn workers) x (POOL_SIZE + MAX_OVERFLOW);
+    # keep that under Postgres max_connections, or front the DB with PgBouncer.
+    DB_POOL_SIZE: int = 10
+    DB_MAX_OVERFLOW: int = 20
+    # Seconds a request waits for a free connection before erroring (instead of
+    # hanging forever — a fast, visible failure beats a silent freeze).
+    DB_POOL_TIMEOUT: int = 10
+    # Recycle connections older than this (seconds) to survive DB restarts / idle
+    # server-side connection drops (e.g. behind a proxy or PgBouncer).
+    DB_POOL_RECYCLE: int = 1800
+    # Server-side guards so no single request can pin a connection indefinitely.
+    # statement_timeout caps any one query; idle_in_transaction caps a stalled
+    # open transaction. Both in milliseconds; 0 disables.
+    DB_STATEMENT_TIMEOUT_MS: int = 15000
+    DB_IDLE_TX_TIMEOUT_MS: int = 30000
+
     # JWT / auth.
     JWT_SECRET: str
     JWT_ALGORITHM: str = "HS256"

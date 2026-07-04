@@ -134,7 +134,11 @@ def update_expense(
     if payload.reason is not None:
         expense.reason = payload.reason.strip()
 
-    db.commit()
+    # Flush + refresh INSIDE the request transaction; the RLS context (set via
+    # SET LOCAL) only lives until commit, so committing here and then refreshing
+    # would run the reload with no RLS context and the row would be invisible
+    # (500). get_rls_session commits on success.
+    db.flush()
     db.refresh(expense)
     return expense
 
