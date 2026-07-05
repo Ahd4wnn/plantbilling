@@ -132,7 +132,7 @@ export function DetailedReportSheet({ open, onClose, staffList, currentUserEmail
         shopId,
       });
     } catch (err) {
-      alert(friendlyError(err, "Failed to download CSV file."));
+      alert(friendlyError(err, "Failed to download the Excel report."));
     }
   };
 
@@ -187,7 +187,7 @@ export function DetailedReportSheet({ open, onClose, staffList, currentUserEmail
               className="flex-1 border-2 bg-white flex items-center justify-center gap-2"
               onClick={handleDownloadCSV}
             >
-              <Download className="h-5 w-5" /> Download CSV
+              <Download className="h-5 w-5" /> Download Excel report
             </Button>
             <Button
               variant="primary"

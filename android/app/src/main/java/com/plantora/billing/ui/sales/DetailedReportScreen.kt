@@ -103,7 +103,7 @@ fun DetailedReportScreen(
                 if (report.expenses.isNotEmpty()) item { ExpensesLogCard(report) }
                 item {
                     SecondaryButton(
-                        text = if (ui.downloading) "Saving…" else "Download CSV",
+                        text = if (ui.downloading) "Saving…" else "Download Excel report",
                         onClick = viewModel::downloadCsv,
                         leadingIcon = Icons.Rounded.Download,
                         modifier = Modifier.fillMaxWidth(),

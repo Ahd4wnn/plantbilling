@@ -87,7 +87,7 @@ class ReportViewModel @Inject constructor(
         viewModelScope.launch {
             runCatching { reportRepo.downloadCsv(from.toApiDate(), to.toApiDate(), _ui.value.staffId) }
                 .onSuccess { name -> _ui.update { it.copy(downloading = false, message = "Saved to Downloads: $name") } }
-                .onFailure { e -> _ui.update { it.copy(downloading = false, message = friendlyError(e, "Couldn't download the CSV.")) } }
+                .onFailure { e -> _ui.update { it.copy(downloading = false, message = friendlyError(e, "Couldn't download the report.")) } }
         }
     }
 

@@ -60,15 +60,16 @@ class ReportRepository @Inject constructor(
         return totals.entries.map { TrendPoint(it.key, it.value) }
     }
 
-    /** Save the server CSV to the public Downloads folder. Returns the file name. */
+    /** Save the server Excel workbook to the public Downloads folder. Returns the file name. */
     suspend fun downloadCsv(dateFrom: String, dateTo: String, createdBy: String?): String = withContext(Dispatchers.IO) {
         val body = api.downloadReport(dateFrom, dateTo, createdBy)
-        val fileName = "plantora_report_${dateFrom}_to_${dateTo}.csv"
+        val fileName = "plantora_report_${dateFrom}_to_${dateTo}.xlsx"
+        val xlsxMime = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         val bytes = body.bytes()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             val values = ContentValues().apply {
                 put(MediaStore.Downloads.DISPLAY_NAME, fileName)
-                put(MediaStore.Downloads.MIME_TYPE, "text/csv")
+                put(MediaStore.Downloads.MIME_TYPE, xlsxMime)
                 put(MediaStore.Downloads.IS_PENDING, 1)
             }
             val resolver = context.contentResolver

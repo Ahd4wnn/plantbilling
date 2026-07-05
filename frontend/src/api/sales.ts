@@ -166,11 +166,15 @@ export async function downloadReportCSV(params: ReportQueryParams): Promise<void
     responseType: "blob",
   });
 
-  const url = window.URL.createObjectURL(new Blob([data]));
+  const url = window.URL.createObjectURL(
+    new Blob([data], {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    }),
+  );
   const link = document.createElement("a");
   link.href = url;
 
-  const filename = `sales_report_${params.date_from || "start"}_to_${params.date_to || "end"}.csv`;
+  const filename = `sales_report_${params.date_from || "start"}_to_${params.date_to || "end"}.xlsx`;
   link.setAttribute("download", filename);
   document.body.appendChild(link);
   link.click();
