@@ -88,9 +88,9 @@ fun SummaryHero(
             PayStatRow("UPI", summary.upiTotal, UpiBlue)
             PayStatRow("Due", summary.dueTotal, DueAmber)
             HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
-            // Nearly all shop expenses are paid out of the cash drawer, so surface the
-            // day's expense total right here next to the cash figure for reconciliation.
-            PayStatRow("Cash expense", summary.totalExpenses, ExpenseColor, negative = true)
+            // Cash left in the drawer after paying the day's expenses out of it
+            // (cash sales − expenses). This is the amount the owner counts at night.
+            PayStatRow("Cash in hand", Money(summary.cashTotal.amount - summary.totalExpenses.amount), CashGreen)
         }
 
         Spacer(Modifier.height(Dimens.lg))
@@ -181,7 +181,7 @@ private fun MetricCard(label: String, value: String, valueColor: Color, modifier
 }
 
 @Composable
-private fun PayStatRow(label: String, money: Money, color: Color, negative: Boolean = false) {
+private fun PayStatRow(label: String, money: Money, color: Color) {
     Row(
         Modifier.fillMaxWidth().padding(vertical = Dimens.sm),
         verticalAlignment = Alignment.CenterVertically,
@@ -194,16 +194,7 @@ private fun PayStatRow(label: String, money: Money, color: Color, negative: Bool
             fontWeight = FontWeight.SemiBold,
             modifier = Modifier.weight(1f).padding(start = Dimens.sm),
         )
-        if (negative && money.amount.signum() > 0) {
-            Text(
-                "− " + money.format(),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.error,
-            )
-        } else {
-            MoneyText(money, style = MaterialTheme.typography.titleMedium)
-        }
+        MoneyText(money, style = MaterialTheme.typography.titleMedium)
     }
 }
 

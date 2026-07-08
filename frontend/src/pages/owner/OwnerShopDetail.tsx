@@ -119,7 +119,7 @@ export function OwnerShopDetail() {
               <Kpi label="Cash" value={inr(report.cash_total)} accent="text-emerald-700" small />
               <Kpi label="UPI" value={inr(report.upi_total)} accent="text-sky-700" small />
               <Kpi label="Due" value={inr(report.due_total)} accent="text-amber-700" small />
-              <Kpi label="Cash Expense" value={(Number(report.total_expenses) > 0 ? "− " : "") + inr(report.total_expenses)} accent="text-rose-600" small />
+              <Kpi label="Cash in Hand" value={inr(Number(report.cash_total) - Number(report.total_expenses))} accent="text-emerald-700" small />
             </div>
             {report.top_products.length > 0 && (
               <div className="overflow-hidden rounded-card border border-border bg-white">

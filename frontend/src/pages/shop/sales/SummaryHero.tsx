@@ -165,18 +165,15 @@ export function SummaryHero({
               </div>
             </div>
 
-            {/* Cash, UPI, Due + Cash Expense breakdown */}
+            {/* Cash, UPI, Due + Cash in Hand (cash sales − cash expenses) */}
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               <Stat label="Cash" value={formatINR(toPaise(summary.cash_total))} accent="cash" />
               <Stat label="UPI" value={formatINR(toPaise(summary.upi_total))} accent="upi" />
               <Stat label="Due" value={formatINR(toPaise(summary.due_total || "0"))} accent="due" />
               <Stat
-                label="Cash Expense"
-                value={
-                  (parseFloat(summary.total_expenses) > 0 ? "− " : "") +
-                  formatINR(toPaise(summary.total_expenses))
-                }
-                accent="expense"
+                label="Cash in Hand"
+                value={formatINR(toPaise(summary.cash_total) - toPaise(summary.total_expenses))}
+                accent={toPaise(summary.cash_total) - toPaise(summary.total_expenses) < 0 ? "due" : "cash"}
               />
             </div>
 

@@ -91,7 +91,7 @@ export function OwnerDashboard() {
             <Kpi label="Cash" value={inr(data.cash_total)} accent="text-emerald-700" small />
             <Kpi label="UPI" value={inr(data.upi_total)} accent="text-sky-700" small />
             <Kpi label="Due" value={inr(data.due_total)} accent="text-amber-700" small />
-            <Kpi label="Cash Expense" value={(Number(data.total_expenses) > 0 ? "− " : "") + inr(data.total_expenses)} accent="text-rose-600" small />
+            <Kpi label="Cash in Hand" value={inr(Number(data.cash_total) - Number(data.total_expenses))} accent="text-emerald-700" small />
           </div>
 
           <section>

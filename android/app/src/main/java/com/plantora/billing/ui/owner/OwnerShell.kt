@@ -378,9 +378,9 @@ private fun OwnerShopScreen(
                     }
                 }
                 item {
-                    // Shop expenses are paid from the cash drawer — show the period's
-                    // cash-expense total alongside the payment split.
-                    KpiCard("Cash expense", "− " + r.totalExpenses.format(), Modifier.fillMaxWidth())
+                    // Cash left after expenses are paid out of the cash drawer
+                    // (cash sales − expenses) — the end-of-day count.
+                    KpiCard("Cash in hand", Money(r.cashTotal.amount - r.totalExpenses.amount).format(), Modifier.fillMaxWidth())
                 }
                 // Expense breakdown for the period so the owner can see where money went.
                 if (r.expenses.isNotEmpty()) {
