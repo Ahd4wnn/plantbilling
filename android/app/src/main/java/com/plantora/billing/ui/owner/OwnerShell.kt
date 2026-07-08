@@ -421,18 +421,13 @@ private fun StaffRow(s: OwnerStaff, onRemove: () -> Unit) {
 @Composable
 private fun AddStaff(form: NewStaffForm, viewModel: OwnerShopViewModel) {
     PlantoraCard {
-        Text("Add staff", style = MaterialTheme.typography.titleMedium)
+        Text("Add salesperson", style = MaterialTheme.typography.titleMedium)
         Spacer(Modifier.height(Dimens.sm))
         PlantoraTextField(form.email, viewModel::setStaffEmail, label = "Login email")
         Spacer(Modifier.height(Dimens.sm))
         PlantoraTextField(form.password, viewModel::setStaffPassword, label = "Password (min 8)")
-        Spacer(Modifier.height(Dimens.sm))
-        Row(horizontalArrangement = Arrangement.spacedBy(Dimens.sm)) {
-            FilterChip(selected = form.role == "salesperson", onClick = { viewModel.setStaffRole("salesperson") }, label = { Text("Salesperson") })
-            FilterChip(selected = form.role == "manager", onClick = { viewModel.setStaffRole("manager") }, label = { Text("Manager") })
-        }
         form.error?.let { Spacer(Modifier.height(Dimens.sm)); Text(it, color = MaterialTheme.colorScheme.error) }
         Spacer(Modifier.height(Dimens.md))
-        PrimaryButton("Add staff", onClick = viewModel::addStaff, enabled = form.canSave, loading = form.saving)
+        PrimaryButton("Add salesperson", onClick = viewModel::addStaff, enabled = form.canSave, loading = form.saving)
     }
 }

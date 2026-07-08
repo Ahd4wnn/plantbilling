@@ -228,7 +228,6 @@ function StaffManager({
 }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState<"manager" | "salesperson">("salesperson");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
@@ -236,7 +235,7 @@ function StaffManager({
     setBusy(true);
     setErr(null);
     try {
-      await createShopStaff(shopId, { email, password, role });
+      await createShopStaff(shopId, { email, password, role: "salesperson" });
       setEmail("");
       setPassword("");
       onChange();
@@ -293,16 +292,12 @@ function StaffManager({
       </div>
 
       <div className="rounded-control border border-border p-3">
-        <div className="mb-2 text-sm font-semibold text-ink-soft">Add staff</div>
+        <div className="mb-2 text-sm font-semibold text-ink-soft">Add salesperson</div>
         <div className="grid gap-2 sm:grid-cols-2">
           <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Login email" className="rounded-control border border-border px-3 py-2" />
           <input value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Password (min 8)" className="rounded-control border border-border px-3 py-2" />
-          <select value={role} onChange={(e) => setRole(e.target.value as "manager" | "salesperson")} className="rounded-control border border-border px-3 py-2">
-            <option value="salesperson">Salesperson</option>
-            <option value="manager">Manager</option>
-          </select>
-          <button type="button" onClick={add} disabled={busy || !email || password.length < 8} className="rounded-control bg-primary-600 px-4 py-2 font-semibold text-white disabled:opacity-60">
-            {busy ? "Adding…" : "Add"}
+          <button type="button" onClick={add} disabled={busy || !email || password.length < 8} className="rounded-control bg-primary-600 px-4 py-2 font-semibold text-white disabled:opacity-60 sm:col-span-2">
+            {busy ? "Adding…" : "Add salesperson"}
           </button>
         </div>
         {err && <p className="mt-2 text-sm text-danger">{err}</p>}

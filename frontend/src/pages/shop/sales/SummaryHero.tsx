@@ -165,11 +165,19 @@ export function SummaryHero({
               </div>
             </div>
 
-            {/* Cash, UPI, Due breakdown */}
-            <div className="grid grid-cols-3 gap-3">
+            {/* Cash, UPI, Due + Cash Expense breakdown */}
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               <Stat label="Cash" value={formatINR(toPaise(summary.cash_total))} accent="cash" />
               <Stat label="UPI" value={formatINR(toPaise(summary.upi_total))} accent="upi" />
               <Stat label="Due" value={formatINR(toPaise(summary.due_total || "0"))} accent="due" />
+              <Stat
+                label="Cash Expense"
+                value={
+                  (parseFloat(summary.total_expenses) > 0 ? "− " : "") +
+                  formatINR(toPaise(summary.total_expenses))
+                }
+                accent="expense"
+              />
             </div>
 
             {/* Spending & Cashflow Chart Section */}
@@ -382,7 +390,7 @@ export function SummaryHero({
   );
 }
 
-function Stat({ label, value, accent }: { label: string; value: string; accent?: "cash" | "upi" | "due" }) {
+function Stat({ label, value, accent }: { label: string; value: string; accent?: "cash" | "upi" | "due" | "expense" }) {
   const labelColor =
     accent === "cash"
       ? "text-cash"
@@ -390,7 +398,9 @@ function Stat({ label, value, accent }: { label: string; value: string; accent?:
         ? "text-upi"
         : accent === "due"
           ? "text-danger"
-          : "text-ink-soft";
+          : accent === "expense"
+            ? "text-rose-600"
+            : "text-ink-soft";
   return (
     <div className="rounded-control bg-surface-muted px-4 py-3">
       <div className={`text-base font-semibold ${labelColor}`}>{label}</div>
