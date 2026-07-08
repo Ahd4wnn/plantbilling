@@ -87,10 +87,11 @@ export function OwnerDashboard() {
             <Kpi label="Bills" value={String(data.bill_count)} accent="text-ink" />
           </div>
 
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <Kpi label="Cash" value={inr(data.cash_total)} accent="text-emerald-700" small />
             <Kpi label="UPI" value={inr(data.upi_total)} accent="text-sky-700" small />
             <Kpi label="Due" value={inr(data.due_total)} accent="text-amber-700" small />
+            <Kpi label="Cash Expense" value={(Number(data.total_expenses) > 0 ? "− " : "") + inr(data.total_expenses)} accent="text-rose-600" small />
           </div>
 
           <section>

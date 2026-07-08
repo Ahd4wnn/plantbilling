@@ -377,6 +377,11 @@ private fun OwnerShopScreen(
                         KpiCard("Due", r.dueTotal.format(), Modifier.weight(1f))
                     }
                 }
+                item {
+                    // Shop expenses are paid from the cash drawer — show the period's
+                    // cash-expense total alongside the payment split.
+                    KpiCard("Cash expense", "− " + r.totalExpenses.format(), Modifier.fillMaxWidth())
+                }
                 // Expense breakdown for the period so the owner can see where money went.
                 if (r.expenses.isNotEmpty()) {
                     item { SectionHeader("Expenses") }
