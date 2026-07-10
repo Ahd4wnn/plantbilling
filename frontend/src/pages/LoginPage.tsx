@@ -34,6 +34,14 @@ export function LoginPage() {
     <div className="flex min-h-dvh flex-col bg-surface-muted px-6 pt-[env(safe-area-inset-top)]">
       <div className="mx-auto flex w-full max-w-sm flex-1 flex-col justify-center py-12">
         <div className="mb-10 flex flex-col items-center text-center">
+          <img
+            src="/logo.png"
+            alt="Plantora"
+            width={88}
+            height={88}
+            className="mb-4 rounded-2xl shadow-sm"
+            style={{ height: 88, width: 88 }}
+          />
           <Wordmark className="scale-110" />
           <p className="mt-3 text-lg text-ink-soft">Simple billing for your plant shop.</p>
         </div>

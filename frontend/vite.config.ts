@@ -18,7 +18,7 @@ export default defineConfig({
       // Auto-update: when a new build is deployed, the service worker updates in
       // the background and activates on the next load (see registerSW in main.tsx).
       registerType: "autoUpdate",
-      includeAssets: ["favicon.svg", "icons/apple-touch-icon.png"],
+      includeAssets: ["favicon.png", "icons/apple-touch-icon.png"],
       manifest: {
         name: "Plantora",
         short_name: "Plantora",
