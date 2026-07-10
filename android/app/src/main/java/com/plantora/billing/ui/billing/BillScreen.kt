@@ -17,6 +17,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.LocalFlorist
+import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.ShoppingCart
 import androidx.compose.material3.Badge
@@ -36,7 +37,9 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -52,6 +55,9 @@ import com.plantora.billing.ui.theme.Dimens
 @Composable
 fun BillScreen(viewModel: BillingViewModel = hiltViewModel()) {
     val state by viewModel.ui.collectAsStateWithLifecycle()
+    val heldBills by viewModel.heldBills.collectAsStateWithLifecycle()
+    var showHeld by remember { mutableStateOf(false) }
+    val heldSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     // Swipe-to-dismiss is disabled: the review closes only via the ✕ or "Add item"
     // (confirmValueChange rejects the Hidden state the drag gesture targets).
     val sheetState = rememberModalBottomSheetState(
@@ -97,6 +103,15 @@ fun BillScreen(viewModel: BillingViewModel = hiltViewModel()) {
                             )
                             Spacer(Modifier.height(Dimens.sm))
                         }
+                    }
+                    if (heldBills.isNotEmpty()) {
+                        com.plantora.billing.ui.components.SecondaryButton(
+                            text = "Held bills (${heldBills.size})",
+                            onClick = { showHeld = true },
+                            leadingIcon = Icons.Rounded.Pause,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                        Spacer(Modifier.height(Dimens.sm))
                     }
                     com.plantora.billing.ui.components.SecondaryButton(
                         text = "Quick add item",
@@ -194,7 +209,21 @@ fun BillScreen(viewModel: BillingViewModel = hiltViewModel()) {
                 onClose = viewModel::dismissReview,
                 onClearCart = viewModel::clearCart,
                 onAddItem = viewModel::dismissReview,
+                onHold = viewModel::holdBill,
                 onCheckout = viewModel::checkout,
+            )
+        }
+    }
+
+    if (showHeld) {
+        ModalBottomSheet(onDismissRequest = { showHeld = false }, sheetState = heldSheetState) {
+            HeldBillsSheet(
+                held = heldBills,
+                onResume = { bill ->
+                    showHeld = false
+                    viewModel.resumeBill(bill)
+                },
+                onDiscard = viewModel::discardHeld,
             )
         }
     }
@@ -208,6 +237,59 @@ fun BillScreen(viewModel: BillingViewModel = hiltViewModel()) {
                 onQuantity = viewModel::setQuickAddQuantity,
                 onSave = viewModel::saveQuickAdd,
             )
+        }
+    }
+}
+
+@Composable
+private fun HeldBillsSheet(
+    held: List<com.plantora.billing.data.local.HeldBill>,
+    onResume: (com.plantora.billing.data.local.HeldBill) -> Unit,
+    onDiscard: (String) -> Unit,
+) {
+    val timeFmt = remember { java.text.SimpleDateFormat("d MMM, h:mm a", java.util.Locale.getDefault()) }
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .padding(horizontal = Dimens.lg)
+            .padding(bottom = Dimens.xl),
+    ) {
+        Text("Held bills", style = MaterialTheme.typography.headlineMedium)
+        Spacer(Modifier.height(Dimens.xs))
+        Text(
+            "Bills you parked to serve another customer. Tap Resume to continue one.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(Modifier.height(Dimens.md))
+        held.forEach { bill ->
+            com.plantora.billing.ui.components.PlantoraCard(modifier = Modifier.padding(vertical = Dimens.xs)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            bill.label,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
+                        )
+                        Text(
+                            "${bill.itemCount} item${if (bill.itemCount == 1) "" else "s"} • " +
+                                com.plantora.billing.domain.Money.parse(bill.total).format() +
+                                " • ${timeFmt.format(java.util.Date(bill.savedAt))}",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    androidx.compose.material3.TextButton(onClick = { onDiscard(bill.id) }) {
+                        Text("Discard", color = MaterialTheme.colorScheme.error)
+                    }
+                }
+                Spacer(Modifier.height(Dimens.sm))
+                com.plantora.billing.ui.components.PrimaryButton(
+                    text = "Resume this bill",
+                    onClick = { onResume(bill) },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
         }
     }
 }

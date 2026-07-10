@@ -5,10 +5,12 @@ import {
   deleteShopStaff,
   getShopReport,
   listOwnerShops,
+  listShopBills,
   listShopStaff,
   resetStaffPassword,
   setStaffActive,
   updateOwnerShop,
+  type OwnerBillRow,
   type OwnerReport,
   type OwnerShop,
   type OwnerStaff,
@@ -22,6 +24,20 @@ function inr(v: string | number): string {
 }
 function ymd(d: Date): string {
   return d.toISOString().slice(0, 10);
+}
+function fmtDateTime(iso: string): string {
+  return new Date(iso).toLocaleString("en-IN", {
+    timeZone: "Asia/Kolkata",
+    day: "2-digit",
+    month: "short",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
+}
+function salespersonName(email: string | null): string {
+  if (!email) return "Unknown";
+  return email.split("@")[0];
 }
 type Period = "today" | "week" | "month";
 function rangeFor(period: Period): { from: string; to: string } {
@@ -42,6 +58,8 @@ export function OwnerShopDetail() {
   const [shop, setShop] = useState<OwnerShop | null>(null);
   const [staff, setStaff] = useState<OwnerStaff[]>([]);
   const [report, setReport] = useState<OwnerReport | null>(null);
+  const [bills, setBills] = useState<OwnerBillRow[]>([]);
+  const [billsLoading, setBillsLoading] = useState(false);
   const [period, setPeriod] = useState<Period>("today");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -68,6 +86,11 @@ export function OwnerShopDetail() {
   useEffect(() => {
     const r = rangeFor(period);
     getShopReport(shopId, r.from, r.to).then(setReport).catch(() => {});
+    setBillsLoading(true);
+    listShopBills(shopId, { dateFrom: r.from, dateTo: r.to, limit: 50 })
+      .then((res) => setBills(res.items))
+      .catch(() => setBills([]))
+      .finally(() => setBillsLoading(false));
   }, [shopId, period]);
 
   if (loading) {
@@ -134,6 +157,71 @@ export function OwnerShopDetail() {
             )}
           </>
         )}
+      </section>
+
+      {/* ── Saved bills ── */}
+      <section className="space-y-3">
+        <h2 className="text-lg font-semibold text-ink">
+          Bills {bills.length > 0 && <span className="text-ink-soft">({bills.length})</span>}
+        </h2>
+        <div className="overflow-hidden rounded-card border border-border bg-white">
+          {billsLoading ? (
+            <div className="flex justify-center py-8 text-primary-600"><Spinner className="h-6 w-6" label="Loading bills" /></div>
+          ) : bills.length === 0 ? (
+            <p className="px-4 py-6 text-center text-ink-soft">No bills in this period.</p>
+          ) : (
+            bills.map((b) => (
+              <div key={b.id} className="flex items-center justify-between gap-3 border-b border-border px-4 py-3 last:border-0">
+                <div className="min-w-0">
+                  <div className="truncate font-semibold text-ink">
+                    {b.customer_name?.trim() || "Walk-in customer"}
+                    <span className="ml-2 text-sm font-normal text-ink-soft">{b.item_count} item{b.item_count === 1 ? "" : "s"}</span>
+                  </div>
+                  <div className="mt-0.5 text-sm text-ink-soft">
+                    {fmtDateTime(b.created_at)} · by {salespersonName(b.salesperson_email)}
+                  </div>
+                </div>
+                <div className="shrink-0 text-right">
+                  <div className="font-bold text-ink">{inr(b.total)}</div>
+                  <div className="text-xs uppercase tracking-wide text-ink-soft">
+                    {b.payment_method}
+                    {Number(b.due_amount) > 0 && <span className="text-amber-700"> · Due {inr(b.due_amount)}</span>}
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </section>
+
+      {/* ── Expenses (from the period report) ── */}
+      <section className="space-y-3">
+        <h2 className="text-lg font-semibold text-ink">
+          Expenses {report && report.expenses.length > 0 && <span className="text-ink-soft">({report.expenses.length})</span>}
+        </h2>
+        <div className="overflow-hidden rounded-card border border-border bg-white">
+          {!report ? (
+            <div className="flex justify-center py-8 text-primary-600"><Spinner className="h-6 w-6" label="Loading" /></div>
+          ) : report.expenses.length === 0 ? (
+            <p className="px-4 py-6 text-center text-ink-soft">No expenses in this period.</p>
+          ) : (
+            <>
+              {report.expenses.map((e) => (
+                <div key={e.id} className="flex items-center justify-between gap-3 border-b border-border px-4 py-3 last:border-0">
+                  <div className="min-w-0">
+                    <div className="truncate font-medium text-ink">{e.reason}</div>
+                    <div className="text-sm text-ink-soft">{fmtDateTime(e.created_at)}</div>
+                  </div>
+                  <div className="shrink-0 font-bold text-danger">− {inr(e.amount)}</div>
+                </div>
+              ))}
+              <div className="flex items-center justify-between bg-surface-muted px-4 py-3">
+                <span className="font-semibold text-ink">Total expenses</span>
+                <span className="font-bold text-danger">− {inr(report.total_expenses)}</span>
+              </div>
+            </>
+          )}
+        </div>
       </section>
 
       {/* ── Business details ── */}

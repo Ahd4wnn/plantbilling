@@ -6,6 +6,9 @@ import com.plantora.billing.data.BillRepository
 import com.plantora.billing.data.CheckoutItem
 import com.plantora.billing.data.CheckoutRequest
 import com.plantora.billing.data.ProductRepository
+import com.plantora.billing.data.local.HeldBill
+import com.plantora.billing.data.local.HeldBillStore
+import com.plantora.billing.data.local.HeldLine
 import com.plantora.billing.data.remote.friendlyError
 import com.plantora.billing.domain.Bill
 import com.plantora.billing.domain.DiscountType
@@ -14,8 +17,10 @@ import com.plantora.billing.domain.Product
 import com.plantora.billing.print.PrinterController
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.util.UUID
@@ -89,11 +94,16 @@ class BillingViewModel @Inject constructor(
     private val productRepo: ProductRepository,
     private val billRepo: BillRepository,
     private val printer: PrinterController,
+    private val heldStore: HeldBillStore,
     session: com.plantora.billing.data.SessionRepository,
 ) : ViewModel() {
 
     private val _ui = MutableStateFlow(BillingUiState())
     val ui: StateFlow<BillingUiState> = _ui.asStateFlow()
+
+    /** Parked bills stored on this device (for the "Held bills" list). */
+    val heldBills: StateFlow<List<HeldBill>> =
+        heldStore.heldBills.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     // Reused across retries of the same cart so double-taps never duplicate a bill.
     private var idempotencyKey: String = UUID.randomUUID().toString()
@@ -233,6 +243,91 @@ class BillingViewModel @Inject constructor(
                 showReview = false,
             )
         }
+    }
+
+    /**
+     * Park the current cart so a ready customer can be billed first. Saves a
+     * device-local snapshot of the whole bill (lines, discount, payment, customer),
+     * then empties the cart. Resume it later from "Held bills".
+     */
+    fun holdBill() {
+        val s = _ui.value
+        if (s.isCartEmpty) return
+        val held = HeldBill(
+            id = UUID.randomUUID().toString(),
+            savedAt = System.currentTimeMillis(),
+            label = s.customerName.ifBlank { "Walk-in customer" },
+            itemCount = s.itemCount,
+            total = s.totals.total.toWire(),
+            lines = s.lines.map {
+                HeldLine(
+                    lineId = it.id,
+                    productId = it.product.id,
+                    productName = it.product.name,
+                    productCategory = it.product.category,
+                    productPhotoUrl = it.product.photoUrl,
+                    productRetailPrice = it.product.retailPrice.toWire(),
+                    quantity = it.quantity,
+                    unitPrice = it.unitPrice.toWire(),
+                )
+            },
+            discountType = s.discountType.name,
+            discountInput = s.discountInput,
+            paymentMode = s.paymentMode.name,
+            cashInput = s.cashInput,
+            dueInput = s.dueInput,
+            customerName = s.customerName,
+            customerPhone = s.customerPhone,
+            remarks = s.remarks,
+        )
+        viewModelScope.launch { heldStore.save(held) }
+        clearCart()
+        _ui.update { it.copy(toast = "Bill held. Open “Held bills” to continue it later.") }
+    }
+
+    /**
+     * Load a parked bill back into the cart. If a cart is already in progress it is
+     * parked first (never silently discarded), then the chosen held bill is restored
+     * and removed from the held list.
+     */
+    fun resumeBill(bill: HeldBill) {
+        if (!_ui.value.isCartEmpty) holdBill()
+        idempotencyKey = UUID.randomUUID().toString()
+        val lines = bill.lines.map { hl ->
+            CartLine(
+                id = hl.lineId,
+                product = Product(
+                    id = hl.productId,
+                    name = hl.productName,
+                    category = hl.productCategory,
+                    retailPrice = Money.parse(hl.productRetailPrice),
+                    photoUrl = hl.productPhotoUrl,
+                    isActive = true,
+                ),
+                quantity = hl.quantity,
+                unitPrice = Money.parse(hl.unitPrice),
+            )
+        }
+        _ui.update {
+            it.copy(
+                lines = lines,
+                discountType = runCatching { DiscountType.valueOf(bill.discountType) }.getOrDefault(DiscountType.FLAT),
+                discountInput = bill.discountInput,
+                paymentMode = runCatching { PaymentMode.valueOf(bill.paymentMode) }.getOrDefault(PaymentMode.CASH),
+                cashInput = bill.cashInput,
+                dueInput = bill.dueInput,
+                customerName = bill.customerName,
+                customerPhone = bill.customerPhone,
+                remarks = bill.remarks,
+                checkoutError = null,
+                showReview = true,
+            )
+        }
+        viewModelScope.launch { heldStore.remove(bill.id) }
+    }
+
+    fun discardHeld(id: String) {
+        viewModelScope.launch { heldStore.remove(id) }
     }
 
     fun setDiscountType(type: DiscountType) = _ui.update { it.copy(discountType = type) }

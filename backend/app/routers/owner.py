@@ -21,7 +21,8 @@ from sqlalchemy.orm import Session
 
 from app.auth.dependencies import get_db, require_owner
 from app.auth.security import hash_password
-from app.models.bill import Bill
+from app.models.bill import Bill, BillItem
+from app.models.customer import Customer
 from app.models.expense import Expense
 from app.models.shop import Shop
 from app.models.shop_owner import ShopOwner
@@ -30,11 +31,14 @@ from app.routers.bills import (
     SHOP_TZ,
     _generate_report_data,
     _ist_day_bounds_utc,
+    _payment_method,
     _today_ist,
     q2,
 )
 from app.schemas.report import DetailedReportResponse
 from app.schemas.owner import (
+    OwnerBillList,
+    OwnerBillRow,
     OwnerOverview,
     OwnerShop,
     OwnerShopUpdate,
@@ -116,6 +120,74 @@ def shop_report(
     _owned_shop_or_404(db, owner, shop_id)
     today = _today_ist()
     return _generate_report_data(db, shop_id, date_from or today, date_to or today, created_by)
+
+
+# ── Saved bills for one owned shop (who sold, when, to whom) ──────────────────
+@router.get("/shops/{shop_id}/bills", response_model=OwnerBillList)
+def shop_bills(
+    shop_id: uuid.UUID,
+    date_from: dt.date | None = Query(default=None),
+    date_to: dt.date | None = Query(default=None),
+    limit: int = Query(default=30, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+    db: Session = Depends(get_db),
+    owner: User = Depends(require_owner),
+) -> OwnerBillList:
+    _owned_shop_or_404(db, owner, shop_id)
+    stmt = (
+        select(
+            Bill.id,
+            Bill.created_at,
+            Bill.total,
+            Bill.cash_amount,
+            Bill.upi_amount,
+            Bill.due_amount,
+            Customer.name.label("customer_name"),
+            Customer.phone.label("customer_phone"),
+            User.email.label("salesperson_email"),
+            User.role.label("salesperson_role"),
+        )
+        .outerjoin(Customer, Customer.id == Bill.customer_id)
+        .outerjoin(User, User.id == Bill.created_by)
+        .where(Bill.shop_id == shop_id)
+        .order_by(Bill.created_at.desc(), Bill.id.desc())
+    )
+    if date_from is not None:
+        stmt = stmt.where(Bill.created_at >= _ist_day_bounds_utc(date_from)[0])
+    if date_to is not None:
+        stmt = stmt.where(Bill.created_at < _ist_day_bounds_utc(date_to)[1])
+
+    rows = db.execute(stmt.limit(limit + 1).offset(offset)).all()
+    has_more = len(rows) > limit
+    page = rows[:limit]
+
+    ids = [r.id for r in page]
+    counts: dict[uuid.UUID, int] = {}
+    if ids:
+        counts = dict(
+            db.execute(
+                select(BillItem.bill_id, func.count())
+                .where(BillItem.bill_id.in_(ids))
+                .group_by(BillItem.bill_id)
+            ).all()
+        )
+
+    items = [
+        OwnerBillRow(
+            id=r.id,
+            created_at=r.created_at,
+            total=q2(r.total),
+            due_amount=q2(r.due_amount),
+            payment_method=_payment_method(r.cash_amount, r.upi_amount, r.due_amount),
+            customer_name=r.customer_name,
+            customer_phone=r.customer_phone,
+            salesperson_email=r.salesperson_email,
+            salesperson_role=r.salesperson_role,
+            item_count=counts.get(r.id, 0),
+        )
+        for r in page
+    ]
+    return OwnerBillList(items=items, limit=limit, offset=offset, has_more=has_more)
 
 
 # ── Aggregate overview across all owned shops ─────────────────────────────────

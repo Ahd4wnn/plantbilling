@@ -57,6 +57,28 @@ data class OwnerOverviewDto(
 )
 
 @Serializable
+data class OwnerBillDto(
+    val id: String,
+    @SerialName("created_at") val createdAt: String,
+    val total: String,
+    @SerialName("due_amount") val dueAmount: String,
+    @SerialName("payment_method") val paymentMethod: String,
+    @SerialName("customer_name") val customerName: String? = null,
+    @SerialName("customer_phone") val customerPhone: String? = null,
+    @SerialName("salesperson_email") val salespersonEmail: String? = null,
+    @SerialName("salesperson_role") val salespersonRole: String? = null,
+    @SerialName("item_count") val itemCount: Int,
+)
+
+@Serializable
+data class OwnerBillListDto(
+    val items: List<OwnerBillDto> = emptyList(),
+    val limit: Int = 0,
+    val offset: Int = 0,
+    @SerialName("has_more") val hasMore: Boolean = false,
+)
+
+@Serializable
 data class OwnerStaffDto(
     val id: String,
     val email: String,

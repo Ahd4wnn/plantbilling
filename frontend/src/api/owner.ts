@@ -75,6 +75,26 @@ export interface OwnerReport {
   top_products: { product_name: string; quantity: number; total_sales: string }[];
 }
 
+export interface OwnerBillRow {
+  id: string;
+  created_at: string;
+  total: string;
+  due_amount: string;
+  payment_method: string;
+  customer_name: string | null;
+  customer_phone: string | null;
+  salesperson_email: string | null;
+  salesperson_role: string | null;
+  item_count: number;
+}
+
+export interface OwnerBillList {
+  items: OwnerBillRow[];
+  limit: number;
+  offset: number;
+  has_more: boolean;
+}
+
 export interface OwnerStaff {
   id: string;
   email: string;
@@ -107,6 +127,19 @@ export async function getShopReport(shopId: string, dateFrom?: string, dateTo?: 
   if (dateFrom) params.date_from = dateFrom;
   if (dateTo) params.date_to = dateTo;
   const { data } = await api.get<OwnerReport>(`/owner/shops/${shopId}/report`, { params });
+  return data;
+}
+
+export async function listShopBills(
+  shopId: string,
+  opts: { dateFrom?: string; dateTo?: string; limit?: number; offset?: number } = {}
+): Promise<OwnerBillList> {
+  const params: Record<string, string | number> = {};
+  if (opts.dateFrom) params.date_from = opts.dateFrom;
+  if (opts.dateTo) params.date_to = opts.dateTo;
+  if (opts.limit != null) params.limit = opts.limit;
+  if (opts.offset != null) params.offset = opts.offset;
+  const { data } = await api.get<OwnerBillList>(`/owner/shops/${shopId}/bills`, { params });
   return data;
 }
 

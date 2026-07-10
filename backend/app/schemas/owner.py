@@ -107,6 +107,32 @@ class OwnerOverview(BaseModel):
         return f"{v:.2f}"
 
 
+class OwnerBillRow(BaseModel):
+    """One saved bill in an owned shop — who sold it, when, to whom, how paid."""
+
+    id: uuid.UUID
+    created_at: dt.datetime
+    total: decimal.Decimal
+    due_amount: decimal.Decimal
+    payment_method: str
+    customer_name: str | None
+    customer_phone: str | None
+    salesperson_email: str | None
+    salesperson_role: str | None
+    item_count: int
+
+    @field_serializer("total", "due_amount")
+    def _ser(self, v: decimal.Decimal) -> str:
+        return f"{v:.2f}"
+
+
+class OwnerBillList(BaseModel):
+    items: list[OwnerBillRow]
+    limit: int
+    offset: int
+    has_more: bool
+
+
 class OwnerStaffCreate(BaseModel):
     email: EmailStr
     password: str = Field(min_length=8)

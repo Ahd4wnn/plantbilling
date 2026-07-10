@@ -52,6 +52,20 @@ data class OwnerOverview(
     val staff: List<StaffPerf>,
 )
 
+/** One saved bill in an owned shop — who sold it, when, to whom, how paid. */
+data class OwnerBill(
+    val id: String,
+    val createdAt: String,
+    val total: Money,
+    val dueAmount: Money,
+    val paymentMethod: String,
+    val customerName: String?,
+    val customerPhone: String?,
+    val salespersonEmail: String?,
+    val salespersonRole: String?,
+    val itemCount: Int,
+)
+
 data class OwnerStaff(
     val id: String,
     val email: String,

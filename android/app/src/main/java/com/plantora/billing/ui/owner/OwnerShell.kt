@@ -403,12 +403,52 @@ private fun OwnerShopScreen(
                 }
             }
 
+            // Saved bills for the period — who sold, when, to whom, how paid.
+            item { SectionHeader("Bills") }
+            if (ui.billsLoading && ui.bills.isEmpty()) {
+                item { Text("Loading bills…", color = MaterialTheme.colorScheme.onSurfaceVariant) }
+            } else if (ui.bills.isEmpty()) {
+                item { Text("No bills in this period.", color = MaterialTheme.colorScheme.onSurfaceVariant) }
+            } else {
+                items(ui.bills, key = { it.id }) { b -> OwnerBillRow(b) }
+            }
+
             item { SectionHeader("Staff") }
             items(ui.staff, key = { it.id }) { s -> StaffRow(s, onRemove = { viewModel.deleteStaff(s) }) }
             item { AddStaff(ui.newStaff, viewModel) }
         }
     }
 }
+
+@Composable
+private fun OwnerBillRow(b: com.plantora.billing.domain.OwnerBill) {
+    PlantoraCard {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(
+                    b.customerName?.takeIf { it.isNotBlank() } ?: "Walk-in customer",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                Text(
+                    "${com.plantora.billing.domain.formatBillTime(b.createdAt)} • by ${salespersonName(b.salespersonEmail)}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Text(
+                    "${b.itemCount} item${if (b.itemCount == 1) "" else "s"} • ${b.paymentMethod.uppercase()}" +
+                        if (b.dueAmount.isPositive()) " • Due ${b.dueAmount.format()}" else "",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = if (b.dueAmount.isPositive()) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            MoneyText(b.total, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+        }
+    }
+}
+
+private fun salespersonName(email: String?): String =
+    email?.substringBefore("@")?.takeIf { it.isNotBlank() } ?: "Unknown"
 
 @Composable
 private fun StaffRow(s: OwnerStaff, onRemove: () -> Unit) {

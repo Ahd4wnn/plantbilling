@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.plantora.billing.data.OwnerRepository
 import com.plantora.billing.data.remote.friendlyError
 import com.plantora.billing.domain.DetailedReport
+import com.plantora.billing.domain.OwnerBill
 import com.plantora.billing.domain.OwnerShop
 import com.plantora.billing.domain.OwnerStaff
 import com.plantora.billing.domain.toApiDate
@@ -34,6 +35,8 @@ data class OwnerShopState(
     val error: String? = null,
     val shop: OwnerShop? = null,
     val report: DetailedReport? = null,
+    val bills: List<OwnerBill> = emptyList(),
+    val billsLoading: Boolean = false,
     val period: OwnerPeriod = OwnerPeriod.TODAY,
     val customFrom: LocalDate = todayInShopZone().minusDays(6),
     val customTo: LocalDate = todayInShopZone(),
@@ -53,7 +56,7 @@ class OwnerShopViewModel @Inject constructor(
     private val _ui = MutableStateFlow(OwnerShopState())
     val ui: StateFlow<OwnerShopState> = _ui.asStateFlow()
 
-    init { load(); loadReport(); loadStaff() }
+    init { load(); loadReport(); loadBills(); loadStaff() }
 
     fun load() {
         _ui.update { it.copy(loading = true, error = null) }
@@ -67,31 +70,45 @@ class OwnerShopViewModel @Inject constructor(
     fun setPeriod(p: OwnerPeriod) {
         if (p == _ui.value.period) return
         _ui.update { it.copy(period = p) }
-        loadReport()
+        loadReport(); loadBills()
     }
 
     fun setCustomFrom(d: LocalDate) {
         _ui.update { it.copy(customFrom = d, customTo = if (d.isAfter(it.customTo)) d else it.customTo) }
-        if (_ui.value.period == OwnerPeriod.CUSTOM) loadReport()
+        if (_ui.value.period == OwnerPeriod.CUSTOM) { loadReport(); loadBills() }
     }
 
     fun setCustomTo(d: LocalDate) {
         _ui.update { it.copy(customTo = d, customFrom = if (d.isBefore(it.customFrom)) d else it.customFrom) }
-        if (_ui.value.period == OwnerPeriod.CUSTOM) loadReport()
+        if (_ui.value.period == OwnerPeriod.CUSTOM) { loadReport(); loadBills() }
     }
 
-    private fun loadReport() {
+    private fun currentRange(): Pair<LocalDate, LocalDate> {
         val today = todayInShopZone()
         val s = _ui.value
-        val (from, to) = when (s.period) {
+        return when (s.period) {
             OwnerPeriod.TODAY -> today to today
             OwnerPeriod.WEEK -> today.minusDays(6) to today
             OwnerPeriod.MONTH -> today.withDayOfMonth(1) to today
             OwnerPeriod.CUSTOM -> s.customFrom to s.customTo
         }
+    }
+
+    private fun loadReport() {
+        val (from, to) = currentRange()
         viewModelScope.launch {
             runCatching { repo.report(shopId, from.toApiDate(), to.toApiDate()) }
                 .onSuccess { r -> _ui.update { it.copy(report = r) } }
+        }
+    }
+
+    private fun loadBills() {
+        val (from, to) = currentRange()
+        _ui.update { it.copy(billsLoading = true) }
+        viewModelScope.launch {
+            runCatching { repo.bills(shopId, from.toApiDate(), to.toApiDate()) }
+                .onSuccess { b -> _ui.update { it.copy(bills = b, billsLoading = false) } }
+                .onFailure { _ui.update { it.copy(billsLoading = false) } }
         }
     }
 

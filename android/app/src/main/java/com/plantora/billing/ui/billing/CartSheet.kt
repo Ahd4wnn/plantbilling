@@ -16,6 +16,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.DeleteSweep
+import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -54,6 +55,7 @@ fun CartSheetContent(
     onClose: () -> Unit,
     onClearCart: () -> Unit,
     onAddItem: () -> Unit,
+    onHold: () -> Unit,
     onCheckout: () -> Unit,
 ) {
     val totals = state.totals
@@ -233,6 +235,14 @@ fun CartSheetContent(
         }
 
         Spacer(Modifier.height(Dimens.xl))
+        // Park this bill to serve another customer first; it moves to "Held bills".
+        com.plantora.billing.ui.components.SecondaryButton(
+            text = "Hold bill — serve another customer",
+            onClick = onHold,
+            leadingIcon = Icons.Rounded.Pause,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Spacer(Modifier.height(Dimens.md))
         PrimaryButton(
             text = "Save bill • ${totals.total.format()}",
             onClick = onCheckout,

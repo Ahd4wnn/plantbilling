@@ -1,6 +1,7 @@
 package com.plantora.billing.data
 
 import com.plantora.billing.data.remote.api.OwnerApi
+import com.plantora.billing.data.remote.dto.OwnerBillDto
 import com.plantora.billing.data.remote.dto.OwnerOverviewDto
 import com.plantora.billing.data.remote.dto.OwnerShopDto
 import com.plantora.billing.data.remote.dto.OwnerShopUpdateDto
@@ -10,6 +11,7 @@ import com.plantora.billing.data.remote.dto.ShopOverviewRowDto
 import com.plantora.billing.data.remote.dto.StaffPerfDto
 import com.plantora.billing.domain.DetailedReport
 import com.plantora.billing.domain.Money
+import com.plantora.billing.domain.OwnerBill
 import com.plantora.billing.domain.OwnerOverview
 import com.plantora.billing.domain.OwnerShop
 import com.plantora.billing.domain.OwnerStaff
@@ -29,6 +31,9 @@ class OwnerRepository @Inject constructor(
 
     suspend fun report(shopId: String, dateFrom: String?, dateTo: String?): DetailedReport =
         api.report(shopId, dateFrom, dateTo).toDomain()
+
+    suspend fun bills(shopId: String, dateFrom: String?, dateTo: String?): List<OwnerBill> =
+        api.bills(shopId, dateFrom, dateTo).items.map { it.toDomain() }
 
     suspend fun staff(shopId: String): List<OwnerStaff> = api.staff(shopId).map { it.toDomain() }
 
@@ -75,6 +80,12 @@ private fun OwnerOverviewDto.toDomain() = OwnerOverview(
     totalSales = Money.parse(totalSales), billCount = billCount, cashTotal = Money.parse(cashTotal),
     upiTotal = Money.parse(upiTotal), dueTotal = Money.parse(dueTotal), totalExpenses = Money.parse(totalExpenses),
     netSales = Money.parse(netSales), shops = shops.map { it.toDomain() }, staff = staff.map { it.toDomain() },
+)
+
+private fun OwnerBillDto.toDomain() = OwnerBill(
+    id = id, createdAt = createdAt, total = Money.parse(total), dueAmount = Money.parse(dueAmount),
+    paymentMethod = paymentMethod, customerName = customerName, customerPhone = customerPhone,
+    salespersonEmail = salespersonEmail, salespersonRole = salespersonRole, itemCount = itemCount,
 )
 
 private fun OwnerStaffDto.toDomain() = OwnerStaff(
