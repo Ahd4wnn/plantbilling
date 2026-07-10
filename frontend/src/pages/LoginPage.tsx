@@ -36,7 +36,7 @@ export function LoginPage() {
         <div className="mb-10 flex flex-col items-center text-center">
           <img
             src="/logo.png"
-            alt="Plantora"
+            alt="PlantBill"
             width={88}
             height={88}
             className="mb-4 rounded-2xl shadow-sm"
@@ -92,7 +92,7 @@ export function LoginPage() {
         </form>
 
         <p className="mt-8 text-center text-base text-ink-soft">
-          Accounts are created by Plantora. Ask your provider if you can't sign in.
+          Accounts are created by PlantBill. Ask your provider if you can't sign in.
         </p>
       </div>
     </div>

@@ -5,6 +5,7 @@ import { ProtectedRoute, roleHome } from "@/routes/ProtectedRoute";
 import { ShopLayout } from "@/layouts/ShopLayout";
 import { AdminLayout } from "@/layouts/AdminLayout";
 import { LoginPage } from "@/pages/LoginPage";
+import { PrivacyPolicyPage } from "@/pages/PrivacyPolicyPage";
 import { BillPage } from "@/pages/shop/BillPage";
 import { ProductsPage } from "@/pages/shop/ProductsPage";
 import { SalesPage } from "@/pages/shop/SalesPage";
@@ -48,6 +49,7 @@ export default function App() {
       <Routes>
         <Route path="/" element={<RootRedirect />} />
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/privacy" element={<PrivacyPolicyPage />} />
         <Route path="/public/share/bill/:billId" element={<PublicBillReceiptPage />} />
 
         {/* Dev-only design system reference (not linked in nav). */}

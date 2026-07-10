@@ -1,3 +1,16 @@
+import java.io.FileInputStream
+import java.util.Properties
+
+// Upload-key signing. The keystore + passwords live OUTSIDE git in
+// android/keystore.properties (see keystore.properties.example). When that file
+// is absent (e.g. a fresh clone or CI without secrets), release falls back to the
+// debug key so the project still builds — but the Play Store upload MUST use the
+// real upload key.
+val keystorePropsFile = rootProject.file("keystore.properties")
+val keystoreProps = Properties().apply {
+    if (keystorePropsFile.exists()) load(FileInputStream(keystorePropsFile))
+}
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -25,6 +38,17 @@ android {
         buildConfigField("String", "DEFAULT_BASE_URL", "\"https://api.plantbill.in/\"")
     }
 
+    signingConfigs {
+        create("release") {
+            if (keystorePropsFile.exists()) {
+                storeFile = rootProject.file(keystoreProps.getProperty("storeFile"))
+                storePassword = keystoreProps.getProperty("storePassword")
+                keyAlias = keystoreProps.getProperty("keyAlias")
+                keyPassword = keystoreProps.getProperty("keyPassword")
+            }
+        }
+    }
+
     buildTypes {
         debug {
             isMinifyEnabled = false
@@ -35,6 +59,12 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
             )
+            // Real upload key when secrets are present; debug key otherwise so the
+            // project still builds without them (that build is NOT publishable).
+            signingConfig = if (keystorePropsFile.exists())
+                signingConfigs.getByName("release")
+            else
+                signingConfigs.getByName("debug")
         }
     }
 

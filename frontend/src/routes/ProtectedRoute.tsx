@@ -12,7 +12,7 @@ interface ProtectedRouteProps {
 function FullScreenLoader() {
   return (
     <div className="flex min-h-dvh items-center justify-center text-primary-600">
-      <Spinner className="h-10 w-10" label="Loading Plantora" />
+      <Spinner className="h-10 w-10" label="Loading PlantBill" />
     </div>
   );
 }

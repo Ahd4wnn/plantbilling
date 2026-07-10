@@ -13,3 +13,8 @@ local.properties
 # Local caches & scratch
 .kotlin/
 /*.png
+
+# Signing secrets — NEVER commit these
+keystore.properties
+*.jks
+*.keystore

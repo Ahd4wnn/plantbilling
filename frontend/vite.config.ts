@@ -20,8 +20,8 @@ export default defineConfig({
       registerType: "autoUpdate",
       includeAssets: ["favicon.png", "icons/apple-touch-icon.png"],
       manifest: {
-        name: "Plantora",
-        short_name: "Plantora",
+        name: "PlantBill",
+        short_name: "PlantBill",
         description: "Simple billing for plant shops.",
         theme_color: BRAND_GREEN,
         background_color: BRAND_GREEN,

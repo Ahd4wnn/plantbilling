@@ -1,11 +1,15 @@
-# Keep kotlinx.serialization metadata for @Serializable DTOs.
+# Keep kotlinx.serialization metadata for @Serializable classes. Covers both the
+# network DTOs and the locally-persisted models (held bills in data.local), which
+# are (de)serialized to JSON in DataStore — a minified release would otherwise
+# strip their generated serializers and crash at runtime.
 -keepattributes *Annotation*, InnerClasses
 -dontnote kotlinx.serialization.**
 
--keepclassmembers class com.plantora.billing.data.remote.dto.** {
+-keepclassmembers @kotlinx.serialization.Serializable class ** {
     *** Companion;
+    *** serializer(...);
 }
--keepclasseswithmembers class com.plantora.billing.data.remote.dto.** {
+-keepclasseswithmembers class ** {
     kotlinx.serialization.KSerializer serializer(...);
 }
 
