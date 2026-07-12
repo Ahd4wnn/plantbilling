@@ -11,11 +11,16 @@ import javax.inject.Singleton
 class ExpenseRepository @Inject constructor(
     private val api: ExpensesApi,
 ) {
-    suspend fun add(amount: Money, reason: String): Expense =
-        api.create(ExpenseCreateDto(amount = amount.toWire(), reason = reason.trim())).toDomain()
+    suspend fun add(amount: Money, reason: String, paymentMethod: String): Expense =
+        api.create(
+            ExpenseCreateDto(amount = amount.toWire(), reason = reason.trim(), paymentMethod = paymentMethod)
+        ).toDomain()
 
-    suspend fun update(id: String, amount: Money, reason: String): Expense =
-        api.update(id, ExpenseCreateDto(amount = amount.toWire(), reason = reason.trim())).toDomain()
+    suspend fun update(id: String, amount: Money, reason: String, paymentMethod: String): Expense =
+        api.update(
+            id,
+            ExpenseCreateDto(amount = amount.toWire(), reason = reason.trim(), paymentMethod = paymentMethod),
+        ).toDomain()
 
     suspend fun delete(id: String) = api.delete(id)
 }

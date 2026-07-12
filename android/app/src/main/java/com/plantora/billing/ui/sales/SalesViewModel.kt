@@ -7,6 +7,7 @@ import com.plantora.billing.data.BillRepository
 import com.plantora.billing.data.ExpenseRepository
 import com.plantora.billing.data.SalespersonRepository
 import com.plantora.billing.data.SessionRepository
+import com.plantora.billing.data.local.AppPreferences
 import com.plantora.billing.data.remote.friendlyError
 import com.plantora.billing.domain.BillListEntry
 import com.plantora.billing.domain.DaySummary
@@ -31,6 +32,8 @@ data class ExpenseEditor(
     val id: String? = null,
     val amount: String = "",
     val reason: String = "",
+    /** "cash" (out of the drawer) or "upi". */
+    val paymentMethod: String = "cash",
     val saving: Boolean = false,
     val error: String? = null,
 ) {
@@ -48,6 +51,8 @@ data class SalesUiState(
     val selectedStaffId: String? = null,
     val summaryLoading: Boolean = true,
     val summary: DaySummary? = null,
+    /** Device preference: show cash in hand as a running all-time total. */
+    val cashInHandCumulative: Boolean = false,
     val error: String? = null,
     val bills: List<BillListEntry> = emptyList(),
     val billsLoading: Boolean = true,
@@ -67,6 +72,7 @@ class SalesViewModel @Inject constructor(
     private val expenseRepo: ExpenseRepository,
     private val salespersonRepo: SalespersonRepository,
     session: SessionRepository,
+    prefs: AppPreferences,
 ) : ViewModel() {
 
     private val _ui = MutableStateFlow(SalesUiState())
@@ -75,6 +81,10 @@ class SalesViewModel @Inject constructor(
     init {
         val owner = (session.state.value as? AuthState.Authenticated)?.user?.role == Role.MANAGER
         _ui.update { it.copy(isOwner = owner) }
+        // Keep the running-cash-in-hand display preference live.
+        viewModelScope.launch {
+            prefs.cashInHandCumulative.collect { v -> _ui.update { it.copy(cashInHandCumulative = v) } }
+        }
         if (owner) loadStaff()
         // NOTE: the first/refresh load() is driven by the screen's resume effect
         // (see SalesScreen). The bottom nav saves/restores this screen's state, so
@@ -147,11 +157,12 @@ class SalesViewModel @Inject constructor(
 
     // ── Expense editor ──
     fun openCreateExpense() = _ui.update { it.copy(expenseEditor = ExpenseEditor()) }
-    fun openEditExpense(id: String, amount: Money, reason: String) =
-        _ui.update { it.copy(expenseEditor = ExpenseEditor(id = id, amount = amount.toWire(), reason = reason)) }
+    fun openEditExpense(id: String, amount: Money, reason: String, paymentMethod: String) =
+        _ui.update { it.copy(expenseEditor = ExpenseEditor(id = id, amount = amount.toWire(), reason = reason, paymentMethod = paymentMethod)) }
     fun closeExpenseEditor() = _ui.update { it.copy(expenseEditor = null) }
     fun setExpenseAmount(v: String) = _ui.update { it.copy(expenseEditor = it.expenseEditor?.copy(amount = v, error = null)) }
     fun setExpenseReason(v: String) = _ui.update { it.copy(expenseEditor = it.expenseEditor?.copy(reason = v, error = null)) }
+    fun setExpenseMethod(v: String) = _ui.update { it.copy(expenseEditor = it.expenseEditor?.copy(paymentMethod = v, error = null)) }
 
     fun saveExpense() {
         val editor = _ui.value.expenseEditor ?: return
@@ -160,8 +171,8 @@ class SalesViewModel @Inject constructor(
         viewModelScope.launch {
             val amount = Money.parse(editor.amount)
             val result = runCatching {
-                if (editor.id != null) expenseRepo.update(editor.id, amount, editor.reason)
-                else expenseRepo.add(amount, editor.reason)
+                if (editor.id != null) expenseRepo.update(editor.id, amount, editor.reason, editor.paymentMethod)
+                else expenseRepo.add(amount, editor.reason, editor.paymentMethod)
             }
             result
                 .onSuccess { _ui.update { it.copy(expenseEditor = null) }; load() }

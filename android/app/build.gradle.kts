@@ -28,8 +28,8 @@ android {
         applicationId = "com.plantora.billing"
         minSdk = 24
         targetSdk = 35
-        versionCode = 7
-        versionName = "0.1.6"
+        versionCode = 12
+        versionName = "0.1.11"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         // Default backend: the hosted production API. Overridable at runtime in
@@ -59,6 +59,10 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
             )
+            // Upload native debug symbols so Play can symbolicate native crashes/ANRs.
+            ndk {
+                debugSymbolLevel = "FULL"
+            }
             // Real upload key when secrets are present; debug key otherwise so the
             // project still builds without them (that build is NOT publishable).
             signingConfig = if (keystorePropsFile.exists())

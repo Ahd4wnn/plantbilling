@@ -67,6 +67,7 @@ def create_shop(payload: ShopCreateRequest, db: Session = Depends(get_db)) -> Sh
         name=payload.name,
         owner_name=payload.owner_name,
         owner_phone=payload.owner_phone,
+        cash_in_hand_base=payload.cash_in_hand_opening,
     )
     db.add(shop)
     db.flush()  # assign shop.id before creating the manager

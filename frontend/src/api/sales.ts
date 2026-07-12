@@ -11,6 +11,10 @@ export interface BillSummary {
   upi_total: string;
   due_total: string;
   total_expenses: string;
+  cash_expenses: string;
+  upi_expenses: string;
+  labour_total: string;
+  cash_in_hand_running: string;
   net_sales: string;
   expenses: ExpenseRow[];
 }

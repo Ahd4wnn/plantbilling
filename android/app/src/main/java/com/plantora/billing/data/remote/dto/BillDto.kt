@@ -114,6 +114,7 @@ data class BillListItemDto(
     @SerialName("item_count") val itemCount: Int,
     @SerialName("payment_method") val paymentMethod: String,
     @SerialName("is_edited") val isEdited: Boolean = false,
+    @SerialName("pending_settlement") val pendingSettlement: Boolean = false,
 )
 
 @Serializable
@@ -133,6 +134,10 @@ data class BillSummaryDto(
     @SerialName("upi_total") val upiTotal: String,
     @SerialName("due_total") val dueTotal: String = "0",
     @SerialName("total_expenses") val totalExpenses: String = "0",
+    @SerialName("cash_expenses") val cashExpenses: String = "0",
+    @SerialName("upi_expenses") val upiExpenses: String = "0",
+    @SerialName("labour_total") val labourTotal: String = "0",
+    @SerialName("cash_in_hand_running") val cashInHandRunning: String = "0",
     @SerialName("net_sales") val netSales: String = "0",
     val expenses: List<ExpenseDto> = emptyList(),
 )

@@ -27,6 +27,7 @@ from app.database import privileged_session
 from app.config import get_settings
 from app.models.bill import Bill, BillItem
 from app.models.bill_audit import BillAuditLog
+from app.models.due_settlement import DueSettlement
 from app.models.customer import Customer
 from app.models.product import Product
 from app.models.shop import Shop
@@ -138,6 +139,35 @@ def _user_email(db: Session, user_id: uuid.UUID | None) -> str | None:
         return None
     u = db.execute(select(User).where(User.id == user_id)).scalar_one_or_none()
     return u.email if u else None
+
+
+def cash_flows_through(db: Session, shop_id: uuid.UUID, end_utc: dt.datetime) -> Decimal:
+    """Net cash that has passed through the drawer for a shop up to `end_utc`:
+    Σ(bill cash) − Σ(cash expenses) − Σ(labour paid). Due settlements land in
+    bill.cash_amount, so they're already counted; labour payments are cash out.
+    Used for the running (cumulative) cash-in-hand."""
+    from app.models.expense import Expense
+    from app.models.labour import LabourPayment
+
+    bills_cash = db.execute(
+        select(func.coalesce(func.sum(Bill.cash_amount), 0)).where(
+            Bill.shop_id == shop_id, Bill.created_at < end_utc
+        )
+    ).scalar_one()
+    cash_expenses = db.execute(
+        select(func.coalesce(func.sum(Expense.amount), 0)).where(
+            Expense.shop_id == shop_id,
+            Expense.payment_method == "cash",
+            Expense.created_at < end_utc,
+        )
+    ).scalar_one()
+    labour = db.execute(
+        select(func.coalesce(func.sum(LabourPayment.total_amount), 0)).where(
+            LabourPayment.shop_id == shop_id,
+            LabourPayment.created_at < end_utc,
+        )
+    ).scalar_one()
+    return q2(Decimal(bills_cash) - Decimal(cash_expenses) - Decimal(labour))
 
 
 def _record_bill_audit(
@@ -387,7 +417,30 @@ def summary_for_day(
         expenses_rows = list(db.execute(stmt_exp).scalars())
 
     total_expenses = sum((e.amount for e in expenses_rows), ZERO)
+    cash_expenses = sum((e.amount for e in expenses_rows if e.payment_method == "cash"), ZERO)
+    upi_expenses = sum((e.amount for e in expenses_rows if e.payment_method == "upi"), ZERO)
     net_sales = total_sales - total_expenses
+
+    # Labour paid on this day (all treated as cash out of the drawer).
+    labour_total = ZERO
+    if target_shop_id is not None:
+        from app.models.labour import LabourPayment
+        labour_total = q2(Decimal(db.execute(
+            select(func.coalesce(func.sum(LabourPayment.total_amount), 0)).where(
+                LabourPayment.shop_id == target_shop_id,
+                LabourPayment.created_at >= start,
+                LabourPayment.created_at < end,
+            )
+        ).scalar_one()))
+
+    # Running (cumulative) cash in hand — shop-wide, so it ignores any staff
+    # filter: the drawer is shared. base + all cash flows through end of this day.
+    cash_in_hand_running = ZERO
+    if target_shop_id is not None:
+        base = db.execute(
+            select(Shop.cash_in_hand_base).where(Shop.id == target_shop_id)
+        ).scalar_one_or_none() or ZERO
+        cash_in_hand_running = q2(Decimal(base) + cash_flows_through(db, target_shop_id, end))
 
     return BillSummaryOut(
         date=day,
@@ -397,6 +450,10 @@ def summary_for_day(
         upi_total=q2(upi_total),
         due_total=q2(due_total),
         total_expenses=q2(total_expenses),
+        cash_expenses=q2(cash_expenses),
+        upi_expenses=q2(upi_expenses),
+        labour_total=labour_total,
+        cash_in_hand_running=cash_in_hand_running,
         net_sales=q2(net_sales),
         expenses=expenses_rows,
     )
@@ -460,6 +517,7 @@ def list_bills(
 
     ids = [r.id for r in page]
     counts: dict[uuid.UUID, int] = {}
+    pending_ids: set[uuid.UUID] = set()
     if ids:
         counts = dict(
             db.execute(
@@ -467,6 +525,16 @@ def list_bills(
                 .where(BillItem.bill_id.in_(ids))
                 .group_by(BillItem.bill_id)
             ).all()
+        )
+        # Which of these bills have a due-collection waiting for manager approval,
+        # so the UI can flag them and not offer to collect again.
+        pending_ids = set(
+            db.execute(
+                select(DueSettlement.bill_id).where(
+                    DueSettlement.bill_id.in_(ids),
+                    DueSettlement.status == "pending",
+                )
+            ).scalars()
         )
 
     items = [
@@ -481,6 +549,7 @@ def list_bills(
             item_count=counts.get(r.id, 0),
             payment_method=_payment_method(r.cash_amount, r.upi_amount, r.due_amount),
             is_edited=r.is_edited,
+            pending_settlement=r.id in pending_ids,
         )
         for r in page
     ]
@@ -1172,6 +1241,32 @@ def download_detailed_report(
         for exp in report.expenses
     ]
 
+    # ── Labour payments in range (name/gender denormalized on each payment) ──
+    from app.models.labour import LabourPayment
+
+    labour_rows = db.execute(
+        select(LabourPayment).where(
+            LabourPayment.shop_id == target_shop_id,
+            LabourPayment.created_at >= start_utc,
+            LabourPayment.created_at < end_utc,
+        ).order_by(LabourPayment.created_at.asc())
+    ).scalars().all()
+
+    def _hours(v) -> str:
+        d = Decimal(v or 0)
+        return str(d.quantize(Decimal("1")) if d == d.to_integral_value() else d.normalize())
+
+    labour_tab = [
+        [
+            ist(lp.created_at), lp.labourer_name, lp.gender.capitalize(),
+            lp.wage_amount, _hours(lp.overtime_hours), lp.overtime_amount,
+            lp.total_amount, _user_email(db, lp.created_by) or "—", lp.note or "",
+        ]
+        for lp in labour_rows
+    ]
+    labour_total = sum((lp.total_amount for lp in labour_rows), ZERO)
+    kpis.append(("Labour Paid", labour_total, "money"))
+
     # Bill edit & delete log (from the audit table — starts at this feature's deploy)
     audit_rows = db.execute(
         select(BillAuditLog).where(
@@ -1193,6 +1288,7 @@ def download_detailed_report(
         customers=customers_tab,
         staff=staff_tab,
         expenses=expenses_tab,
+        labour=labour_tab,
         audit=audit_tab,
     )
 

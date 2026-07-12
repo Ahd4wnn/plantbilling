@@ -10,6 +10,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -20,12 +23,13 @@ import com.plantora.billing.ui.theme.Dimens
 
 private val QUICK_REASONS = listOf("Tea & Snacks", "Soil & Pots", "Electricity", "Labor Wages", "Transport", "Others")
 
-@OptIn(ExperimentalLayoutApi::class)
+@OptIn(ExperimentalLayoutApi::class, androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 fun ExpenseEditorSheet(
     editor: ExpenseEditor,
     onAmount: (String) -> Unit,
     onReason: (String) -> Unit,
+    onMethod: (String) -> Unit,
     onSave: () -> Unit,
 ) {
     Column(
@@ -47,6 +51,23 @@ fun ExpenseEditorSheet(
             QUICK_REASONS.forEach { r ->
                 FilterChip(selected = editor.reason == r, onClick = { onReason(r) }, label = { Text(r) })
             }
+        }
+        Spacer(Modifier.height(Dimens.lg))
+        // How the money left the shop: cash comes out of the drawer, UPI out of
+        // the day's UPI takings. Drives the day's Cash in Hand.
+        Text("Paid from", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Spacer(Modifier.height(Dimens.xs))
+        SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
+            SegmentedButton(
+                selected = editor.paymentMethod == "cash",
+                onClick = { onMethod("cash") },
+                shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
+            ) { Text("Cash") }
+            SegmentedButton(
+                selected = editor.paymentMethod == "upi",
+                onClick = { onMethod("upi") },
+                shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
+            ) { Text("UPI") }
         }
         editor.error?.let {
             Spacer(Modifier.height(Dimens.md))

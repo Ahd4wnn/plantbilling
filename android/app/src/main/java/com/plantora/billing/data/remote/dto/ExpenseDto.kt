@@ -9,6 +9,7 @@ data class ExpenseDto(
     @SerialName("shop_id") val shopId: String? = null,
     val amount: String,
     val reason: String,
+    @SerialName("payment_method") val paymentMethod: String = "cash",
     @SerialName("created_by") val createdBy: String? = null,
     @SerialName("created_at") val createdAt: String,
 )
@@ -17,4 +18,5 @@ data class ExpenseDto(
 data class ExpenseCreateDto(
     val amount: String,
     val reason: String,
+    @SerialName("payment_method") val paymentMethod: String = "cash",
 )

@@ -4,7 +4,7 @@ import datetime as dt
 import decimal
 import uuid
 
-from sqlalchemy import ForeignKey, Numeric, Text
+from sqlalchemy import ForeignKey, Numeric, Text, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -22,6 +22,11 @@ class Expense(Base):
     )
     amount: Mapped[decimal.Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     reason: Mapped[str] = mapped_column(Text, nullable=False)
+    # How the expense was paid: 'cash' comes out of the drawer, 'upi' out of the
+    # UPI takings. Drives the day's Cash in Hand (cash sales − cash expenses).
+    payment_method: Mapped[str] = mapped_column(
+        Text, nullable=False, server_default=text("'cash'")
+    )
     created_by: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("users.id", ondelete="SET NULL"),

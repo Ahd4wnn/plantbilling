@@ -101,4 +101,14 @@ object NetworkModule {
     @Singleton
     fun provideOwnerApi(retrofit: Retrofit): com.plantora.billing.data.remote.api.OwnerApi =
         retrofit.create(com.plantora.billing.data.remote.api.OwnerApi::class.java)
+
+    @Provides
+    @Singleton
+    fun provideSettlementsApi(retrofit: Retrofit): com.plantora.billing.data.remote.api.SettlementsApi =
+        retrofit.create(com.plantora.billing.data.remote.api.SettlementsApi::class.java)
+
+    @Provides
+    @Singleton
+    fun provideLabourApi(retrofit: Retrofit): com.plantora.billing.data.remote.api.LabourApi =
+        retrofit.create(com.plantora.billing.data.remote.api.LabourApi::class.java)
 }

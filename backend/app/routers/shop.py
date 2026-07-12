@@ -1,13 +1,16 @@
 from __future__ import annotations
 
+from decimal import Decimal
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.auth.dependencies import get_db, require_shop_staff
+from app.auth.dependencies import get_db, require_shop_staff, require_manager_or_admin
 from app.models.shop import Shop
 from app.models.user import User
-from app.schemas.shop import ShopSettingsOut, ShopSettingsUpdate
+from app.routers.bills import _ist_day_bounds_utc, _today_ist, cash_flows_through, q2
+from app.schemas.shop import CashInHandOut, CashInHandSet, ShopSettingsOut, ShopSettingsUpdate
 
 router = APIRouter(prefix="/shop", tags=["shop"])
 
@@ -93,3 +96,32 @@ def update_shop_settings(
     db.flush()
     db.refresh(shop)
     return shop
+
+
+@router.post("/cash-in-hand", response_model=CashInHandOut)
+def set_cash_in_hand(
+    payload: CashInHandSet,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_manager_or_admin),
+) -> CashInHandOut:
+    """Reset the shop's running cash-in-hand to exactly `amount`, effective now.
+
+    We store base = amount − (all cash flows through today), so the running total
+    reads `amount` immediately and keeps accumulating from tomorrow. Manager/admin
+    only — a salesperson can't change the drawer's baseline.
+    """
+    if user.shop_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="User is not associated with any shop",
+        )
+    shop = db.execute(select(Shop).where(Shop.id == user.shop_id)).scalar_one_or_none()
+    if not shop:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Shop not found")
+
+    end_of_today = _ist_day_bounds_utc(_today_ist())[1]
+    flows = cash_flows_through(db, shop.id, end_of_today)
+    shop.cash_in_hand_base = q2(Decimal(payload.amount) - flows)
+
+    db.flush()
+    return CashInHandOut(cash_in_hand_running=q2(Decimal(payload.amount)))

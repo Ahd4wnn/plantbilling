@@ -16,9 +16,10 @@ import {
   type Salesperson,
 } from "@/api/shop_users";
 import { friendlyError } from "@/api/client";
-import { UserPlus, Key, UserCheck, UserX, AlertCircle, Trash2, Bluetooth, Printer, MessageSquare } from "lucide-react";
+import { UserPlus, Key, UserCheck, UserX, AlertCircle, Trash2, Bluetooth, Printer, MessageSquare, Wallet, HardHat, ChevronRight } from "lucide-react";
 import { useBluetoothPrinter } from "@/store/bluetooth";
-import { getShopSettings, updateShopSettings, type ShopSettings } from "@/api/shop";
+import { getShopSettings, updateShopSettings, setCashInHand, type ShopSettings } from "@/api/shop";
+import { useCashInHandCumulative } from "@/lib/cashInHand";
 
 export function MorePage() {
   const user = useAuth((s) => s.user);
@@ -54,6 +55,9 @@ export function MorePage() {
   const [busyId, setBusyId] = useState<string | null>(null);
 
   const isOwner = user?.role === "manager";
+
+  const [cumulativeCash, setCumulativeCash] = useCashInHandCumulative();
+  const [cashSetOpen, setCashSetOpen] = useState(false);
 
   const [settings, setSettings] = useState<ShopSettings | null>(null);
   const [settingsLoading, setSettingsLoading] = useState(false);
@@ -207,6 +211,54 @@ export function MorePage() {
             Log out
           </Button>
         </div>
+      </div>
+
+      {/* Labour link */}
+      <button
+        type="button"
+        onClick={() => navigate("/app/labour")}
+        className="w-full rounded-2xl border border-border bg-white p-5 shadow-sm flex items-center gap-3 text-left hover:bg-surface-muted active:scale-[0.99] transition"
+      >
+        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary-50 text-primary-700">
+          <HardHat className="h-6 w-6" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <h2 className="text-xl font-bold text-ink">Labour</h2>
+          <p className="text-sm text-ink-soft mt-0.5">
+            {isOwner ? "Manage workers and record payments" : "Record payments to workers"}
+          </p>
+        </div>
+        <ChevronRight className="h-5 w-5 text-ink-soft shrink-0" />
+      </button>
+
+      {/* Cash in Hand */}
+      <div className="rounded-2xl border border-border bg-white p-5 shadow-sm space-y-4">
+        <div className="flex items-center gap-3">
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
+            <Wallet className="h-6 w-6" />
+          </div>
+          <div>
+            <h2 className="text-xl font-bold text-ink">Cash in Hand</h2>
+            <p className="text-sm text-ink-soft mt-0.5">How the drawer total is shown on the Sales page.</p>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between border border-border rounded-xl p-4 bg-slate-50">
+          <div className="pr-4">
+            <p className="font-semibold text-ink text-base">Running total</p>
+            <p className="text-xs text-ink-soft leading-normal mt-0.5">Carry the drawer over day to day (this device only).</p>
+          </div>
+          <label className="relative inline-flex items-center cursor-pointer shrink-0">
+            <input type="checkbox" checked={cumulativeCash} onChange={(e) => setCumulativeCash(e.target.checked)} className="sr-only peer" />
+            <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
+          </label>
+        </div>
+
+        {isOwner && (
+          <Button variant="secondary" size="tap" className="w-full border-2 font-bold" onClick={() => setCashSetOpen(true)}>
+            Set cash in hand
+          </Button>
+        )}
       </div>
 
       {/* Bluetooth/USB Thermal Printer Setup Card */}
@@ -613,6 +665,9 @@ export function MorePage() {
         </div>
       )}
 
+      {/* Set cash in hand (manager) */}
+      <SetCashInHandSheet open={cashSetOpen} onClose={() => setCashSetOpen(false)} />
+
       {/* Add Staff Sheet */}
       <CreateSalespersonSheet
         open={createOpen}
@@ -658,6 +713,70 @@ export function MorePage() {
 }
 
 /* Sub-components for Sheets */
+
+function SetCashInHandSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const [amount, setAmount] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [done, setDone] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    setAmount("");
+    setError(null);
+    setDone(null);
+  }, [open]);
+
+  const submit = async () => {
+    if (!amount.trim()) return;
+    setSaving(true);
+    setError(null);
+    try {
+      const res = await setCashInHand(amount.trim());
+      setDone(res.cash_in_hand_running);
+    } catch (e) {
+      setError(friendlyError(e, "Couldn't set cash in hand."));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <BottomSheet
+      open={open}
+      onClose={onClose}
+      title="Set cash in hand"
+      footer={
+        done ? (
+          <Button variant="primary" size="action" className="w-full" onClick={onClose}>Done</Button>
+        ) : (
+          <Button variant="primary" size="action" className="w-full" disabled={!amount.trim() || saving} loading={saving} onClick={submit}>
+            Save
+          </Button>
+        )
+      }
+    >
+      {done ? (
+        <p className="text-base font-semibold text-ink">Cash in hand is now set. The running total starts from here and keeps adding each day.</p>
+      ) : (
+        <div className="space-y-4">
+          {error && <p className="rounded-control bg-danger-soft px-4 py-3 text-base font-semibold text-danger">{error}</p>}
+          <p className="text-base text-ink-soft">
+            Enter the cash you actually have on hand right now. The running total will start from this and keep adding each day.
+          </p>
+          <TextInput
+            label="Cash in hand (₹)"
+            value={amount}
+            onChange={(e) => setAmount(e.target.value.replace(/[^0-9.]/g, ""))}
+            inputMode="decimal"
+            placeholder="0"
+            required
+          />
+        </div>
+      )}
+    </BottomSheet>
+  );
+}
 
 function CreateSalespersonSheet({
   open,

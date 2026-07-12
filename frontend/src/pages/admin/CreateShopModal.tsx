@@ -24,6 +24,7 @@ export function CreateShopModal({ open, onClose, onCreated }: CreateShopModalPro
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [openingCash, setOpeningCash] = useState("");
 
   const [errors, setErrors] = useState<Errors>({});
   const [submitting, setSubmitting] = useState(false);
@@ -36,6 +37,7 @@ export function CreateShopModal({ open, onClose, onCreated }: CreateShopModalPro
     setName("");
     setEmail("");
     setPassword(generatePassword());
+    setOpeningCash("");
     setErrors({});
     setServerError(null);
     setDone(null);
@@ -63,6 +65,7 @@ export function CreateShopModal({ open, onClose, onCreated }: CreateShopModalPro
       owner_phone: null,
       owner_email: email.trim(),
       owner_password: password,
+      cash_in_hand_opening: openingCash.trim() || "0",
     };
     try {
       const res = await createShop(payload);
@@ -140,6 +143,17 @@ export function CreateShopModal({ open, onClose, onCreated }: CreateShopModalPro
               </button>
             </div>
             <p className="mt-1 text-sm text-ink-soft">You'll see this password once after creating — copy it then.</p>
+          </Field>
+
+          <Field label="Opening cash in hand (₹)">
+            <input
+              className={inputCls()}
+              value={openingCash}
+              onChange={(e) => setOpeningCash(e.target.value.replace(/[^0-9.]/g, ""))}
+              placeholder="0"
+              inputMode="decimal"
+            />
+            <p className="mt-1 text-sm text-ink-soft">Cash the shop already has when they start. The running cash-in-hand builds from here. Leave blank for 0.</p>
           </Field>
         </div>
       )}

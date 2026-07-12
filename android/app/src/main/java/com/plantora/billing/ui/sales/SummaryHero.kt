@@ -48,6 +48,7 @@ private val ExpenseColor = Color(0xFFF43F5E) // rose
 fun SummaryHero(
     summary: DaySummary,
     isOwner: Boolean,
+    cumulativeCashInHand: Boolean = false,
     onAddExpense: () -> Unit,
     onEditExpense: (Expense) -> Unit,
     onDeleteExpense: (String) -> Unit,
@@ -87,10 +88,18 @@ fun SummaryHero(
             PayStatRow("Cash", summary.cashTotal, CashGreen)
             PayStatRow("UPI", summary.upiTotal, UpiBlue)
             PayStatRow("Due", summary.dueTotal, DueAmber)
+            if (summary.labourTotal.isPositive()) {
+                PayStatRow("Labour paid", summary.labourTotal, ExpenseColor)
+            }
             HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
-            // Cash left in the drawer after paying the day's expenses out of it
-            // (cash sales − expenses). This is the amount the owner counts at night.
-            PayStatRow("Cash in hand", Money(summary.cashTotal.amount - summary.totalExpenses.amount), CashGreen)
+            // Cash left in the drawer. Per-day = cash sales − cash expenses (UPI
+            // expenses don't touch the drawer). When the device has the running-total
+            // switch on, show the all-time carry-over figure from the server instead.
+            if (cumulativeCashInHand) {
+                PayStatRow("Cash in hand (all time)", summary.cashInHandRunning, CashGreen)
+            } else {
+                PayStatRow("Cash in hand", summary.cashInHandToday, CashGreen)
+            }
         }
 
         Spacer(Modifier.height(Dimens.lg))
@@ -147,7 +156,11 @@ fun SummaryHero(
                 Row(Modifier.fillMaxWidth().padding(vertical = Dimens.xs), verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
                         Text(e.reason, style = MaterialTheme.typography.bodyLarge)
-                        Text(formatBillTime(e.createdAt), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(
+                            formatBillTime(e.createdAt) + " • " + if (e.paymentMethod == "upi") "UPI" else "Cash",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
                     }
                     Text("− " + e.amount.format(), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.error)
                     if (isOwner) {

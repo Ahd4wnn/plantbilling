@@ -5,14 +5,17 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.AccountBalanceWallet
+import androidx.compose.material.icons.rounded.HourglassTop
 import androidx.compose.material.icons.rounded.PriorityHigh
 import androidx.compose.material.icons.rounded.ReceiptLong
 import androidx.compose.material.icons.rounded.Search
@@ -20,12 +23,16 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -33,6 +40,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.plantora.billing.domain.BillListEntry
@@ -43,8 +51,8 @@ import com.plantora.billing.ui.components.ErrorState
 import com.plantora.billing.ui.components.LoadingState
 import com.plantora.billing.ui.components.MoneyText
 import com.plantora.billing.ui.components.PlantoraCard
+import com.plantora.billing.ui.components.PlantoraTextField
 import com.plantora.billing.ui.components.PrimaryButton
-import com.plantora.billing.ui.components.SecondaryButton
 import com.plantora.billing.ui.theme.Dimens
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -56,6 +64,7 @@ fun DuesScreen(
 ) {
     val ui by viewModel.ui.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     LaunchedEffect(ui.message) { ui.message?.let { snackbar.showSnackbar(it); viewModel.dismissMessage() } }
 
@@ -63,7 +72,7 @@ fun DuesScreen(
         contentWindowInsets = androidx.compose.foundation.layout.WindowInsets(0, 0, 0, 0),
         snackbarHost = { SnackbarHost(snackbar) },
         topBar = {
-            TopAppBar(
+            androidx.compose.material3.TopAppBar(
                 title = { Text("Dues") },
                 navigationIcon = {
                     IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Back") }
@@ -133,14 +142,7 @@ fun DuesScreen(
                         }
                     }
                     items(ui.priorityDues, key = { it.id }) { entry ->
-                        DueRow(
-                            entry = entry,
-                            settling = ui.settlingId == entry.id,
-                            overdue = true,
-                            onOpen = { onOpenBill(entry.id) },
-                            onCash = { viewModel.markPaid(entry, viaUpi = false) },
-                            onUpi = { viewModel.markPaid(entry, viaUpi = true) },
-                        )
+                        DueRow(entry = entry, overdue = true, onOpen = { onOpenBill(entry.id) }, onCollect = { viewModel.openSettle(entry) })
                     }
                 }
 
@@ -155,29 +157,119 @@ fun DuesScreen(
                         }
                     }
                     items(ui.otherDues, key = { it.id }) { entry ->
-                        DueRow(
-                            entry = entry,
-                            settling = ui.settlingId == entry.id,
-                            overdue = false,
-                            onOpen = { onOpenBill(entry.id) },
-                            onCash = { viewModel.markPaid(entry, viaUpi = false) },
-                            onUpi = { viewModel.markPaid(entry, viaUpi = true) },
-                        )
+                        DueRow(entry = entry, overdue = false, onOpen = { onOpenBill(entry.id) }, onCollect = { viewModel.openSettle(entry) })
                     }
                 }
             }
         }
+    }
+
+    ui.settle?.let { target ->
+        ModalBottomSheet(onDismissRequest = viewModel::closeSettle, sheetState = sheetState) {
+            SettleSheet(
+                target = target,
+                isManager = ui.isManager,
+                onMode = viewModel::setSettleMode,
+                onCash = viewModel::setSettleCash,
+                onUpi = viewModel::setSettleUpi,
+                onConfirm = viewModel::confirmSettle,
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SettleSheet(
+    target: SettleTarget,
+    isManager: Boolean,
+    onMode: (SettleMode) -> Unit,
+    onCash: (String) -> Unit,
+    onUpi: (String) -> Unit,
+    onConfirm: () -> Unit,
+) {
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .padding(horizontal = Dimens.lg)
+            .padding(bottom = Dimens.xl),
+    ) {
+        Text("Collect due", style = MaterialTheme.typography.headlineMedium)
+        Spacer(Modifier.height(Dimens.xs))
+        Text(
+            target.entry.customerName ?: target.entry.customerPhone ?: "Walk-in",
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(Modifier.height(Dimens.md))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("Amount owed", style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+            MoneyText(target.entry.dueAmount, style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.error)
+        }
+
+        Spacer(Modifier.height(Dimens.lg))
+        Text("How was it paid?", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Spacer(Modifier.height(Dimens.xs))
+        SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
+            SegmentedButton(
+                selected = target.mode == SettleMode.CASH,
+                onClick = { onMode(SettleMode.CASH) },
+                shape = SegmentedButtonDefaults.itemShape(index = 0, count = 3),
+            ) { Text("Cash") }
+            SegmentedButton(
+                selected = target.mode == SettleMode.UPI,
+                onClick = { onMode(SettleMode.UPI) },
+                shape = SegmentedButtonDefaults.itemShape(index = 1, count = 3),
+            ) { Text("UPI") }
+            SegmentedButton(
+                selected = target.mode == SettleMode.SPLIT,
+                onClick = { onMode(SettleMode.SPLIT) },
+                shape = SegmentedButtonDefaults.itemShape(index = 2, count = 3),
+            ) { Text("Split") }
+        }
+
+        if (target.mode == SettleMode.SPLIT) {
+            Spacer(Modifier.height(Dimens.md))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Dimens.md)) {
+                Column(Modifier.weight(1f)) {
+                    PlantoraTextField(target.cash, onCash, label = "Cash (₹)", keyboardType = KeyboardType.Decimal)
+                }
+                Column(Modifier.weight(1f)) {
+                    PlantoraTextField(target.upi, onUpi, label = "UPI (₹)", keyboardType = KeyboardType.Decimal)
+                }
+            }
+        }
+
+        target.error?.let {
+            Spacer(Modifier.height(Dimens.md))
+            Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium)
+        }
+
+        if (!isManager) {
+            Spacer(Modifier.height(Dimens.md))
+            Text(
+                "This will be sent to your manager to approve before the due is closed.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+
+        Spacer(Modifier.height(Dimens.xl))
+        PrimaryButton(
+            text = if (isManager) "Collect ${target.entry.dueAmount.format()}" else "Send for approval",
+            onClick = onConfirm,
+            loading = target.submitting,
+            modifier = Modifier.fillMaxWidth(),
+        )
     }
 }
 
 @Composable
 private fun DueRow(
     entry: BillListEntry,
-    settling: Boolean,
     overdue: Boolean,
     onOpen: () -> Unit,
-    onCash: () -> Unit,
-    onUpi: () -> Unit,
+    onCollect: () -> Unit,
 ) {
     val days = daysSince(entry.createdAt)
     PlantoraCard {
@@ -214,17 +306,26 @@ private fun DueRow(
             Icon(Icons.Rounded.ReceiptLong, contentDescription = null, modifier = Modifier.padding(end = Dimens.xs))
             Text("View bill")
         }
-        Row(Modifier.fillMaxWidth().padding(top = Dimens.sm), horizontalArrangement = Arrangement.spacedBy(Dimens.sm)) {
-            SecondaryButton(
-                text = if (settling) "Saving…" else "Paid in cash",
-                onClick = onCash,
-                modifier = Modifier.weight(1f),
-            )
+        if (entry.pendingSettlement) {
+            // A collection is already awaiting manager approval — don't offer to
+            // collect again until it's reviewed.
+            Row(
+                Modifier.fillMaxWidth().padding(top = Dimens.sm),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(Icons.Rounded.HourglassTop, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                Text(
+                    "  Waiting for manager approval",
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+            }
+        } else {
             PrimaryButton(
-                text = "Paid by UPI",
-                onClick = onUpi,
-                loading = settling,
-                modifier = Modifier.weight(1f),
+                text = "Collect ${entry.dueAmount.format()}",
+                onClick = onCollect,
+                modifier = Modifier.fillMaxWidth().padding(top = Dimens.sm),
             )
         }
     }

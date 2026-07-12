@@ -1,8 +1,10 @@
 package com.plantora.billing.data
 
 import com.plantora.billing.data.remote.api.ShopApi
+import com.plantora.billing.data.remote.dto.CashInHandSetDto
 import com.plantora.billing.data.remote.dto.ShopSettingsDto
 import com.plantora.billing.data.remote.dto.ShopSettingsUpdateDto
+import com.plantora.billing.domain.Money
 import com.plantora.billing.domain.ShopSettings
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -28,6 +30,10 @@ class ShopRepository @Inject constructor(
             businessUpi = businessUpi?.trim(),
         ),
     ).toDomain()
+
+    /** Reset the running cash-in-hand to an exact amount; returns the new running total. */
+    suspend fun setCashInHand(amount: Money): Money =
+        Money.parse(api.setCashInHand(CashInHandSetDto(amount = amount.toWire())).cashInHandRunning)
 }
 
 private fun ShopSettingsDto.toDomain() = ShopSettings(

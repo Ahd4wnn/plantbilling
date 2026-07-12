@@ -18,6 +18,7 @@ import androidx.compose.material.icons.rounded.BarChart
 import androidx.compose.material.icons.rounded.EmojiEvents
 import androidx.compose.material.icons.rounded.Group
 import androidx.compose.material.icons.rounded.ReceiptLong
+import androidx.compose.material.icons.rounded.TaskAlt
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -57,6 +58,8 @@ fun SalesScreen(
     onOpenBill: (String) -> Unit,
     onOpenReport: () -> Unit = {},
     onOpenDues: () -> Unit = {},
+    canApprove: Boolean = false,
+    onOpenApprovals: () -> Unit = {},
     viewModel: SalesViewModel = hiltViewModel(),
 ) {
     val ui by viewModel.ui.collectAsStateWithLifecycle()
@@ -103,6 +106,18 @@ fun SalesScreen(
                 }
             }
 
+            // Managers approve salesperson due-collections before they close.
+            if (canApprove) {
+                item {
+                    SecondaryButton(
+                        text = "Approve due collections",
+                        onClick = onOpenApprovals,
+                        leadingIcon = Icons.Rounded.TaskAlt,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+            }
+
             if (ui.isOwner) {
                 item { StaffFilter(ui) { id -> viewModel.selectStaff(id) } }
                 if (ui.staffSales.isNotEmpty()) {
@@ -125,8 +140,9 @@ fun SalesScreen(
                     ui.summary != null -> SummaryHero(
                         summary = ui.summary!!,
                         isOwner = ui.isOwner,
+                        cumulativeCashInHand = ui.cashInHandCumulative,
                         onAddExpense = viewModel::openCreateExpense,
-                        onEditExpense = { e -> viewModel.openEditExpense(e.id, e.amount, e.reason) },
+                        onEditExpense = { e -> viewModel.openEditExpense(e.id, e.amount, e.reason, e.paymentMethod) },
                         onDeleteExpense = viewModel::deleteExpense,
                     )
                     ui.error != null -> Text(ui.error!!, color = MaterialTheme.colorScheme.error)
@@ -161,6 +177,7 @@ fun SalesScreen(
                 editor = editor,
                 onAmount = viewModel::setExpenseAmount,
                 onReason = viewModel::setExpenseReason,
+                onMethod = viewModel::setExpenseMethod,
                 onSave = viewModel::saveExpense,
             )
         }

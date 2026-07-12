@@ -50,11 +50,20 @@ class AppPreferences @Inject constructor(
         store.edit { it[KEY_AUTO_CUT] = enabled }
     }
 
+    // Show cash in hand as a running total that carries over day to day (a per-
+    // device display preference; the running number itself is computed server-side).
+    val cashInHandCumulative: Flow<Boolean> = store.data.map { it[KEY_CIH_CUMULATIVE] ?: false }
+
+    suspend fun setCashInHandCumulative(enabled: Boolean) {
+        store.edit { it[KEY_CIH_CUMULATIVE] = enabled }
+    }
+
     private companion object {
         val KEY_BASE_URL = stringPreferencesKey("base_url")
         val KEY_PRINTER_MAC = stringPreferencesKey("printer_mac")
         val KEY_PAPER_WIDTH = intPreferencesKey("paper_width_chars")
         val KEY_AUTO_CUT = booleanPreferencesKey("auto_cut")
+        val KEY_CIH_CUMULATIVE = booleanPreferencesKey("cash_in_hand_cumulative")
     }
 }
 

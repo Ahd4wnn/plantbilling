@@ -68,6 +68,7 @@ fun ExpenseDto.toDomain() = Expense(
     id = id,
     amount = Money.parse(amount),
     reason = reason,
+    paymentMethod = paymentMethod,
     createdAt = createdAt,
 )
 
@@ -79,6 +80,10 @@ fun BillSummaryDto.toDomain() = DaySummary(
     upiTotal = Money.parse(upiTotal),
     dueTotal = Money.parse(dueTotal),
     totalExpenses = Money.parse(totalExpenses),
+    cashExpenses = Money.parse(cashExpenses),
+    upiExpenses = Money.parse(upiExpenses),
+    labourTotal = Money.parse(labourTotal),
+    cashInHandRunning = Money.parse(cashInHandRunning),
     netSales = Money.parse(netSales),
     expenses = expenses.map { it.toDomain() },
 )
@@ -93,6 +98,7 @@ fun BillListItemDto.toDomain() = BillListEntry(
     itemCount = itemCount,
     paymentMethod = PaymentMethod.from(paymentMethod),
     isEdited = isEdited,
+    pendingSettlement = pendingSettlement,
 )
 
 fun DetailedReportDto.toDomain() = DetailedReport(

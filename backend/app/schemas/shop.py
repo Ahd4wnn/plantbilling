@@ -2,6 +2,20 @@ from __future__ import annotations
 import uuid
 from pydantic import BaseModel
 
+from app.schemas.money import MoneyIn, MoneyOut
+
+
+class CashInHandSet(BaseModel):
+    """Manager sets the running cash-in-hand to exactly this amount, effective now."""
+
+    amount: MoneyIn
+
+
+class CashInHandOut(BaseModel):
+    """The current running cash-in-hand for the shop (as of today)."""
+
+    cash_in_hand_running: MoneyOut
+
 
 class ShopSettingsOut(BaseModel):
     id: uuid.UUID

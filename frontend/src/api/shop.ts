@@ -40,3 +40,9 @@ export async function updateShopSettings(payload: ShopSettingsUpdate): Promise<S
   const { data } = await api.patch<ShopSettings>("/shop", payload);
   return data;
 }
+
+/** Manager/admin: reset the running cash-in-hand to an exact amount, now. */
+export async function setCashInHand(amount: string): Promise<{ cash_in_hand_running: string }> {
+  const { data } = await api.post<{ cash_in_hand_running: string }>("/shop/cash-in-hand", { amount });
+  return data;
+}

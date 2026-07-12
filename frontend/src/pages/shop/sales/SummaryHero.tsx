@@ -2,10 +2,11 @@ import { useState, useEffect } from "react";
 import type { BillSummary } from "@/api/sales";
 import { formatINR, toPaise } from "@/lib/money";
 import { friendlyDayLabel } from "@/lib/datetime";
+import { useCashInHandCumulative } from "@/lib/cashInHand";
 import { Spinner } from "@/components/Spinner";
 import { Button } from "@/components/Button";
 import { DateSelector } from "./DateSelector";
-import { createExpense, deleteExpense, updateExpense, type ExpenseRow } from "@/api/expenses";
+import { createExpense, deleteExpense, updateExpense, type ExpenseMethod, type ExpenseRow } from "@/api/expenses";
 import { BottomSheet } from "@/components/BottomSheet";
 import { TextInput } from "@/components/TextInput";
 import { friendlyError } from "@/api/client";
@@ -36,6 +37,7 @@ export function SummaryHero({
   const [expenseOpen, setExpenseOpen] = useState(false);
   const user = useAuth((s) => s.user);
   const isOwner = user?.role === "manager" || user?.role === "admin";
+  const [cumulativeCash] = useCashInHandCumulative();
 
   const [editingExpense, setEditingExpense] = useState<ExpenseRow | null>(null);
 
@@ -170,11 +172,23 @@ export function SummaryHero({
               <Stat label="Cash" value={formatINR(toPaise(summary.cash_total))} accent="cash" />
               <Stat label="UPI" value={formatINR(toPaise(summary.upi_total))} accent="upi" />
               <Stat label="Due" value={formatINR(toPaise(summary.due_total || "0"))} accent="due" />
-              <Stat
-                label="Cash in Hand"
-                value={formatINR(toPaise(summary.cash_total) - toPaise(summary.total_expenses))}
-                accent={toPaise(summary.cash_total) - toPaise(summary.total_expenses) < 0 ? "due" : "cash"}
-              />
+              <Stat label="Labour" value={"− " + formatINR(toPaise(summary.labour_total || "0"))} accent="expense" />
+              {(() => {
+                // Today's drawer = cash sales − cash expenses − labour paid.
+                const todayPaise =
+                  toPaise(summary.cash_total) -
+                  toPaise(summary.cash_expenses || summary.total_expenses) -
+                  toPaise(summary.labour_total || "0");
+                const runningPaise = toPaise(summary.cash_in_hand_running || "0");
+                const paise = cumulativeCash ? runningPaise : todayPaise;
+                return (
+                  <Stat
+                    label={cumulativeCash ? "Cash in Hand (all time)" : "Cash in Hand"}
+                    value={formatINR(paise)}
+                    accent={paise < 0 ? "due" : "cash"}
+                  />
+                );
+              })()}
             </div>
 
             {/* Spending & Cashflow Chart Section */}
@@ -417,6 +431,7 @@ function CreateExpenseSheet({
 }) {
   const [amount, setAmount] = useState("");
   const [reason, setReason] = useState("");
+  const [method, setMethod] = useState<ExpenseMethod>("cash");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -424,6 +439,7 @@ function CreateExpenseSheet({
     if (!open) return;
     setAmount("");
     setReason("");
+    setMethod("cash");
     setError(null);
   }, [open]);
 
@@ -435,7 +451,7 @@ function CreateExpenseSheet({
     setError(null);
 
     try {
-      await createExpense(amount.trim(), reason.trim());
+      await createExpense(amount.trim(), reason.trim(), method);
       onCreated();
       onClose();
     } catch (err) {
@@ -508,8 +524,44 @@ function CreateExpenseSheet({
             </button>
           ))}
         </div>
+
+        <PaidFromToggle value={method} onChange={setMethod} disabled={loading} />
       </form>
     </BottomSheet>
+  );
+}
+
+/** Cash vs UPI selector — cash comes out of the drawer, UPI out of UPI takings. */
+function PaidFromToggle({
+  value,
+  onChange,
+  disabled,
+}: {
+  value: ExpenseMethod;
+  onChange: (m: ExpenseMethod) => void;
+  disabled?: boolean;
+}) {
+  return (
+    <div>
+      <p className="mb-1.5 text-sm font-semibold text-ink-soft">Paid from</p>
+      <div className="grid grid-cols-2 gap-2">
+        {(["cash", "upi"] as ExpenseMethod[]).map((m) => (
+          <button
+            key={m}
+            type="button"
+            disabled={disabled}
+            onClick={() => onChange(m)}
+            className={`rounded-control border px-4 py-3 text-base font-bold transition-all ${
+              value === m
+                ? "bg-primary-50 text-primary-700 border-primary-300 ring-2 ring-primary-600/10"
+                : "bg-white text-ink-soft border-border hover:bg-slate-50"
+            }`}
+          >
+            {m === "cash" ? "Cash" : "UPI"}
+          </button>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -524,6 +576,7 @@ function EditExpenseSheet({
 }) {
   const [amount, setAmount] = useState("");
   const [reason, setReason] = useState("");
+  const [method, setMethod] = useState<ExpenseMethod>("cash");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -531,6 +584,7 @@ function EditExpenseSheet({
     if (!expense) return;
     setAmount(parseFloat(expense.amount).toFixed(2));
     setReason(expense.reason);
+    setMethod(expense.payment_method ?? "cash");
     setError(null);
   }, [expense]);
 
@@ -542,7 +596,7 @@ function EditExpenseSheet({
     setError(null);
 
     try {
-      await updateExpense(expense.id, amount.trim(), reason.trim());
+      await updateExpense(expense.id, amount.trim(), reason.trim(), method);
       onCreated();
       onClose();
     } catch (err) {
@@ -615,6 +669,8 @@ function EditExpenseSheet({
             </button>
           ))}
         </div>
+
+        <PaidFromToggle value={method} onChange={setMethod} disabled={loading} />
       </form>
     </BottomSheet>
   );

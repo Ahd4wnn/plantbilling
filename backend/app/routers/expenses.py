@@ -33,6 +33,7 @@ def create_expense(
         shop_id=user.shop_id,
         amount=payload.amount,
         reason=payload.reason.strip(),
+        payment_method=payload.payment_method,
         created_by=user.id,
     )
     db.add(expense)
@@ -133,6 +134,8 @@ def update_expense(
         expense.amount = payload.amount
     if payload.reason is not None:
         expense.reason = payload.reason.strip()
+    if payload.payment_method is not None:
+        expense.payment_method = payload.payment_method
 
     # Flush + refresh INSIDE the request transaction; the RLS context (set via
     # SET LOCAL) only lives until commit, so committing here and then refreshing

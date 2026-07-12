@@ -15,6 +15,11 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -52,12 +57,23 @@ fun LoginScreen(viewModel: LoginViewModel = hiltViewModel()) {
             // Android 8+, which Compose's painterResource cannot render — it throws
             // "Only VectorDrawables and rasterized asset types are supported",
             // crashing the app on launch. The foreground is PNG-only, so it's safe.
-            // Sized up to offset the adaptive-icon safe-zone padding.
-            Image(
-                painter = painterResource(id = com.plantora.billing.R.mipmap.ic_launcher_foreground),
-                contentDescription = "PlantBill",
-                modifier = Modifier.size(132.dp),
-            )
+            //
+            // The foreground is a white leaf/receipt on transparent, so on the light
+            // login background it's invisible. Sit it on the brand-green tile (the
+            // same #37974F as the launcher background) so the mark reads clearly.
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .size(120.dp)
+                    .clip(RoundedCornerShape(28.dp))
+                    .background(Color(0xFF37974F)),
+            ) {
+                Image(
+                    painter = painterResource(id = com.plantora.billing.R.mipmap.ic_launcher_foreground),
+                    contentDescription = "PlantBill",
+                    modifier = Modifier.size(132.dp),
+                )
+            }
             Spacer(Modifier.height(Dimens.lg))
             Text(
                 "PlantBill",

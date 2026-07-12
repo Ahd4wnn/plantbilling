@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import datetime as dt
+import decimal
 import uuid
 
-from sqlalchemy import Boolean, Text, text
+from sqlalchemy import Boolean, Numeric, Text, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -26,6 +27,13 @@ class Shop(Base):
     business_phone: Mapped[str | None] = mapped_column(Text, nullable=True)
     business_email: Mapped[str | None] = mapped_column(Text, nullable=True)
     business_upi: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    # Offset for the running (cumulative) cash-in-hand display. Running total =
+    # base + all cash flows (cash sales − cash expenses) through the day. See the
+    # a8b2c3d4e5f6 migration.
+    cash_in_hand_base: Mapped[decimal.Decimal] = mapped_column(
+        Numeric(12, 2), nullable=False, server_default=text("0")
+    )
 
     settings: Mapped[dict] = mapped_column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))
     created_at: Mapped[dt.datetime] = created_at_col()

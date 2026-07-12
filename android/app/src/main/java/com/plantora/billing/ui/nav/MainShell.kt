@@ -22,10 +22,12 @@ import com.plantora.billing.domain.User
 import com.plantora.billing.ui.billing.BillScreen
 import com.plantora.billing.ui.customers.CustomerDetailScreen
 import com.plantora.billing.ui.customers.CustomersScreen
+import com.plantora.billing.ui.labour.LabourScreen
 import com.plantora.billing.ui.printer.PrinterScreen
 import com.plantora.billing.ui.products.ProductsScreen
 import com.plantora.billing.ui.sales.BillDetailScreen
 import com.plantora.billing.ui.sales.BillEditScreen
+import com.plantora.billing.ui.sales.ApprovalsScreen
 import com.plantora.billing.ui.sales.DetailedReportScreen
 import com.plantora.billing.ui.sales.DuesScreen
 import com.plantora.billing.ui.sales.SalesScreen
@@ -108,6 +110,8 @@ fun MainShell(
                     onOpenBill = { id -> navController.navigate(Routes.billDetail(id)) },
                     onOpenReport = { navController.navigate(Routes.DETAILED_REPORT) },
                     onOpenDues = { navController.navigate(Routes.DUES) },
+                    canApprove = isOwner,
+                    onOpenApprovals = { navController.navigate(Routes.APPROVALS) },
                 )
             }
             composable(Routes.DETAILED_REPORT) {
@@ -118,6 +122,12 @@ fun MainShell(
                     onBack = { navController.popBackStack() },
                     onOpenBill = { id -> navController.navigate(Routes.billDetail(id)) },
                 )
+            }
+            composable(Routes.APPROVALS) {
+                ApprovalsScreen(onBack = { navController.popBackStack() })
+            }
+            composable(Routes.LABOUR) {
+                LabourScreen(onBack = { navController.popBackStack() })
             }
             composable(Tab.CUSTOMERS.route) {
                 CustomersScreen(onOpenCustomer = { id -> navController.navigate(Routes.customerDetail(id)) })
@@ -158,6 +168,7 @@ fun MainShell(
                     onOpenShop = { navController.navigate(Routes.SHOP_SETTINGS) },
                     onOpenPrinter = { navController.navigate(Routes.PRINTER_SETTINGS) },
                     onOpenStaff = { navController.navigate(Routes.STAFF_MANAGEMENT) },
+                    onOpenLabour = { navController.navigate(Routes.LABOUR) },
                     onLogout = onLogout,
                 )
             }

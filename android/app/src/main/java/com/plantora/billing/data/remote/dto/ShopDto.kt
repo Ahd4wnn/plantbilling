@@ -25,3 +25,13 @@ data class ShopSettingsUpdateDto(
     @SerialName("business_email") val businessEmail: String? = null,
     @SerialName("business_upi") val businessUpi: String? = null,
 )
+
+@Serializable
+data class CashInHandSetDto(
+    val amount: String,
+)
+
+@Serializable
+data class CashInHandOutDto(
+    @SerialName("cash_in_hand_running") val cashInHandRunning: String,
+)

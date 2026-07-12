@@ -4,7 +4,11 @@ import datetime as dt
 import uuid
 
 import re
+from decimal import Decimal
+
 from pydantic import BaseModel, EmailStr, Field, field_validator
+
+from app.schemas.money import MoneyIn
 
 
 class ShopCreateRequest(BaseModel):
@@ -16,6 +20,9 @@ class ShopCreateRequest(BaseModel):
     owner_password: str = Field(min_length=8)
     # Optionally link the shop to an existing multi-shop owner account.
     owner_id: uuid.UUID | None = None
+    # Cash the shop already has on hand when they join, so the running
+    # cash-in-hand starts from the right number. Optional; defaults to 0.
+    cash_in_hand_opening: MoneyIn = Field(default=Decimal("0"))
 
 
 class OwnerAccountCreate(BaseModel):

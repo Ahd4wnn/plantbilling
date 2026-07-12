@@ -50,6 +50,7 @@ export interface ShopCreatePayload {
   owner_email: string;
   owner_password: string;
   owner_id?: string | null; // optional link to a multi-shop owner account
+  cash_in_hand_opening?: string; // opening cash on hand (₹), defaults to "0"
 }
 
 export interface OwnerAccount {

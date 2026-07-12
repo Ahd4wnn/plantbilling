@@ -225,7 +225,8 @@ def build_report_workbook(
     customers: Sequence[Sequence[Any]],
     staff: Sequence[Sequence[Any]],
     expenses: Sequence[Sequence[Any]],
-    audit: Sequence[Sequence[Any]],
+    labour: Sequence[Sequence[Any]] = (),
+    audit: Sequence[Sequence[Any]] = (),
 ) -> bytes:
     wb = Workbook()
 
@@ -259,6 +260,11 @@ def build_report_workbook(
             ("Date & Time", "text", 18), ("Recorded By", "text", 26),
             ("Reason", "wraptext", 40), ("Amount", "money", 15),
         ], expenses, "(no expenses in this period)"),
+        ("Labour Payments", [
+            ("Date & Time", "text", 18), ("Labourer", "text", 24), ("Gender", "text", 10),
+            ("Wage", "money", 13), ("OT Hours", "text", 10), ("OT Amount", "money", 13),
+            ("Total Paid", "money", 14), ("Recorded By", "text", 26), ("Note", "wraptext", 30),
+        ], labour, "(no labour payments in this period)"),
         ("Edit & Delete Log", [
             ("Date & Time", "text", 18), ("Action", "text", 10), ("Bill No", "text", 12),
             ("By", "text", 26), ("Details", "wraptext", 50),
