@@ -1,5 +1,8 @@
 package com.plantora.billing.data.remote.api
 
+import com.plantora.billing.data.remote.dto.AttendanceDto
+import com.plantora.billing.data.remote.dto.AttendanceMarkDto
+import com.plantora.billing.data.remote.dto.LabourDueClearDto
 import com.plantora.billing.data.remote.dto.LabourPaymentCreateDto
 import com.plantora.billing.data.remote.dto.LabourPaymentDto
 import com.plantora.billing.data.remote.dto.LabourPaymentUpdateDto
@@ -29,6 +32,7 @@ interface LabourApi {
 
     @GET("/labour/payments")
     suspend fun listPayments(
+        @Query("labourer_id") labourerId: String? = null,
         @Query("date_from") dateFrom: String? = null,
         @Query("date_to") dateTo: String? = null,
         @Query("limit") limit: Int = 100,
@@ -43,4 +47,13 @@ interface LabourApi {
 
     @DELETE("/labour/payments/{id}")
     suspend fun deletePayment(@Path("id") id: String)
+
+    @POST("/labour/due-clear")
+    suspend fun clearDue(@Body body: LabourDueClearDto): LabourPaymentDto
+
+    @GET("/labour/attendance")
+    suspend fun listAttendance(@Query("day") day: String? = null): List<AttendanceDto>
+
+    @POST("/labour/attendance")
+    suspend fun markAttendance(@Body body: AttendanceMarkDto): AttendanceDto
 }

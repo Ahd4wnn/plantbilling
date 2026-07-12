@@ -161,13 +161,13 @@ def cash_flows_through(db: Session, shop_id: uuid.UUID, end_utc: dt.datetime) ->
             Expense.created_at < end_utc,
         )
     ).scalar_one()
-    labour = db.execute(
-        select(func.coalesce(func.sum(LabourPayment.total_amount), 0)).where(
+    labour_cash = db.execute(
+        select(func.coalesce(func.sum(LabourPayment.cash_amount), 0)).where(
             LabourPayment.shop_id == shop_id,
             LabourPayment.created_at < end_utc,
         )
     ).scalar_one()
-    return q2(Decimal(bills_cash) - Decimal(cash_expenses) - Decimal(labour))
+    return q2(Decimal(bills_cash) - Decimal(cash_expenses) - Decimal(labour_cash))
 
 
 def _record_bill_audit(
@@ -421,17 +421,24 @@ def summary_for_day(
     upi_expenses = sum((e.amount for e in expenses_rows if e.payment_method == "upi"), ZERO)
     net_sales = total_sales - total_expenses
 
-    # Labour paid on this day (all treated as cash out of the drawer).
+    # Labour paid on this day. Total is for display; only the cash part lowers the
+    # drawer (Cash in Hand = cash sales − cash expenses − cash labour).
     labour_total = ZERO
+    labour_cash = ZERO
     if target_shop_id is not None:
         from app.models.labour import LabourPayment
-        labour_total = q2(Decimal(db.execute(
-            select(func.coalesce(func.sum(LabourPayment.total_amount), 0)).where(
+        lrow = db.execute(
+            select(
+                func.coalesce(func.sum(LabourPayment.total_amount), 0),
+                func.coalesce(func.sum(LabourPayment.cash_amount), 0),
+            ).where(
                 LabourPayment.shop_id == target_shop_id,
                 LabourPayment.created_at >= start,
                 LabourPayment.created_at < end,
             )
-        ).scalar_one()))
+        ).one()
+        labour_total = q2(Decimal(lrow[0]))
+        labour_cash = q2(Decimal(lrow[1]))
 
     # Running (cumulative) cash in hand — shop-wide, so it ignores any staff
     # filter: the drawer is shared. base + all cash flows through end of this day.
@@ -453,6 +460,7 @@ def summary_for_day(
         cash_expenses=q2(cash_expenses),
         upi_expenses=q2(upi_expenses),
         labour_total=labour_total,
+        labour_cash=labour_cash,
         cash_in_hand_running=cash_in_hand_running,
         net_sales=q2(net_sales),
         expenses=expenses_rows,
@@ -1242,7 +1250,7 @@ def download_detailed_report(
     ]
 
     # ── Labour payments in range (name/gender denormalized on each payment) ──
-    from app.models.labour import LabourPayment
+    from app.models.labour import LabourPayment, LabourAttendance
 
     labour_rows = db.execute(
         select(LabourPayment).where(
@@ -1259,13 +1267,37 @@ def download_detailed_report(
     labour_tab = [
         [
             ist(lp.created_at), lp.labourer_name, lp.gender.capitalize(),
-            lp.wage_amount, _hours(lp.overtime_hours), lp.overtime_amount,
-            lp.total_amount, _user_email(db, lp.created_by) or "—", lp.note or "",
+            "Due payment" if lp.kind == "due_clear" else "Wage",
+            lp.wage_amount, _hours(lp.overtime_hours), lp.overtime_amount, lp.total_amount,
+            _payment_method(lp.cash_amount, lp.upi_amount, lp.due_amount).upper(),
+            lp.cash_amount, lp.upi_amount, lp.due_amount,
+            _user_email(db, lp.created_by) or "—", lp.note or "",
         ]
         for lp in labour_rows
     ]
     labour_total = sum((lp.total_amount for lp in labour_rows), ZERO)
     kpis.append(("Labour Paid", labour_total, "money"))
+
+    # ── Attendance in range ──
+    _STATUS_LABEL = {"present": "Present", "absent": "Absent", "half_day": "Half-day"}
+    from app.models.labour import Labourer as _Labourer
+    att_records = db.execute(
+        select(LabourAttendance, _Labourer.name)
+        .join(_Labourer, _Labourer.id == LabourAttendance.labourer_id)
+        .where(
+            LabourAttendance.shop_id == target_shop_id,
+            LabourAttendance.day >= d_from,
+            LabourAttendance.day <= d_to,
+        )
+        .order_by(LabourAttendance.day.asc(), _Labourer.name.asc())
+    ).all()
+    attendance_tab = [
+        [
+            str(a.day), name, _STATUS_LABEL.get(a.status, a.status),
+            _hours(a.overtime_hours), _user_email(db, a.created_by) or "—",
+        ]
+        for a, name in att_records
+    ]
 
     # Bill edit & delete log (from the audit table — starts at this feature's deploy)
     audit_rows = db.execute(
@@ -1289,6 +1321,7 @@ def download_detailed_report(
         staff=staff_tab,
         expenses=expenses_tab,
         labour=labour_tab,
+        attendance=attendance_tab,
         audit=audit_tab,
     )
 

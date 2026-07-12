@@ -3,6 +3,8 @@ import { useNavigate, useParams } from "react-router-dom";
 import {
   createShopStaff,
   deleteShopStaff,
+  getShopBillDetail,
+  getShopCashInHand,
   getShopReport,
   listOwnerShops,
   listShopBills,
@@ -10,7 +12,9 @@ import {
   resetStaffPassword,
   setStaffActive,
   updateOwnerShop,
+  type OwnerBillDetail,
   type OwnerBillRow,
+  type OwnerCashInHand,
   type OwnerReport,
   type OwnerShop,
   type OwnerStaff,
@@ -60,6 +64,9 @@ export function OwnerShopDetail() {
   const [report, setReport] = useState<OwnerReport | null>(null);
   const [bills, setBills] = useState<OwnerBillRow[]>([]);
   const [billsLoading, setBillsLoading] = useState(false);
+  const [openBillId, setOpenBillId] = useState<string | null>(null);
+  const [cih, setCih] = useState<OwnerCashInHand | null>(null);
+  const [cihFull, setCihFull] = useState(true);
   const [period, setPeriod] = useState<Period>("today");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -86,6 +93,7 @@ export function OwnerShopDetail() {
   useEffect(() => {
     const r = rangeFor(period);
     getShopReport(shopId, r.from, r.to).then(setReport).catch(() => {});
+    getShopCashInHand(shopId, r.to).then(setCih).catch(() => setCih(null));
     setBillsLoading(true);
     listShopBills(shopId, { dateFrom: r.from, dateTo: r.to, limit: 50 })
       .then((res) => setBills(res.items))
@@ -138,11 +146,25 @@ export function OwnerShopDetail() {
               <Kpi label="Net" value={inr(report.net_sales)} accent={Number(report.net_sales) < 0 ? "text-danger" : "text-primary-700"} />
               <Kpi label="Bills" value={String(report.bill_count)} accent="text-ink" />
             </div>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div className="grid grid-cols-3 gap-3">
               <Kpi label="Cash" value={inr(report.cash_total)} accent="text-emerald-700" small />
               <Kpi label="UPI" value={inr(report.upi_total)} accent="text-sky-700" small />
               <Kpi label="Due" value={inr(report.due_total)} accent="text-amber-700" small />
-              <Kpi label="Cash in Hand" value={inr(Number(report.cash_total) - Number(report.total_expenses))} accent="text-emerald-700" small />
+            </div>
+            {/* Cash in Hand — running (all time) or just this day's drawer. */}
+            <div className="rounded-card border border-border bg-white p-4">
+              <div className="flex items-center justify-between">
+                <div className="text-xs font-medium uppercase tracking-wide text-ink-soft">
+                  Cash in Hand{cihFull ? " · all time" : " · this day"}
+                </div>
+                <div className="flex rounded-control border border-border p-0.5">
+                  <button type="button" onClick={() => setCihFull(true)} className={["rounded-control px-2.5 py-1 text-xs font-semibold", cihFull ? "bg-primary-600 text-white" : "text-ink-soft"].join(" ")}>Full</button>
+                  <button type="button" onClick={() => setCihFull(false)} className={["rounded-control px-2.5 py-1 text-xs font-semibold", !cihFull ? "bg-primary-600 text-white" : "text-ink-soft"].join(" ")}>Per day</button>
+                </div>
+              </div>
+              <div className="mt-1 text-2xl font-bold text-emerald-700">
+                {cih ? inr(cihFull ? cih.cash_in_hand_running : cih.cash_in_hand_today) : "—"}
+              </div>
             </div>
             {report.top_products.length > 0 && (
               <div className="overflow-hidden rounded-card border border-border bg-white">
@@ -171,7 +193,12 @@ export function OwnerShopDetail() {
             <p className="px-4 py-6 text-center text-ink-soft">No bills in this period.</p>
           ) : (
             bills.map((b) => (
-              <div key={b.id} className="flex items-center justify-between gap-3 border-b border-border px-4 py-3 last:border-0">
+              <button
+                type="button"
+                key={b.id}
+                onClick={() => setOpenBillId(b.id)}
+                className="flex w-full items-center justify-between gap-3 border-b border-border px-4 py-3 text-left last:border-0 hover:bg-surface-muted"
+              >
                 <div className="min-w-0">
                   <div className="truncate font-semibold text-ink">
                     {b.customer_name?.trim() || "Walk-in customer"}
@@ -188,7 +215,7 @@ export function OwnerShopDetail() {
                     {Number(b.due_amount) > 0 && <span className="text-amber-700"> · Due {inr(b.due_amount)}</span>}
                   </div>
                 </div>
-              </div>
+              </button>
             ))
           )}
         </div>
@@ -229,6 +256,81 @@ export function OwnerShopDetail() {
 
       {/* ── Staff ── */}
       <StaffManager shopId={shopId} staff={staff} onChange={refreshStaff} onMessage={setMsg} />
+
+      {openBillId && <BillDetailModal shopId={shopId} billId={openBillId} onClose={() => setOpenBillId(null)} />}
+    </div>
+  );
+}
+
+function BillDetailModal({ shopId, billId, onClose }: { shopId: string; billId: string; onClose: () => void }) {
+  const [bill, setBill] = useState<OwnerBillDetail | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+    getShopBillDetail(shopId, billId)
+      .then((b) => alive && setBill(b))
+      .catch((e) => alive && setErr(friendlyError(e, "Couldn't load the bill.")));
+    return () => { alive = false; };
+  }, [shopId, billId]);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-4" onClick={onClose}>
+      <div className="max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-t-2xl bg-white p-5 sm:rounded-2xl" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-bold text-ink">Bill details</h3>
+          <button type="button" onClick={onClose} className="rounded-lg px-3 py-1 text-ink-soft hover:bg-surface-muted">Close</button>
+        </div>
+        {err ? (
+          <p className="py-6 text-center text-danger">{err}</p>
+        ) : !bill ? (
+          <div className="flex justify-center py-10 text-primary-600"><Spinner className="h-6 w-6" label="Loading" /></div>
+        ) : (
+          <div className="mt-3 space-y-4">
+            <div className="text-sm text-ink-soft">
+              {fmtDateTime(bill.created_at)} · by {salespersonName(bill.salesperson_email)}
+              {bill.is_edited && <span className="ml-2 rounded bg-amber-50 px-1.5 py-0.5 text-xs font-semibold text-amber-700">edited</span>}
+            </div>
+            <div>
+              <div className="font-semibold text-ink">{bill.customer_name?.trim() || "Walk-in customer"}</div>
+              {bill.customer_phone && <div className="text-sm text-ink-soft">{bill.customer_phone}</div>}
+            </div>
+            <div className="overflow-hidden rounded-card border border-border">
+              {bill.items.length === 0 ? (
+                <p className="px-3 py-4 text-center text-ink-soft">No items.</p>
+              ) : (
+                bill.items.map((it, i) => (
+                  <div key={i} className="flex items-center justify-between gap-3 border-b border-border px-3 py-2 last:border-0">
+                    <div className="min-w-0">
+                      <div className="truncate font-medium text-ink">{it.product_name}</div>
+                      <div className="text-sm text-ink-soft">{inr(it.unit_price)} × {it.quantity}</div>
+                    </div>
+                    <div className="shrink-0 font-semibold text-ink">{inr(it.line_total)}</div>
+                  </div>
+                ))
+              )}
+            </div>
+            <div className="space-y-1 text-sm">
+              <Line label="Subtotal" value={inr(bill.subtotal)} />
+              {Number(bill.discount_amount) > 0 && <Line label="Discount" value={"− " + inr(bill.discount_amount)} />}
+              <Line label="Total" value={inr(bill.total)} bold />
+              {Number(bill.cash_amount) > 0 && <Line label="Cash" value={inr(bill.cash_amount)} />}
+              {Number(bill.upi_amount) > 0 && <Line label="UPI" value={inr(bill.upi_amount)} />}
+              {Number(bill.due_amount) > 0 && <Line label="Due" value={inr(bill.due_amount)} />}
+            </div>
+            {bill.remarks && <p className="rounded-card bg-surface-muted px-3 py-2 text-sm text-ink-soft">{bill.remarks}</p>}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function Line({ label, value, bold }: { label: string; value: string; bold?: boolean }) {
+  return (
+    <div className={["flex items-center justify-between", bold ? "font-bold text-ink" : "text-ink-soft"].join(" ")}>
+      <span>{label}</span>
+      <span>{value}</span>
     </div>
   );
 }

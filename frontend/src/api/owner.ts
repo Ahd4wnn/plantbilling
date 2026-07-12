@@ -143,6 +143,49 @@ export async function listShopBills(
   return data;
 }
 
+export interface OwnerBillItem {
+  product_name: string;
+  unit_price: string;
+  quantity: number;
+  line_total: string;
+}
+
+export interface OwnerBillDetail {
+  id: string;
+  total: string;
+  subtotal: string;
+  discount_amount: string;
+  cash_amount: string;
+  upi_amount: string;
+  due_amount: string;
+  payment_method: string;
+  customer_name: string | null;
+  customer_phone: string | null;
+  salesperson_email: string | null;
+  remarks: string | null;
+  is_edited: boolean;
+  created_at: string;
+  items: OwnerBillItem[];
+}
+
+export async function getShopBillDetail(shopId: string, billId: string): Promise<OwnerBillDetail> {
+  const { data } = await api.get<OwnerBillDetail>(`/owner/shops/${shopId}/bills/${billId}`);
+  return data;
+}
+
+export interface OwnerCashInHand {
+  date: string;
+  cash_in_hand_running: string;
+  cash_in_hand_today: string;
+}
+
+export async function getShopCashInHand(shopId: string, date?: string): Promise<OwnerCashInHand> {
+  const { data } = await api.get<OwnerCashInHand>(`/owner/shops/${shopId}/cash-in-hand`, {
+    params: date ? { date } : {},
+  });
+  return data;
+}
+
 export async function listShopStaff(shopId: string): Promise<OwnerStaff[]> {
   const { data } = await api.get<OwnerStaff[]>(`/owner/shops/${shopId}/staff`);
   return data;

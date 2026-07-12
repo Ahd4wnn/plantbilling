@@ -27,14 +27,19 @@ from app.models.expense import Expense
 from app.models.shop import Shop
 from app.models.shop_owner import ShopOwner
 from app.models.user import ROLE_MANAGER, ROLE_SALESPERSON, User
+from app.models.labour import LabourPayment
 from app.routers.bills import (
     SHOP_TZ,
     _generate_report_data,
     _ist_day_bounds_utc,
     _payment_method,
     _today_ist,
+    cash_flows_through,
     q2,
 )
+from pydantic import BaseModel
+from app.routers.bills import _user_email
+from app.schemas.bill import BillDetailOut, BillItemOut
 from app.schemas.report import DetailedReportResponse
 from app.schemas.owner import (
     OwnerBillList,
@@ -188,6 +193,101 @@ def shop_bills(
         for r in page
     ]
     return OwnerBillList(items=items, limit=limit, offset=offset, has_more=has_more)
+
+
+class OwnerCashInHand(BaseModel):
+    date: dt.date
+    cash_in_hand_running: Decimal   # all-time carry-over as of this day
+    cash_in_hand_today: Decimal     # just this day's drawer (cash sales − cash expenses − cash labour)
+
+
+@router.get("/shops/{shop_id}/cash-in-hand", response_model=OwnerCashInHand)
+def shop_cash_in_hand(
+    shop_id: uuid.UUID,
+    date: dt.date | None = Query(default=None),
+    db: Session = Depends(get_db),
+    owner: User = Depends(require_owner),
+) -> OwnerCashInHand:
+    shop = _owned_shop_or_404(db, owner, shop_id)
+    day = date or _today_ist()
+    start, end = _ist_day_bounds_utc(day)
+
+    running = q2(Decimal(shop.cash_in_hand_base) + cash_flows_through(db, shop_id, end))
+
+    cash_sales = db.execute(
+        select(func.coalesce(func.sum(Bill.cash_amount), 0)).where(
+            Bill.shop_id == shop_id, Bill.created_at >= start, Bill.created_at < end
+        )
+    ).scalar_one()
+    cash_exp = db.execute(
+        select(func.coalesce(func.sum(Expense.amount), 0)).where(
+            Expense.shop_id == shop_id, Expense.payment_method == "cash",
+            Expense.created_at >= start, Expense.created_at < end,
+        )
+    ).scalar_one()
+    labour_cash = db.execute(
+        select(func.coalesce(func.sum(LabourPayment.cash_amount), 0)).where(
+            LabourPayment.shop_id == shop_id,
+            LabourPayment.created_at >= start, LabourPayment.created_at < end,
+        )
+    ).scalar_one()
+    today_val = q2(Decimal(cash_sales) - Decimal(cash_exp) - Decimal(labour_cash))
+
+    return OwnerCashInHand(date=day, cash_in_hand_running=running, cash_in_hand_today=today_val)
+
+
+# ── Full detail of one bill in an owned shop (items, customer, who billed) ────
+@router.get("/shops/{shop_id}/bills/{bill_id}", response_model=BillDetailOut)
+def shop_bill_detail(
+    shop_id: uuid.UUID,
+    bill_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    owner: User = Depends(require_owner),
+) -> BillDetailOut:
+    _owned_shop_or_404(db, owner, shop_id)
+    bill = db.execute(
+        select(Bill).where(Bill.id == bill_id, Bill.shop_id == shop_id)
+    ).scalar_one_or_none()
+    if bill is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Bill not found")
+
+    items = list(
+        db.execute(
+            select(BillItem).where(BillItem.bill_id == bill.id).order_by(BillItem.id.asc())
+        ).scalars()
+    )
+    customer_name = customer_phone = None
+    if bill.customer_id is not None:
+        c = db.execute(select(Customer).where(Customer.id == bill.customer_id)).scalar_one_or_none()
+        if c is not None:
+            customer_name, customer_phone = c.name, c.phone
+    shop = db.execute(select(Shop).where(Shop.id == bill.shop_id)).scalar_one_or_none()
+
+    return BillDetailOut(
+        id=bill.id,
+        shop_name=shop.name if shop else None,
+        business_name=(shop.business_name or shop.name) if shop else None,
+        business_address=shop.business_address if shop else None,
+        business_phone=shop.business_phone if shop else None,
+        bill_type=bill.bill_type,
+        subtotal=bill.subtotal,
+        discount_type=bill.discount_type,
+        discount_value=bill.discount_value,
+        discount_amount=bill.discount_amount,
+        total=bill.total,
+        cash_amount=bill.cash_amount,
+        upi_amount=bill.upi_amount,
+        due_amount=bill.due_amount,
+        payment_method=_payment_method(bill.cash_amount, bill.upi_amount, bill.due_amount),
+        customer_id=bill.customer_id,
+        customer_name=customer_name,
+        customer_phone=customer_phone,
+        salesperson_email=_user_email(db, bill.created_by),
+        remarks=bill.remarks,
+        is_edited=bill.is_edited,
+        created_at=bill.created_at,
+        items=[BillItemOut.model_validate(it) for it in items],
+    )
 
 
 # ── Aggregate overview across all owned shops ─────────────────────────────────

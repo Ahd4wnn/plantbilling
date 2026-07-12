@@ -68,8 +68,45 @@ class LabourPayment(Base):
     total_amount: Mapped[decimal.Decimal] = mapped_column(
         Numeric(12, 2), nullable=False, server_default=text("0")
     )
+    # How the total (wage + overtime) was settled — like a bill's split. Only cash
+    # lowers Cash in Hand; due is money still owed to the worker.
+    cash_amount: Mapped[decimal.Decimal] = mapped_column(
+        Numeric(12, 2), nullable=False, server_default=text("0")
+    )
+    upi_amount: Mapped[decimal.Decimal] = mapped_column(
+        Numeric(12, 2), nullable=False, server_default=text("0")
+    )
+    due_amount: Mapped[decimal.Decimal] = mapped_column(
+        Numeric(12, 2), nullable=False, server_default=text("0")
+    )
+    # 'wage' = a normal payment; 'due_clear' = paying off what's owed to a worker.
+    kind: Mapped[str] = mapped_column(Text, nullable=False, server_default=text("'wage'"))
     note: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_by: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )
     created_at: Mapped[dt.datetime] = created_at_col()
+
+
+class LabourAttendance(Base):
+    """One record per worker per day: present / absent / half-day + overtime hours."""
+
+    __tablename__ = "labour_attendance"
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    shop_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("shops.id", ondelete="CASCADE"), nullable=False
+    )
+    labourer_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("labourers.id", ondelete="CASCADE"), nullable=False
+    )
+    day: Mapped[dt.date] = mapped_column(nullable=False)
+    status: Mapped[str] = mapped_column(Text, nullable=False)  # present | absent | half_day
+    overtime_hours: Mapped[decimal.Decimal] = mapped_column(
+        Numeric(12, 2), nullable=False, server_default=text("0")
+    )
+    created_by: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    created_at: Mapped[dt.datetime] = created_at_col()
+    updated_at: Mapped[dt.datetime] = created_at_col()
