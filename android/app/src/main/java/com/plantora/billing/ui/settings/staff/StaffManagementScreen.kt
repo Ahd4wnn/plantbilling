@@ -11,8 +11,11 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -118,7 +121,7 @@ fun StaffManagementScreen(
 
     ui.createForm?.let { form ->
         ModalBottomSheet(onDismissRequest = viewModel::closeCreate, sheetState = sheetState) {
-            Column(Modifier.fillMaxWidth().padding(horizontal = Dimens.lg).padding(bottom = Dimens.xl)) {
+            Column(Modifier.fillMaxWidth().imePadding().verticalScroll(rememberScrollState()).padding(horizontal = Dimens.lg).padding(bottom = Dimens.xl)) {
                 Text("Add salesperson", style = MaterialTheme.typography.headlineMedium)
                 Spacer(Modifier.height(Dimens.lg))
                 PlantoraTextField(form.email, viewModel::setEmail, label = "Login email")
@@ -147,7 +150,7 @@ fun StaffManagementScreen(
 
     ui.resetForm?.let { reset ->
         ModalBottomSheet(onDismissRequest = viewModel::closeReset, sheetState = sheetState) {
-            Column(Modifier.fillMaxWidth().padding(horizontal = Dimens.lg).padding(bottom = Dimens.xl)) {
+            Column(Modifier.fillMaxWidth().imePadding().verticalScroll(rememberScrollState()).padding(horizontal = Dimens.lg).padding(bottom = Dimens.xl)) {
                 Text("Reset password", style = MaterialTheme.typography.headlineMedium)
                 Spacer(Modifier.height(Dimens.sm))
                 Text(

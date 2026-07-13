@@ -1,6 +1,8 @@
 package com.plantora.billing.ui.labour
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -11,6 +13,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -92,7 +95,7 @@ fun LabourScreen(
             ui.loading -> LoadingState(Modifier.padding(padding))
             ui.error != null -> ErrorState(ui.error!!, onRetry = viewModel::load, icon = Icons.Rounded.Payments, modifier = Modifier.padding(padding))
             else -> LazyColumn(
-                Modifier.fillMaxSize().padding(padding),
+                Modifier.fillMaxSize().padding(padding).imePadding(),
                 contentPadding = PaddingValues(Dimens.screenPadding),
                 verticalArrangement = Arrangement.spacedBy(Dimens.md),
             ) {
@@ -206,7 +209,7 @@ private fun PaymentRow(p: LabourPayment, canManage: Boolean, onEdit: () -> Unit,
 
 @Composable
 private fun WorkerEditorSheet(editor: WorkerEditor, onName: (String) -> Unit, onPhone: (String) -> Unit, onAadhaar: (String) -> Unit, onGender: (String) -> Unit, onWage: (String) -> Unit, onSave: () -> Unit) {
-    Column(Modifier.fillMaxWidth().padding(horizontal = Dimens.lg).padding(bottom = Dimens.xl)) {
+    Column(Modifier.fillMaxWidth().imePadding().verticalScroll(rememberScrollState()).padding(horizontal = Dimens.lg).padding(bottom = Dimens.xl)) {
         Text(if (editor.id != null) "Edit worker" else "Add worker", style = MaterialTheme.typography.headlineMedium)
         Spacer(Modifier.height(Dimens.lg))
         PlantoraTextField(editor.name, onName, label = "Name")
@@ -242,7 +245,7 @@ private fun PaymentSheet(
     onSelect: (Labourer) -> Unit, onAdvance: (Boolean) -> Unit, onDays: (String) -> Unit, onAmount: (String) -> Unit,
     onMode: (LabourPayMode) -> Unit, onSplitCash: (String) -> Unit, onNote: (String) -> Unit, onSave: () -> Unit,
 ) {
-    Column(Modifier.fillMaxWidth().padding(horizontal = Dimens.lg).padding(bottom = Dimens.xl)) {
+    Column(Modifier.fillMaxWidth().imePadding().verticalScroll(rememberScrollState()).padding(horizontal = Dimens.lg).padding(bottom = Dimens.xl)) {
         Text(if (editor.id != null) "Edit payment" else if (editor.isAdvance) "Give advance" else "Record payment", style = MaterialTheme.typography.headlineMedium)
         Spacer(Modifier.height(Dimens.md))
         if (editor.id != null) {
@@ -307,7 +310,7 @@ private fun PaymentSheet(
 @Composable
 private fun WorkerDetailSheet(detail: WorkerDetail, onRecord: () -> Unit, onAdvance: () -> Unit) {
     val l = detail.labourer
-    Column(Modifier.fillMaxWidth().padding(horizontal = Dimens.lg).padding(bottom = Dimens.xl)) {
+    Column(Modifier.fillMaxWidth().imePadding().verticalScroll(rememberScrollState()).padding(horizontal = Dimens.lg).padding(bottom = Dimens.xl)) {
         Text(l.name, style = MaterialTheme.typography.headlineMedium)
         Text("${l.gender.replaceFirstChar { it.uppercase() }}" + (l.phone?.let { " • $it" } ?: "") + (l.aadhaar?.let { " • Aadhaar $it" } ?: ""), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Spacer(Modifier.height(Dimens.md))
@@ -366,7 +369,7 @@ private fun StatementRow(label: String, value: String) {
 
 @Composable
 private fun AttendanceSheet(labourers: List<Labourer>, attendance: Map<String, Attendance>, busyId: String?, onMark: (String, String) -> Unit) {
-    Column(Modifier.fillMaxWidth().padding(horizontal = Dimens.lg).padding(bottom = Dimens.xl)) {
+    Column(Modifier.fillMaxWidth().imePadding().verticalScroll(rememberScrollState()).padding(horizontal = Dimens.lg).padding(bottom = Dimens.xl)) {
         Text("Today's attendance", style = MaterialTheme.typography.headlineMedium)
         Spacer(Modifier.height(Dimens.md))
         if (labourers.isEmpty()) {
