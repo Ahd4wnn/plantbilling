@@ -25,9 +25,12 @@ import androidx.compose.material.icons.rounded.EmojiEvents
 import androidx.compose.material.icons.rounded.Storefront
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -51,11 +54,15 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.plantora.billing.domain.Labourer
+import com.plantora.billing.domain.LabourPayment
 import com.plantora.billing.domain.Money
+import com.plantora.billing.domain.OwnerCashInHand
 import com.plantora.billing.domain.OwnerStaff
 import com.plantora.billing.domain.ShopOverviewRow
 import com.plantora.billing.domain.StaffPerf
 import com.plantora.billing.domain.User
+import com.plantora.billing.domain.formatBillTime
 import com.plantora.billing.domain.toDisplay
 import com.plantora.billing.ui.components.ErrorState
 import com.plantora.billing.ui.components.LoadingState
@@ -378,9 +385,9 @@ private fun OwnerShopScreen(
                     }
                 }
                 item {
-                    // Cash left after expenses are paid out of the cash drawer
-                    // (cash sales − expenses) — the end-of-day count.
-                    KpiCard("Cash in hand", Money(r.cashTotal.amount - r.totalExpenses.amount).format(), Modifier.fillMaxWidth())
+                    // Real cash in the drawer from the server: running all-time
+                    // carry-over, or just this day's (cash sales − cash expenses − cash labour).
+                    CashInHandCard(ui.cashInHand, ui.cashFull, viewModel::setCashFull)
                 }
                 // Expense breakdown for the period so the owner can see where money went.
                 if (r.expenses.isNotEmpty()) {
@@ -413,10 +420,134 @@ private fun OwnerShopScreen(
                 items(ui.bills, key = { it.id }) { b -> OwnerBillRow(b) }
             }
 
+            // Labour roster (read-only) — workers, wage, days worked, balance.
+            item { SectionHeader("Labour") }
+            if (ui.labourers.isEmpty()) {
+                item { Text("No workers yet.", color = MaterialTheme.colorScheme.onSurfaceVariant) }
+            } else {
+                items(ui.labourers, key = { it.id }) { l -> OwnerLabourerRow(l, onOpen = { viewModel.openLabourer(l) }) }
+            }
+
             item { SectionHeader("Staff") }
             items(ui.staff, key = { it.id }) { s -> StaffRow(s, onRemove = { viewModel.deleteStaff(s) }) }
             item { AddStaff(ui.newStaff, viewModel) }
         }
+    }
+
+    ui.labourerDetail?.let { detail ->
+        ModalBottomSheet(onDismissRequest = viewModel::closeLabourer, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
+            OwnerLabourerDetailSheet(detail)
+        }
+    }
+}
+
+@Composable
+private fun CashInHandCard(cih: OwnerCashInHand?, full: Boolean, onFull: (Boolean) -> Unit) {
+    PlantoraCard {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                "Cash in hand" + if (full) " • all time" else " • this day",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.weight(1f),
+            )
+            FilterChip(selected = full, onClick = { onFull(true) }, label = { Text("Full") })
+            Spacer(Modifier.width(Dimens.xs))
+            FilterChip(selected = !full, onClick = { onFull(false) }, label = { Text("Per day") })
+        }
+        Spacer(Modifier.height(Dimens.xs))
+        MoneyText(
+            (if (full) cih?.running else cih?.today) ?: Money.ZERO,
+            style = MaterialTheme.typography.headlineSmall,
+            color = MaterialTheme.colorScheme.primary,
+        )
+    }
+}
+
+@Composable
+private fun OwnerLabourerRow(l: Labourer, onOpen: () -> Unit) {
+    PlantoraCard(modifier = Modifier.clickable(onClick = onOpen)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(l.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                Text(
+                    "${l.gender.replaceFirstChar { it.uppercase() }} • ${l.defaultWage.format()}/day • ${l.daysWorked} day(s)" + (l.phone?.let { " • $it" } ?: ""),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Column(horizontalAlignment = Alignment.End) {
+                MoneyText(
+                    Money(l.balanceToPay.amount.abs()),
+                    style = MaterialTheme.typography.titleMedium,
+                    color = when {
+                        l.balanceToPay.isPositive() -> MaterialTheme.colorScheme.error
+                        l.balanceToPay.isNegative() -> MaterialTheme.colorScheme.primary
+                        else -> MaterialTheme.colorScheme.onSurface
+                    },
+                )
+                Text(
+                    if (l.balanceToPay.isNegative()) "Paid ahead" else "To pay",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun OwnerLabourerDetailSheet(detail: LabourerDetail) {
+    val l = detail.labourer
+    Column(Modifier.fillMaxWidth().padding(horizontal = Dimens.lg).padding(bottom = Dimens.xl)) {
+        Text(l.name, style = MaterialTheme.typography.headlineMedium)
+        Text(
+            "${l.gender.replaceFirstChar { it.uppercase() }}" + (l.phone?.let { " • $it" } ?: "") + (l.aadhaar?.let { " • Aadhaar $it" } ?: ""),
+            style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(Modifier.height(Dimens.md))
+        OwnerStatementRow("Days worked", "${l.daysWorked} day(s)")
+        HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
+        OwnerStatementRow("Earned (${l.defaultWage.format()}/day)", l.earned.format())
+        HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
+        OwnerStatementRow("Total paid", l.totalPaid.format())
+        HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
+        Row(Modifier.fillMaxWidth().padding(vertical = Dimens.sm), verticalAlignment = Alignment.CenterVertically) {
+            Text(if (l.balanceToPay.isNegative()) "Paid ahead" else "Balance to pay", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+            MoneyText(
+                Money(l.balanceToPay.amount.abs()),
+                style = MaterialTheme.typography.titleLarge,
+                color = when {
+                    l.balanceToPay.isPositive() -> MaterialTheme.colorScheme.error
+                    l.balanceToPay.isNegative() -> MaterialTheme.colorScheme.primary
+                    else -> MaterialTheme.colorScheme.onSurface
+                },
+            )
+        }
+        Spacer(Modifier.height(Dimens.md))
+        Text("Payment history", style = MaterialTheme.typography.titleMedium)
+        Spacer(Modifier.height(Dimens.sm))
+        if (detail.loading) {
+            Text("Loading…", color = MaterialTheme.colorScheme.onSurfaceVariant)
+        } else if (detail.payments.isEmpty()) {
+            Text("No payments yet.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+        } else {
+            detail.payments.take(50).forEach { p ->
+                Row(Modifier.fillMaxWidth().padding(vertical = Dimens.xs), verticalAlignment = Alignment.CenterVertically) {
+                    val tag = when (p.kind) { "advance" -> " • advance"; "due_clear" -> " • due cleared"; else -> if (p.days != null) " • ${p.days} day(s)" else "" }
+                    Text(formatBillTime(p.createdAt) + " • " + p.paymentMethod.label + tag, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+                    MoneyText(p.totalAmount, style = MaterialTheme.typography.titleMedium)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun OwnerStatementRow(label: String, value: String) {
+    Row(Modifier.fillMaxWidth().padding(vertical = Dimens.sm), verticalAlignment = Alignment.CenterVertically) {
+        Text(label, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f))
+        Text(value, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
     }
 }
 

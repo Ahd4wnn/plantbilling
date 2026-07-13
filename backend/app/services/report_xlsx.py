@@ -263,14 +263,13 @@ def build_report_workbook(
         ], expenses, "(no expenses in this period)"),
         ("Labour Payments", [
             ("Date & Time", "text", 18), ("Labourer", "text", 22), ("Gender", "text", 9),
-            ("Type", "text", 10), ("Wage", "money", 12), ("OT Hours", "text", 9),
-            ("OT Amount", "money", 12), ("Total", "money", 13), ("Method", "text", 10),
-            ("Cash", "money", 12), ("UPI", "money", 12), ("Due", "money", 12),
-            ("Recorded By", "text", 24), ("Note", "wraptext", 28),
+            ("Type", "text", 11), ("Days", "text", 7), ("Wage", "money", 12), ("Total", "money", 13),
+            ("Method", "text", 10), ("Cash", "money", 12), ("UPI", "money", 12),
+            ("Due", "money", 12), ("Recorded By", "text", 24), ("Note", "wraptext", 28),
         ], labour, "(no labour payments in this period)"),
         ("Labour Attendance", [
             ("Day", "text", 14), ("Labourer", "text", 24), ("Status", "text", 14),
-            ("OT Hours", "text", 10), ("Marked By", "text", 26),
+            ("Marked By", "text", 26),
         ], attendance, "(no attendance marked in this period)"),
         ("Edit & Delete Log", [
             ("Date & Time", "text", 18), ("Action", "text", 10), ("Bill No", "text", 12),

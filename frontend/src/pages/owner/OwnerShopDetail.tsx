@@ -5,6 +5,8 @@ import {
   deleteShopStaff,
   getShopBillDetail,
   getShopCashInHand,
+  getShopLabourers,
+  getShopLabourerPayments,
   getShopReport,
   listOwnerShops,
   listShopBills,
@@ -19,6 +21,7 @@ import {
   type OwnerShop,
   type OwnerStaff,
 } from "@/api/owner";
+import type { Labourer, LabourPayment } from "@/api/labour";
 import { friendlyError } from "@/api/client";
 import { Spinner } from "@/components/Spinner";
 
@@ -251,6 +254,9 @@ export function OwnerShopDetail() {
         </div>
       </section>
 
+      {/* ── Labour ── */}
+      <LabourSection shopId={shopId} />
+
       {/* ── Business details ── */}
       {shop && <BusinessDetails shop={shop} onSaved={(s) => { setShop(s); setMsg("Business details saved."); }} />}
 
@@ -319,6 +325,95 @@ function BillDetailModal({ shopId, billId, onClose }: { shopId: string; billId: 
               {Number(bill.due_amount) > 0 && <Line label="Due" value={inr(bill.due_amount)} />}
             </div>
             {bill.remarks && <p className="rounded-card bg-surface-muted px-3 py-2 text-sm text-ink-soft">{bill.remarks}</p>}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function LabourSection({ shopId }: { shopId: string }) {
+  const [workers, setWorkers] = useState<Labourer[] | null>(null);
+  const [open, setOpen] = useState<Labourer | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+    getShopLabourers(shopId).then((w) => alive && setWorkers(w)).catch(() => alive && setWorkers([]));
+    return () => { alive = false; };
+  }, [shopId]);
+
+  return (
+    <section className="space-y-3">
+      <h2 className="text-lg font-semibold text-ink">Labour {workers && workers.length > 0 && <span className="text-ink-soft">({workers.length})</span>}</h2>
+      <div className="overflow-hidden rounded-card border border-border bg-white">
+        {!workers ? (
+          <div className="flex justify-center py-8 text-primary-600"><Spinner className="h-6 w-6" label="Loading" /></div>
+        ) : workers.length === 0 ? (
+          <p className="px-4 py-6 text-center text-ink-soft">No workers yet.</p>
+        ) : (
+          workers.map((w) => {
+            const bal = Number(w.balance_to_pay);
+            return (
+              <button type="button" key={w.id} onClick={() => setOpen(w)} className="flex w-full items-center justify-between gap-3 border-b border-border px-4 py-3 text-left last:border-0 hover:bg-surface-muted">
+                <div className="min-w-0">
+                  <div className="truncate font-semibold text-ink">{w.name}</div>
+                  <div className="mt-0.5 text-sm text-ink-soft">
+                    {w.gender === "male" ? "Male" : "Female"} · {inr(w.default_wage)}/day · {w.days_worked} day(s)
+                    {w.phone ? ` · ${w.phone}` : ""}{w.aadhaar ? ` · Aadhaar ${w.aadhaar}` : ""}
+                  </div>
+                </div>
+                <div className="shrink-0 text-right">
+                  <div className={["font-bold", bal > 0 ? "text-danger" : bal < 0 ? "text-primary-700" : "text-ink"].join(" ")}>
+                    {bal < 0 ? inr(String(-bal)) : inr(w.balance_to_pay)}
+                  </div>
+                  <div className="text-xs uppercase tracking-wide text-ink-soft">{bal < 0 ? "Paid ahead" : "To pay"}</div>
+                </div>
+              </button>
+            );
+          })
+        )}
+      </div>
+      {open && <LabourerModal shopId={shopId} worker={open} onClose={() => setOpen(null)} />}
+    </section>
+  );
+}
+
+function LabourerModal({ shopId, worker, onClose }: { shopId: string; worker: Labourer; onClose: () => void }) {
+  const [history, setHistory] = useState<LabourPayment[] | null>(null);
+  useEffect(() => {
+    let alive = true;
+    getShopLabourerPayments(shopId, worker.id).then((h) => alive && setHistory(h)).catch(() => alive && setHistory([]));
+    return () => { alive = false; };
+  }, [shopId, worker.id]);
+  const bal = Number(worker.balance_to_pay);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-4" onClick={onClose}>
+      <div className="max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-t-2xl bg-white p-5 sm:rounded-2xl" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-bold text-ink">{worker.name}</h3>
+          <button type="button" onClick={onClose} className="rounded-lg px-3 py-1 text-ink-soft hover:bg-surface-muted">Close</button>
+        </div>
+        <p className="mt-1 text-sm text-ink-soft">{worker.gender === "male" ? "Male" : "Female"}{worker.phone ? ` · ${worker.phone}` : ""}{worker.aadhaar ? ` · Aadhaar ${worker.aadhaar}` : ""}</p>
+        <div className="mt-3 space-y-1 rounded-card border border-border p-3 text-sm">
+          <Line label={`Days worked`} value={`${worker.days_worked} day(s)`} />
+          <Line label={`Earned (${inr(worker.default_wage)}/day)`} value={inr(worker.earned)} />
+          <Line label="Total paid" value={inr(worker.total_paid)} />
+          <Line label={bal < 0 ? "Paid ahead" : "Balance to pay"} value={bal < 0 ? inr(String(-bal)) : inr(worker.balance_to_pay)} bold />
+        </div>
+        <h4 className="mt-4 font-semibold text-ink">Payment history</h4>
+        {!history ? (
+          <div className="flex justify-center py-8 text-primary-600"><Spinner className="h-6 w-6" label="Loading" /></div>
+        ) : history.length === 0 ? (
+          <p className="py-4 text-center text-ink-soft">No payments yet.</p>
+        ) : (
+          <div className="mt-2 divide-y divide-border border-t border-border">
+            {history.map((p) => (
+              <div key={p.id} className="flex items-center justify-between gap-2 py-2">
+                <span className="text-sm text-ink-soft">{fmtDateTime(p.created_at)} · {p.payment_method}{p.kind === "advance" ? " · advance" : p.kind === "due_clear" ? " · due cleared" : p.days ? ` · ${p.days} day(s)` : ""}</span>
+                <span className="font-semibold text-ink">{inr(p.total_amount)}</span>
+              </div>
+            ))}
           </div>
         )}
       </div>

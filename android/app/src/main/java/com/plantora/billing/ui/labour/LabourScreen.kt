@@ -24,6 +24,7 @@ import androidx.compose.material.icons.rounded.Payments
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -41,10 +42,7 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -54,8 +52,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.plantora.billing.domain.Attendance
 import com.plantora.billing.domain.Labourer
 import com.plantora.billing.domain.LabourPayment
+import com.plantora.billing.domain.Money
 import com.plantora.billing.domain.formatBillTime
-import com.plantora.billing.ui.components.EmptyState
 import com.plantora.billing.ui.components.ErrorState
 import com.plantora.billing.ui.components.LoadingState
 import com.plantora.billing.ui.components.MoneyText
@@ -64,6 +62,9 @@ import com.plantora.billing.ui.components.PlantoraTextField
 import com.plantora.billing.ui.components.PrimaryButton
 import com.plantora.billing.ui.components.SecondaryButton
 import com.plantora.billing.ui.theme.Dimens
+
+/** Absolute value, for showing a negative balance ("paid ahead") as a positive amount. */
+private fun Money.abs(): Money = Money(amount.abs())
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -97,7 +98,7 @@ fun LabourScreen(
             ) {
                 item {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Dimens.sm)) {
-                        PrimaryButton(text = "Record payment", onClick = viewModel::openRecordPayment, modifier = Modifier.weight(1f))
+                        PrimaryButton(text = "Record payment", onClick = { viewModel.openRecordPayment() }, modifier = Modifier.weight(1f))
                         SecondaryButton(text = "Attendance", onClick = viewModel::openAttendance, leadingIcon = Icons.Rounded.CalendarMonth, modifier = Modifier.weight(1f))
                     }
                 }
@@ -135,22 +136,21 @@ fun LabourScreen(
 
     ui.workerEditor?.let { editor ->
         ModalBottomSheet(onDismissRequest = viewModel::closeWorker, sheetState = sheet) {
-            WorkerEditorSheet(editor, viewModel::setWorkerName, viewModel::setWorkerPhone, viewModel::setWorkerGender, viewModel::setWorkerWage, viewModel::setWorkerOtRate, viewModel::saveWorker)
+            WorkerEditorSheet(editor, viewModel::setWorkerName, viewModel::setWorkerPhone, viewModel::setWorkerAadhaar, viewModel::setWorkerGender, viewModel::setWorkerWage, viewModel::saveWorker)
         }
     }
     ui.paymentEditor?.let { editor ->
         ModalBottomSheet(onDismissRequest = viewModel::closePayment, sheetState = sheet) {
-            PaymentSheet(editor, ui.labourers, viewModel::selectPaymentLabourer, viewModel::setPaymentWage, viewModel::setPaymentHours, viewModel::setPaymentMode, viewModel::setPaymentSplitCash, viewModel::setPaymentNote, viewModel::savePayment)
+            PaymentSheet(editor, ui.labourers, viewModel::selectPaymentLabourer, viewModel::setPaymentAdvance, viewModel::setPaymentDays, viewModel::setPaymentAmount, viewModel::setPaymentMode, viewModel::setPaymentSplitCash, viewModel::setPaymentNote, viewModel::savePayment)
         }
     }
     ui.detail?.let { detail ->
         ModalBottomSheet(onDismissRequest = viewModel::closeDetail, sheetState = sheet) {
-            WorkerDetailSheet(detail, onClearDue = { viewModel.openClearDue(detail.labourer) }, onRecord = { viewModel.selectPaymentLabourer(detail.labourer); viewModel.openRecordPayment() })
-        }
-    }
-    ui.clearDue?.let { cd ->
-        ModalBottomSheet(onDismissRequest = viewModel::closeClearDue, sheetState = sheet) {
-            ClearDueSheet(cd, viewModel::setClearDueAmount, viewModel::setClearDueViaUpi, viewModel::confirmClearDue)
+            WorkerDetailSheet(
+                detail,
+                onRecord = { viewModel.closeDetail(); viewModel.openRecordPayment(detail.labourer, advance = false) },
+                onAdvance = { viewModel.closeDetail(); viewModel.openRecordPayment(detail.labourer, advance = true) },
+            )
         }
     }
     if (ui.showAttendance) {
@@ -167,11 +167,12 @@ private fun WorkerRow(l: Labourer, canManage: Boolean, onOpen: () -> Unit, onEdi
             Column(Modifier.weight(1f)) {
                 Text(l.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                 Text(
-                    "${l.gender.replaceFirstChar { it.uppercase() }} • Wage ${l.defaultWage.format()} • OT ${l.overtimeRate.format()}/hr" + (l.phone?.let { " • $it" } ?: ""),
+                    "${l.gender.replaceFirstChar { it.uppercase() }} • ${l.defaultWage.format()}/day" + (l.phone?.let { " • $it" } ?: ""),
                     style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                if (l.outstandingDue.isPositive()) {
-                    Text("Owes worker ${l.outstandingDue.format()}", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.error)
+                when {
+                    l.balanceToPay.isPositive() -> Text("Balance to pay ${l.balanceToPay.format()}", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.error)
+                    l.balanceToPay.isNegative() -> Text("Paid ahead ${l.balanceToPay.abs().format()}", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary)
                 }
             }
             if (canManage) {
@@ -187,10 +188,10 @@ private fun PaymentRow(p: LabourPayment, canManage: Boolean, onEdit: () -> Unit,
     PlantoraCard {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
-                Text(p.labourerName + (if (p.kind == "due_clear") " • due cleared" else ""), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                val ot = if (p.overtimeAmount.isPositive()) " • OT ${p.overtimeHours}h ${p.overtimeAmount.format()}" else ""
-                Text("${formatBillTime(p.createdAt)} • ${p.paymentMethod.label}$ot", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                if (p.dueAmount.isPositive()) Text("Due ${p.dueAmount.format()}", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.error)
+                val tag = when (p.kind) { "advance" -> " • advance"; "due_clear" -> " • due cleared"; else -> "" }
+                Text(p.labourerName + tag, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                val daysPart = if (p.kind == "wage" && p.days != null) " • ${p.days} day(s)" else ""
+                Text("${formatBillTime(p.createdAt)} • ${p.paymentMethod.label}$daysPart", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             Column(horizontalAlignment = Alignment.End) {
                 MoneyText(p.totalAmount, style = MaterialTheme.typography.titleMedium)
@@ -204,19 +205,19 @@ private fun PaymentRow(p: LabourPayment, canManage: Boolean, onEdit: () -> Unit,
 }
 
 @Composable
-private fun WorkerEditorSheet(editor: WorkerEditor, onName: (String) -> Unit, onPhone: (String) -> Unit, onGender: (String) -> Unit, onWage: (String) -> Unit, onOtRate: (String) -> Unit, onSave: () -> Unit) {
+private fun WorkerEditorSheet(editor: WorkerEditor, onName: (String) -> Unit, onPhone: (String) -> Unit, onAadhaar: (String) -> Unit, onGender: (String) -> Unit, onWage: (String) -> Unit, onSave: () -> Unit) {
     Column(Modifier.fillMaxWidth().padding(horizontal = Dimens.lg).padding(bottom = Dimens.xl)) {
         Text(if (editor.id != null) "Edit worker" else "Add worker", style = MaterialTheme.typography.headlineMedium)
         Spacer(Modifier.height(Dimens.lg))
         PlantoraTextField(editor.name, onName, label = "Name")
         Spacer(Modifier.height(Dimens.md))
-        PlantoraTextField(editor.phone, onPhone, label = "Phone (optional)", keyboardType = KeyboardType.Phone)
+        PlantoraTextField(editor.phone, onPhone, label = "Phone number", keyboardType = KeyboardType.Phone)
+        Spacer(Modifier.height(Dimens.md))
+        PlantoraTextField(editor.aadhaar, onAadhaar, label = "Aadhaar number (optional)", keyboardType = KeyboardType.Number)
         Spacer(Modifier.height(Dimens.md))
         GenderToggle(editor.gender, onGender)
         Spacer(Modifier.height(Dimens.md))
-        PlantoraTextField(editor.wage, onWage, label = "Default wage (₹)", keyboardType = KeyboardType.Decimal)
-        Spacer(Modifier.height(Dimens.md))
-        PlantoraTextField(editor.otRate, onOtRate, label = "Overtime rate per hour (₹)", keyboardType = KeyboardType.Decimal)
+        PlantoraTextField(editor.wage, onWage, label = "Wage per day (₹)", keyboardType = KeyboardType.Decimal)
         editor.error?.let { Spacer(Modifier.height(Dimens.md)); Text(it, color = MaterialTheme.colorScheme.error) }
         Spacer(Modifier.height(Dimens.xl))
         PrimaryButton(text = if (editor.id != null) "Save changes" else "Add worker", onClick = onSave, enabled = editor.canSave, loading = editor.saving, modifier = Modifier.fillMaxWidth())
@@ -238,11 +239,11 @@ private fun GenderToggle(gender: String, onGender: (String) -> Unit) {
 @Composable
 private fun PaymentSheet(
     editor: PaymentEditor, labourers: List<Labourer>,
-    onSelect: (Labourer) -> Unit, onWage: (String) -> Unit, onHours: (String) -> Unit,
+    onSelect: (Labourer) -> Unit, onAdvance: (Boolean) -> Unit, onDays: (String) -> Unit, onAmount: (String) -> Unit,
     onMode: (LabourPayMode) -> Unit, onSplitCash: (String) -> Unit, onNote: (String) -> Unit, onSave: () -> Unit,
 ) {
     Column(Modifier.fillMaxWidth().padding(horizontal = Dimens.lg).padding(bottom = Dimens.xl)) {
-        Text(if (editor.id != null) "Edit payment" else "Record payment", style = MaterialTheme.typography.headlineMedium)
+        Text(if (editor.id != null) "Edit payment" else if (editor.isAdvance) "Give advance" else "Record payment", style = MaterialTheme.typography.headlineMedium)
         Spacer(Modifier.height(Dimens.md))
         if (editor.id != null) {
             Text(editor.labourerName, style = MaterialTheme.typography.titleMedium)
@@ -253,11 +254,24 @@ private fun PaymentSheet(
                 labourers.forEach { l -> FilterChip(selected = editor.labourerId == l.id, onClick = { onSelect(l) }, label = { Text(l.name) }) }
             }
         }
+
+        // Wage payment vs advance
+        if (editor.id == null) {
+            Spacer(Modifier.height(Dimens.md))
+            SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
+                SegmentedButton(selected = !editor.isAdvance, onClick = { onAdvance(false) }, shape = SegmentedButtonDefaults.itemShape(0, 2)) { Text("Wage payment") }
+                SegmentedButton(selected = editor.isAdvance, onClick = { onAdvance(true) }, shape = SegmentedButtonDefaults.itemShape(1, 2)) { Text("Advance") }
+            }
+        }
+
+        if (!editor.isAdvance) {
+            Spacer(Modifier.height(Dimens.md))
+            Text("Wage per day: ${editor.wagePerDay.format()}", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Spacer(Modifier.height(Dimens.xs))
+            PlantoraTextField(editor.days, onDays, label = "Number of days", keyboardType = KeyboardType.Decimal)
+        }
         Spacer(Modifier.height(Dimens.md))
-        PlantoraTextField(editor.wage, onWage, label = "Wage (₹)", keyboardType = KeyboardType.Decimal)
-        Spacer(Modifier.height(Dimens.md))
-        PlantoraTextField(editor.otHours, onHours, label = "Overtime hours", keyboardType = KeyboardType.Decimal)
-        if (editor.otRate.isPositive()) { Spacer(Modifier.height(Dimens.xs)); Text("Overtime: ${editor.overtimeAmount.format()} (at ${editor.otRate.format()}/hr)", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+        PlantoraTextField(editor.amount, onAmount, label = if (editor.isAdvance) "Advance amount (₹)" else "Amount (₹)", keyboardType = KeyboardType.Decimal)
 
         Spacer(Modifier.height(Dimens.md))
         Text("Payment method", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -266,7 +280,7 @@ private fun PaymentSheet(
             val modes = LabourPayMode.entries
             modes.forEachIndexed { i, m ->
                 SegmentedButton(selected = editor.mode == m, onClick = { onMode(m) }, shape = SegmentedButtonDefaults.itemShape(i, modes.size)) {
-                    Text(when (m) { LabourPayMode.CASH -> "Cash"; LabourPayMode.UPI -> "UPI"; LabourPayMode.SPLIT -> "Split"; LabourPayMode.DUE -> "Due" })
+                    Text(when (m) { LabourPayMode.CASH -> "Cash"; LabourPayMode.UPI -> "UPI"; LabourPayMode.SPLIT -> "Split" })
                 }
             }
         }
@@ -275,10 +289,6 @@ private fun PaymentSheet(
             PlantoraTextField(editor.splitCash, onSplitCash, label = "Cash part (₹)", keyboardType = KeyboardType.Decimal)
             Spacer(Modifier.height(Dimens.xs))
             Text("UPI part: ${editor.upi.format()}", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-        if (editor.mode == LabourPayMode.DUE) {
-            Spacer(Modifier.height(Dimens.xs))
-            Text("This whole amount will be recorded as owed to the worker.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
 
         Spacer(Modifier.height(Dimens.md))
@@ -290,31 +300,42 @@ private fun PaymentSheet(
         }
         editor.error?.let { Spacer(Modifier.height(Dimens.md)); Text(it, color = MaterialTheme.colorScheme.error) }
         Spacer(Modifier.height(Dimens.xl))
-        PrimaryButton(text = if (editor.id != null) "Save changes" else "Record payment", onClick = onSave, enabled = editor.canSave, loading = editor.saving, modifier = Modifier.fillMaxWidth())
+        PrimaryButton(text = if (editor.id != null) "Save changes" else if (editor.isAdvance) "Give advance" else "Record payment", onClick = onSave, enabled = editor.canSave, loading = editor.saving, modifier = Modifier.fillMaxWidth())
     }
 }
 
 @Composable
-private fun WorkerDetailSheet(detail: WorkerDetail, onClearDue: () -> Unit, onRecord: () -> Unit) {
+private fun WorkerDetailSheet(detail: WorkerDetail, onRecord: () -> Unit, onAdvance: () -> Unit) {
     val l = detail.labourer
     Column(Modifier.fillMaxWidth().padding(horizontal = Dimens.lg).padding(bottom = Dimens.xl)) {
         Text(l.name, style = MaterialTheme.typography.headlineMedium)
-        Text("${l.gender.replaceFirstChar { it.uppercase() }}" + (l.phone?.let { " • $it" } ?: ""), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text("${l.gender.replaceFirstChar { it.uppercase() }}" + (l.phone?.let { " • $it" } ?: "") + (l.aadhaar?.let { " • Aadhaar $it" } ?: ""), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Spacer(Modifier.height(Dimens.md))
-        Row(Modifier.fillMaxWidth()) {
-            Column(Modifier.weight(1f)) {
-                Text("Total paid", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                MoneyText(l.totalPaid, style = MaterialTheme.typography.titleLarge)
-            }
-            Column(Modifier.weight(1f)) {
-                Text("Outstanding", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                MoneyText(l.outstandingDue, style = MaterialTheme.typography.titleLarge, color = if (l.outstandingDue.isPositive()) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface)
-            }
+
+        // Statement of pay
+        StatementRow("Days worked", "${l.daysWorked} day(s)")
+        HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
+        StatementRow("Earned (${l.defaultWage.format()}/day)", l.earned.format())
+        HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
+        StatementRow("Total paid", l.totalPaid.format())
+        HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
+        Row(Modifier.fillMaxWidth().padding(vertical = Dimens.sm), verticalAlignment = Alignment.CenterVertically) {
+            Text(if (l.balanceToPay.isNegative()) "Paid ahead" else "Balance to pay", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+            MoneyText(
+                l.balanceToPay.abs(),
+                style = MaterialTheme.typography.titleLarge,
+                color = when {
+                    l.balanceToPay.isPositive() -> MaterialTheme.colorScheme.error
+                    l.balanceToPay.isNegative() -> MaterialTheme.colorScheme.primary
+                    else -> MaterialTheme.colorScheme.onSurface
+                },
+            )
         }
+
         Spacer(Modifier.height(Dimens.md))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Dimens.sm)) {
-            SecondaryButton(text = "Record payment", onClick = onRecord, modifier = Modifier.weight(1f))
-            if (l.outstandingDue.isPositive()) PrimaryButton(text = "Clear due", onClick = onClearDue, modifier = Modifier.weight(1f))
+            SecondaryButton(text = "Give advance", onClick = onAdvance, modifier = Modifier.weight(1f))
+            PrimaryButton(text = "Record payment", onClick = onRecord, modifier = Modifier.weight(1f))
         }
         Spacer(Modifier.height(Dimens.md))
         Text("Payment history", style = MaterialTheme.typography.titleMedium)
@@ -326,10 +347,8 @@ private fun WorkerDetailSheet(detail: WorkerDetail, onClearDue: () -> Unit, onRe
         } else {
             detail.payments.take(50).forEach { p ->
                 Row(Modifier.fillMaxWidth().padding(vertical = Dimens.xs), verticalAlignment = Alignment.CenterVertically) {
-                    Column(Modifier.weight(1f)) {
-                        Text(formatBillTime(p.createdAt) + " • " + p.paymentMethod.label + (if (p.kind == "due_clear") " • due cleared" else ""), style = MaterialTheme.typography.bodyMedium)
-                        if (p.dueAmount.isPositive()) Text("Due ${p.dueAmount.format()}", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.error)
-                    }
+                    val tag = when (p.kind) { "advance" -> " • advance"; "due_clear" -> " • due cleared"; else -> if (p.days != null) " • ${p.days} day(s)" else "" }
+                    Text(formatBillTime(p.createdAt) + " • " + p.paymentMethod.label + tag, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
                     MoneyText(p.totalAmount, style = MaterialTheme.typography.titleMedium)
                 }
             }
@@ -337,28 +356,16 @@ private fun WorkerDetailSheet(detail: WorkerDetail, onClearDue: () -> Unit, onRe
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun ClearDueSheet(cd: ClearDueEditor, onAmount: (String) -> Unit, onViaUpi: (Boolean) -> Unit, onConfirm: () -> Unit) {
-    Column(Modifier.fillMaxWidth().padding(horizontal = Dimens.lg).padding(bottom = Dimens.xl)) {
-        Text("Clear due — ${cd.labourerName}", style = MaterialTheme.typography.headlineMedium)
-        Spacer(Modifier.height(Dimens.xs))
-        Text("Outstanding: ${cd.outstanding.format()}", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.error)
-        Spacer(Modifier.height(Dimens.md))
-        PlantoraTextField(cd.amount, onAmount, label = "Amount to pay (₹)", keyboardType = KeyboardType.Decimal)
-        Spacer(Modifier.height(Dimens.md))
-        SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
-            SegmentedButton(selected = !cd.viaUpi, onClick = { onViaUpi(false) }, shape = SegmentedButtonDefaults.itemShape(0, 2)) { Text("Cash") }
-            SegmentedButton(selected = cd.viaUpi, onClick = { onViaUpi(true) }, shape = SegmentedButtonDefaults.itemShape(1, 2)) { Text("UPI") }
-        }
-        cd.error?.let { Spacer(Modifier.height(Dimens.md)); Text(it, color = MaterialTheme.colorScheme.error) }
-        Spacer(Modifier.height(Dimens.xl))
-        PrimaryButton(text = "Pay ${com.plantora.billing.domain.Money.parse(cd.amount).format()}", onClick = onConfirm, loading = cd.saving, modifier = Modifier.fillMaxWidth())
+private fun StatementRow(label: String, value: String) {
+    Row(Modifier.fillMaxWidth().padding(vertical = Dimens.sm), verticalAlignment = Alignment.CenterVertically) {
+        Text(label, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f))
+        Text(value, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
     }
 }
 
 @Composable
-private fun AttendanceSheet(labourers: List<Labourer>, attendance: Map<String, Attendance>, busyId: String?, onMark: (String, String, String) -> Unit) {
+private fun AttendanceSheet(labourers: List<Labourer>, attendance: Map<String, Attendance>, busyId: String?, onMark: (String, String) -> Unit) {
     Column(Modifier.fillMaxWidth().padding(horizontal = Dimens.lg).padding(bottom = Dimens.xl)) {
         Text("Today's attendance", style = MaterialTheme.typography.headlineMedium)
         Spacer(Modifier.height(Dimens.md))
@@ -367,17 +374,17 @@ private fun AttendanceSheet(labourers: List<Labourer>, attendance: Map<String, A
         }
         labourers.forEach { l ->
             val rec = attendance[l.id]
-            var ot by rememberSaveable(l.id) { mutableStateOf(rec?.overtimeHours ?: "") }
             Column(Modifier.fillMaxWidth().padding(vertical = Dimens.sm)) {
-                Text(l.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                Spacer(Modifier.height(Dimens.xs))
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Dimens.xs)) {
-                    AttChip("Present", rec?.status == "present", busyId == l.id) { onMark(l.id, "present", ot) }
-                    AttChip("Half-day", rec?.status == "half_day", busyId == l.id) { onMark(l.id, "half_day", ot) }
-                    AttChip("Absent", rec?.status == "absent", busyId == l.id) { onMark(l.id, "absent", ot) }
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Text(l.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                    Text("${l.daysWorked} day(s) worked", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 Spacer(Modifier.height(Dimens.xs))
-                PlantoraTextField(ot, { ot = it }, label = "Overtime hours (optional)", keyboardType = KeyboardType.Decimal)
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Dimens.xs)) {
+                    AttChip("Present", rec?.status == "present", busyId == l.id) { onMark(l.id, "present") }
+                    AttChip("Half-day", rec?.status == "half_day", busyId == l.id) { onMark(l.id, "half_day") }
+                    AttChip("Absent", rec?.status == "absent", busyId == l.id) { onMark(l.id, "absent") }
+                }
             }
         }
     }

@@ -5,16 +5,20 @@ export type Gender = "male" | "female";
 export type PayMethod = "cash" | "upi" | "split" | "due";
 export type AttendanceStatus = "present" | "absent" | "half_day";
 
+export type PayKind = "wage" | "advance" | "due_clear";
+
 export interface Labourer {
   id: string;
   name: string;
   phone: string | null;
+  aadhaar: string | null;
   gender: Gender;
-  default_wage: string;
-  overtime_rate: string;
+  default_wage: string;       // wage per day
   is_active: boolean;
+  days_worked: string;        // present + ½·half-day (from attendance)
   total_paid: string;
-  outstanding_due: string;
+  earned: string;             // wage_per_day × days_worked
+  balance_to_pay: string;     // earned − total_paid (negative = paid ahead)
   created_at: string;
 }
 
@@ -23,11 +27,9 @@ export interface LabourPayment {
   labourer_id: string | null;
   labourer_name: string;
   gender: Gender;
-  kind: "wage" | "due_clear";
+  kind: PayKind;
   wage_amount: string;
-  overtime_hours: string;
-  overtime_rate: string;
-  overtime_amount: string;
+  days: string | null;
   total_amount: string;
   cash_amount: string;
   upi_amount: string;
@@ -44,7 +46,6 @@ export interface Attendance {
   labourer_name: string;
   day: string;
   status: AttendanceStatus;
-  overtime_hours: string;
   created_at: string;
 }
 
@@ -57,9 +58,9 @@ export async function listLabourers(): Promise<Labourer[]> {
 export interface LabourerPayload {
   name: string;
   phone?: string | null;
+  aadhaar?: string | null;
   gender: Gender;
   default_wage?: string;
-  overtime_rate?: string;
 }
 
 export async function createLabourer(payload: LabourerPayload): Promise<Labourer> {
@@ -86,8 +87,9 @@ export async function listLabourPayments(labourerId?: string): Promise<LabourPay
 
 export interface LabourPaymentPayload {
   labourer_id: string;
+  kind?: "wage" | "advance";
   wage_amount: string;
-  overtime_hours: string;
+  days?: string | null;
   cash_amount: string;
   upi_amount: string;
   due_amount: string;
@@ -104,7 +106,7 @@ export async function listAttendance(day?: string): Promise<Attendance[]> {
   return data;
 }
 
-export async function markAttendance(payload: { labourer_id: string; day: string; status: AttendanceStatus; overtime_hours: string }): Promise<Attendance> {
+export async function markAttendance(payload: { labourer_id: string; day: string; status: AttendanceStatus }): Promise<Attendance> {
   const { data } = await api.post<Attendance>("/labour/attendance", payload);
   return data;
 }
@@ -116,7 +118,7 @@ export async function createLabourPayment(payload: LabourPaymentPayload): Promis
 
 export async function updateLabourPayment(
   id: string,
-  payload: { wage_amount?: string; overtime_hours?: string; cash_amount?: string; upi_amount?: string; due_amount?: string; note?: string | null },
+  payload: { wage_amount?: string; days?: string | null; cash_amount?: string; upi_amount?: string; due_amount?: string; note?: string | null },
 ): Promise<LabourPayment> {
   const { data } = await api.patch<LabourPayment>(`/labour/payments/${id}`, payload);
   return data;

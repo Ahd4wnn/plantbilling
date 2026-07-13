@@ -28,6 +28,8 @@ from app.models.shop import Shop
 from app.models.shop_owner import ShopOwner
 from app.models.user import ROLE_MANAGER, ROLE_SALESPERSON, User
 from app.models.labour import LabourPayment
+from app.routers.labour import labourers_with_ledger, _payment_out
+from app.schemas.labour import LabourerOut, LabourPaymentOut
 from app.routers.bills import (
     SHOP_TZ,
     _generate_report_data,
@@ -288,6 +290,33 @@ def shop_bill_detail(
         created_at=bill.created_at,
         items=[BillItemOut.model_validate(it) for it in items],
     )
+
+
+# ── Labour roster + payment history for an owned shop (read-only) ─────────────
+@router.get("/shops/{shop_id}/labourers", response_model=list[LabourerOut])
+def shop_labourers(
+    shop_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    owner: User = Depends(require_owner),
+) -> list[LabourerOut]:
+    _owned_shop_or_404(db, owner, shop_id)
+    return labourers_with_ledger(db, shop_id=shop_id)
+
+
+@router.get("/shops/{shop_id}/labourers/{labourer_id}/payments", response_model=list[LabourPaymentOut])
+def shop_labourer_payments(
+    shop_id: uuid.UUID,
+    labourer_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    owner: User = Depends(require_owner),
+) -> list[LabourPaymentOut]:
+    _owned_shop_or_404(db, owner, shop_id)
+    rows = db.execute(
+        select(LabourPayment)
+        .where(LabourPayment.shop_id == shop_id, LabourPayment.labourer_id == labourer_id)
+        .order_by(LabourPayment.created_at.desc())
+    ).scalars().all()
+    return [_payment_out(db, p) for p in rows]
 
 
 # ── Aggregate overview across all owned shops ─────────────────────────────────

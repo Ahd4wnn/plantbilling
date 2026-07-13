@@ -10,8 +10,11 @@ import com.plantora.billing.data.remote.dto.OwnerStaffDto
 import com.plantora.billing.data.remote.dto.ShopOverviewRowDto
 import com.plantora.billing.data.remote.dto.StaffPerfDto
 import com.plantora.billing.domain.DetailedReport
+import com.plantora.billing.domain.Labourer
+import com.plantora.billing.domain.LabourPayment
 import com.plantora.billing.domain.Money
 import com.plantora.billing.domain.OwnerBill
+import com.plantora.billing.domain.OwnerCashInHand
 import com.plantora.billing.domain.OwnerOverview
 import com.plantora.billing.domain.OwnerShop
 import com.plantora.billing.domain.OwnerStaff
@@ -34,6 +37,16 @@ class OwnerRepository @Inject constructor(
 
     suspend fun bills(shopId: String, dateFrom: String?, dateTo: String?): List<OwnerBill> =
         api.bills(shopId, dateFrom, dateTo).items.map { it.toDomain() }
+
+    suspend fun cashInHand(shopId: String, date: String?): OwnerCashInHand {
+        val d = api.cashInHand(shopId, date)
+        return OwnerCashInHand(running = Money.parse(d.running), today = Money.parse(d.today))
+    }
+
+    suspend fun labourers(shopId: String): List<Labourer> = api.labourers(shopId).map { it.toDomain() }
+
+    suspend fun labourerPayments(shopId: String, labourerId: String): List<LabourPayment> =
+        api.labourerPayments(shopId, labourerId).map { it.toDomain() }
 
     suspend fun staff(shopId: String): List<OwnerStaff> = api.staff(shopId).map { it.toDomain() }
 

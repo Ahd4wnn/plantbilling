@@ -1,7 +1,10 @@
 package com.plantora.billing.data.remote.api
 
 import com.plantora.billing.data.remote.dto.DetailedReportDto
+import com.plantora.billing.data.remote.dto.LabourPaymentDto
+import com.plantora.billing.data.remote.dto.LabourerDto
 import com.plantora.billing.data.remote.dto.OwnerBillListDto
+import com.plantora.billing.data.remote.dto.OwnerCashInHandDto
 import com.plantora.billing.data.remote.dto.OwnerOverviewDto
 import com.plantora.billing.data.remote.dto.OwnerShopDto
 import com.plantora.billing.data.remote.dto.OwnerShopUpdateDto
@@ -42,6 +45,18 @@ interface OwnerApi {
         @Query("date_to") dateTo: String? = null,
         @Query("limit") limit: Int = 50,
     ): OwnerBillListDto
+
+    @GET("/owner/shops/{id}/cash-in-hand")
+    suspend fun cashInHand(@Path("id") id: String, @Query("date") date: String? = null): OwnerCashInHandDto
+
+    @GET("/owner/shops/{id}/labourers")
+    suspend fun labourers(@Path("id") id: String): List<LabourerDto>
+
+    @GET("/owner/shops/{shopId}/labourers/{labourerId}/payments")
+    suspend fun labourerPayments(
+        @Path("shopId") shopId: String,
+        @Path("labourerId") labourerId: String,
+    ): List<LabourPaymentDto>
 
     @GET("/owner/shops/{id}/staff")
     suspend fun staff(@Path("id") id: String): List<OwnerStaffDto>

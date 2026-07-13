@@ -1260,15 +1260,19 @@ def download_detailed_report(
         ).order_by(LabourPayment.created_at.asc())
     ).scalars().all()
 
-    def _hours(v) -> str:
-        d = Decimal(v or 0)
+    _LABOUR_KIND = {"advance": "Advance", "due_clear": "Due payment", "wage": "Wage"}
+
+    def _days_str(v) -> str:
+        if v is None:
+            return ""
+        d = Decimal(v)
         return str(d.quantize(Decimal("1")) if d == d.to_integral_value() else d.normalize())
 
     labour_tab = [
         [
             ist(lp.created_at), lp.labourer_name, lp.gender.capitalize(),
-            "Due payment" if lp.kind == "due_clear" else "Wage",
-            lp.wage_amount, _hours(lp.overtime_hours), lp.overtime_amount, lp.total_amount,
+            _LABOUR_KIND.get(lp.kind, "Wage"),
+            _days_str(lp.days), lp.wage_amount, lp.total_amount,
             _payment_method(lp.cash_amount, lp.upi_amount, lp.due_amount).upper(),
             lp.cash_amount, lp.upi_amount, lp.due_amount,
             _user_email(db, lp.created_by) or "—", lp.note or "",
@@ -1294,7 +1298,7 @@ def download_detailed_report(
     attendance_tab = [
         [
             str(a.day), name, _STATUS_LABEL.get(a.status, a.status),
-            _hours(a.overtime_hours), _user_email(db, a.created_by) or "—",
+            _user_email(db, a.created_by) or "—",
         ]
         for a, name in att_records
     ]

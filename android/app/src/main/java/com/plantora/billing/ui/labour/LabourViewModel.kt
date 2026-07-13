@@ -19,17 +19,21 @@ import kotlinx.coroutines.launch
 import java.math.BigDecimal
 import javax.inject.Inject
 
-private fun hoursToDecimal(s: String): BigDecimal = s.trim().toBigDecimalOrNull() ?: BigDecimal.ZERO
+private fun daysDecimal(s: String): BigDecimal = s.trim().toBigDecimalOrNull() ?: BigDecimal.ZERO
 
-enum class LabourPayMode { CASH, UPI, SPLIT, DUE }
+/** Amount = wage per day × number of days. */
+private fun wageFor(wagePerDay: Money, days: String): Money =
+    Money(wagePerDay.amount.multiply(daysDecimal(days)))
+
+enum class LabourPayMode { CASH, UPI, SPLIT }
 
 data class WorkerEditor(
     val id: String? = null,
     val name: String = "",
     val phone: String = "",
+    val aadhaar: String = "",
     val gender: String = "male",
     val wage: String = "",
-    val otRate: String = "",
     val saving: Boolean = false,
     val error: String? = null,
 ) {
@@ -40,49 +44,37 @@ data class PaymentEditor(
     val id: String? = null,
     val labourerId: String? = null,
     val labourerName: String = "",
-    val wage: String = "",
-    val otHours: String = "",
-    val otRate: Money = Money.ZERO,
+    val isAdvance: Boolean = false,
+    val wagePerDay: Money = Money.ZERO,
+    val days: String = "1",
+    val amount: String = "",
     val mode: LabourPayMode = LabourPayMode.CASH,
     val splitCash: String = "",
     val note: String = "",
     val saving: Boolean = false,
     val error: String? = null,
 ) {
-    val overtimeAmount: Money get() = Money(otRate.amount.multiply(hoursToDecimal(otHours)))
-    val total: Money get() = Money.parse(wage) + overtimeAmount
+    val total: Money get() = Money.parse(amount)
 
     val cash: Money
         get() = when (mode) {
             LabourPayMode.CASH -> total
-            LabourPayMode.UPI, LabourPayMode.DUE -> Money.ZERO
+            LabourPayMode.UPI -> Money.ZERO
             LabourPayMode.SPLIT -> Money.parse(splitCash)
         }
     val upi: Money
         get() = when (mode) {
             LabourPayMode.UPI -> total
-            LabourPayMode.CASH, LabourPayMode.DUE -> Money.ZERO
+            LabourPayMode.CASH -> Money.ZERO
             LabourPayMode.SPLIT -> (total - Money.parse(splitCash)).let { if (it.isNegative()) Money.ZERO else it }
         }
-    val due: Money get() = if (mode == LabourPayMode.DUE) total else Money.ZERO
 
     val canSave: Boolean
-        get() = labourerId != null && wage.isNotBlank() && !saving &&
+        get() = labourerId != null && amount.isNotBlank() && !saving &&
             (mode != LabourPayMode.SPLIT || Money.parse(splitCash) <= total)
 }
 
-/** Pay off a worker's outstanding due. */
-data class ClearDueEditor(
-    val labourerId: String,
-    val labourerName: String,
-    val outstanding: Money,
-    val amount: String = "",
-    val viaUpi: Boolean = false,
-    val saving: Boolean = false,
-    val error: String? = null,
-)
-
-/** The worker whose history/detail sheet is open. */
+/** The worker whose statement/history sheet is open. */
 data class WorkerDetail(
     val labourer: Labourer,
     val loading: Boolean = true,
@@ -98,7 +90,6 @@ data class LabourUiState(
     val query: String = "",
     val workerEditor: WorkerEditor? = null,
     val paymentEditor: PaymentEditor? = null,
-    val clearDue: ClearDueEditor? = null,
     val detail: WorkerDetail? = null,
     // Attendance (today).
     val showAttendance: Boolean = false,
@@ -153,14 +144,14 @@ class LabourViewModel @Inject constructor(
     // ── Worker editor ──
     fun openAddWorker() = _ui.update { it.copy(workerEditor = WorkerEditor()) }
     fun openEditWorker(l: Labourer) = _ui.update {
-        it.copy(workerEditor = WorkerEditor(id = l.id, name = l.name, phone = l.phone ?: "", gender = l.gender, wage = l.defaultWage.toInput(), otRate = l.overtimeRate.toInput()))
+        it.copy(workerEditor = WorkerEditor(id = l.id, name = l.name, phone = l.phone ?: "", aadhaar = l.aadhaar ?: "", gender = l.gender, wage = l.defaultWage.toInput()))
     }
     fun closeWorker() = _ui.update { it.copy(workerEditor = null) }
     fun setWorkerName(v: String) = _ui.update { it.copy(workerEditor = it.workerEditor?.copy(name = v, error = null)) }
     fun setWorkerPhone(v: String) = _ui.update { it.copy(workerEditor = it.workerEditor?.copy(phone = v, error = null)) }
+    fun setWorkerAadhaar(v: String) = _ui.update { it.copy(workerEditor = it.workerEditor?.copy(aadhaar = v, error = null)) }
     fun setWorkerGender(v: String) = _ui.update { it.copy(workerEditor = it.workerEditor?.copy(gender = v)) }
     fun setWorkerWage(v: String) = _ui.update { it.copy(workerEditor = it.workerEditor?.copy(wage = v, error = null)) }
-    fun setWorkerOtRate(v: String) = _ui.update { it.copy(workerEditor = it.workerEditor?.copy(otRate = v, error = null)) }
 
     fun saveWorker() {
         val e = _ui.value.workerEditor ?: return
@@ -168,8 +159,8 @@ class LabourViewModel @Inject constructor(
         _ui.update { it.copy(workerEditor = e.copy(saving = true, error = null)) }
         viewModelScope.launch {
             runCatching {
-                if (e.id == null) repo.addLabourer(e.name, e.phone, e.gender, Money.parse(e.wage), Money.parse(e.otRate))
-                else repo.updateLabourer(e.id, e.name, e.phone, e.gender, Money.parse(e.wage), Money.parse(e.otRate))
+                if (e.id == null) repo.addLabourer(e.name, e.phone, e.aadhaar, e.gender, Money.parse(e.wage))
+                else repo.updateLabourer(e.id, e.name, e.phone, e.aadhaar, e.gender, Money.parse(e.wage))
             }.onSuccess { _ui.update { it.copy(workerEditor = null, message = "Saved.") }; load() }
                 .onFailure { err -> _ui.update { it.copy(workerEditor = e.copy(saving = false, error = friendlyError(err))) } }
         }
@@ -184,25 +175,48 @@ class LabourViewModel @Inject constructor(
     }
 
     // ── Payment editor ──
-    fun openRecordPayment() {
+    fun openRecordPayment(worker: Labourer? = null, advance: Boolean = false) {
         if (_ui.value.labourers.isEmpty()) { _ui.update { it.copy(message = "Add a worker first.") }; return }
-        _ui.update { it.copy(paymentEditor = PaymentEditor()) }
+        val editor = PaymentEditor(
+            labourerId = worker?.id,
+            labourerName = worker?.name ?: "",
+            isAdvance = advance,
+            wagePerDay = worker?.defaultWage ?: Money.ZERO,
+            days = "1",
+            amount = if (worker != null && !advance) wageFor(worker.defaultWage, "1").toInput() else "",
+        )
+        _ui.update { it.copy(paymentEditor = editor) }
     }
     fun openEditPayment(p: LabourPayment) = _ui.update {
         val mode = when (p.paymentMethod) {
             com.plantora.billing.domain.PaymentMethod.UPI -> LabourPayMode.UPI
-            com.plantora.billing.domain.PaymentMethod.DUE -> LabourPayMode.DUE
             com.plantora.billing.domain.PaymentMethod.SPLIT -> LabourPayMode.SPLIT
             else -> LabourPayMode.CASH
         }
-        it.copy(paymentEditor = PaymentEditor(id = p.id, labourerId = p.labourerId ?: p.id, labourerName = p.labourerName, wage = p.wageAmount.toInput(), otHours = p.overtimeHours, otRate = p.overtimeRate, mode = mode, splitCash = p.cashAmount.toInput(), note = p.note ?: ""))
+        val wagePerDay = it.labourers.find { l -> l.id == p.labourerId }?.defaultWage ?: Money.ZERO
+        it.copy(paymentEditor = PaymentEditor(
+            id = p.id, labourerId = p.labourerId ?: p.id, labourerName = p.labourerName,
+            isAdvance = p.kind == "advance", wagePerDay = wagePerDay, days = p.days ?: "1",
+            amount = p.wageAmount.toInput(), mode = mode, splitCash = p.cashAmount.toInput(), note = p.note ?: "",
+        ))
     }
     fun closePayment() = _ui.update { it.copy(paymentEditor = null) }
     fun selectPaymentLabourer(l: Labourer) = _ui.update {
-        it.copy(paymentEditor = it.paymentEditor?.copy(labourerId = l.id, labourerName = l.name, wage = l.defaultWage.toInput(), otRate = l.overtimeRate, error = null))
+        val ed = it.paymentEditor ?: return@update it
+        val amount = if (!ed.isAdvance) wageFor(l.defaultWage, ed.days).toInput() else ed.amount
+        it.copy(paymentEditor = ed.copy(labourerId = l.id, labourerName = l.name, wagePerDay = l.defaultWage, amount = amount, error = null))
     }
-    fun setPaymentWage(v: String) = _ui.update { it.copy(paymentEditor = it.paymentEditor?.copy(wage = v, error = null)) }
-    fun setPaymentHours(v: String) = _ui.update { it.copy(paymentEditor = it.paymentEditor?.copy(otHours = v, error = null)) }
+    fun setPaymentDays(v: String) = _ui.update {
+        val ed = it.paymentEditor ?: return@update it
+        val amount = if (!ed.isAdvance) wageFor(ed.wagePerDay, v).toInput() else ed.amount
+        it.copy(paymentEditor = ed.copy(days = v, amount = amount, error = null))
+    }
+    fun setPaymentAmount(v: String) = _ui.update { it.copy(paymentEditor = it.paymentEditor?.copy(amount = v, error = null)) }
+    fun setPaymentAdvance(advance: Boolean) = _ui.update {
+        val ed = it.paymentEditor ?: return@update it
+        val amount = if (advance) "" else wageFor(ed.wagePerDay, ed.days).toInput()
+        it.copy(paymentEditor = ed.copy(isAdvance = advance, amount = amount, error = null))
+    }
     fun setPaymentMode(m: LabourPayMode) = _ui.update {
         val ed = it.paymentEditor ?: return@update it
         val seeded = if (m == LabourPayMode.SPLIT && ed.splitCash.isBlank()) ed.copy(mode = m, splitCash = ed.total.toInput(), error = null) else ed.copy(mode = m, error = null)
@@ -215,10 +229,13 @@ class LabourViewModel @Inject constructor(
         val e = _ui.value.paymentEditor ?: return
         if (!e.canSave) return
         _ui.update { it.copy(paymentEditor = e.copy(saving = true, error = null)) }
+        val amount = Money.parse(e.amount)
+        val days = if (e.isAdvance) null else e.days
+        val kind = if (e.isAdvance) "advance" else "wage"
         viewModelScope.launch {
             runCatching {
-                if (e.id == null) repo.recordPayment(e.labourerId!!, Money.parse(e.wage), e.otHours, e.cash, e.upi, e.due, e.note)
-                else repo.updatePayment(e.id, Money.parse(e.wage), e.otHours, e.cash, e.upi, e.due, e.note)
+                if (e.id == null) repo.recordPayment(e.labourerId!!, kind, amount, days, e.cash, e.upi, e.note)
+                else repo.updatePayment(e.id, amount, days, e.cash, e.upi, e.note)
             }.onSuccess { _ui.update { it.copy(paymentEditor = null, message = "Payment recorded.") }; load(); refreshDetail() }
                 .onFailure { err -> _ui.update { it.copy(paymentEditor = e.copy(saving = false, error = friendlyError(err))) } }
         }
@@ -232,7 +249,7 @@ class LabourViewModel @Inject constructor(
         }
     }
 
-    // ── Worker detail (history) ──
+    // ── Worker detail (statement + history) ──
     fun openDetail(l: Labourer) {
         _ui.update { it.copy(detail = WorkerDetail(labourer = l, loading = true)) }
         viewModelScope.launch {
@@ -244,38 +261,24 @@ class LabourViewModel @Inject constructor(
     fun closeDetail() = _ui.update { it.copy(detail = null) }
     private fun refreshDetail() {
         val d = _ui.value.detail ?: return
-        openDetail(d.labourer)
-    }
-
-    // ── Clear due ──
-    fun openClearDue(l: Labourer) = _ui.update {
-        it.copy(clearDue = ClearDueEditor(labourerId = l.id, labourerName = l.name, outstanding = l.outstandingDue, amount = l.outstandingDue.toInput()))
-    }
-    fun closeClearDue() = _ui.update { it.copy(clearDue = null) }
-    fun setClearDueAmount(v: String) = _ui.update { it.copy(clearDue = it.clearDue?.copy(amount = v, error = null)) }
-    fun setClearDueViaUpi(v: Boolean) = _ui.update { it.copy(clearDue = it.clearDue?.copy(viaUpi = v)) }
-    fun confirmClearDue() {
-        val e = _ui.value.clearDue ?: return
-        val amt = Money.parse(e.amount)
-        if (!amt.isPositive()) { _ui.update { it.copy(clearDue = e.copy(error = "Enter an amount.")) }; return }
-        _ui.update { it.copy(clearDue = e.copy(saving = true, error = null)) }
-        viewModelScope.launch {
-            runCatching {
-                repo.clearDue(e.labourerId, if (e.viaUpi) Money.ZERO else amt, if (e.viaUpi) amt else Money.ZERO, "Cleared due")
-            }.onSuccess { _ui.update { it.copy(clearDue = null, message = "Due cleared.") }; load(); refreshDetail() }
-                .onFailure { err -> _ui.update { it.copy(clearDue = e.copy(saving = false, error = friendlyError(err))) } }
-        }
+        // Re-point at the refreshed labourer row so the statement reflects new totals.
+        val fresh = _ui.value.labourers.find { it.id == d.labourer.id } ?: d.labourer
+        openDetail(fresh)
     }
 
     // ── Attendance ──
     fun openAttendance() = _ui.update { it.copy(showAttendance = true) }
     fun closeAttendance() = _ui.update { it.copy(showAttendance = false) }
-    fun mark(labourerId: String, statusValue: String, overtimeHours: String = "0") {
+    fun mark(labourerId: String, statusValue: String) {
         if (_ui.value.attendanceBusyId != null) return
         _ui.update { it.copy(attendanceBusyId = labourerId) }
         viewModelScope.launch {
-            runCatching { repo.markAttendance(labourerId, today, statusValue, overtimeHours) }
-                .onSuccess { rec -> _ui.update { s -> s.copy(attendanceBusyId = null, attendance = s.attendance + (labourerId to rec)) } }
+            runCatching { repo.markAttendance(labourerId, today, statusValue) }
+                .onSuccess { rec ->
+                    _ui.update { s -> s.copy(attendanceBusyId = null, attendance = s.attendance + (labourerId to rec)) }
+                    // Attendance changes days worked → refresh balances.
+                    load()
+                }
                 .onFailure { e -> _ui.update { it.copy(attendanceBusyId = null, message = friendlyError(e)) } }
         }
     }

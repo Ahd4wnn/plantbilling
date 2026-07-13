@@ -22,13 +22,11 @@ class Labourer(Base):
     )
     name: Mapped[str] = mapped_column(Text, nullable=False)
     phone: Mapped[str | None] = mapped_column(Text, nullable=True)
+    aadhaar: Mapped[str | None] = mapped_column(Text, nullable=True)  # optional Aadhaar no.
     gender: Mapped[str] = mapped_column(Text, nullable=False)  # 'male' | 'female'
     default_wage: Mapped[decimal.Decimal] = mapped_column(
         Numeric(12, 2), nullable=False, server_default=text("0")
     )
-    overtime_rate: Mapped[decimal.Decimal] = mapped_column(
-        Numeric(12, 2), nullable=False, server_default=text("0")
-    )  # per hour
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
     created_by: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
@@ -54,22 +52,14 @@ class LabourPayment(Base):
     wage_amount: Mapped[decimal.Decimal] = mapped_column(
         Numeric(12, 2), nullable=False, server_default=text("0")
     )
-    overtime_hours: Mapped[decimal.Decimal] = mapped_column(
-        Numeric(12, 2), nullable=False, server_default=text("0")
-    )
-    # The per-hour rate applied (denormalized from the labourer at payment time),
-    # so editing a payment recomputes overtime without needing the labourer row.
-    overtime_rate: Mapped[decimal.Decimal] = mapped_column(
-        Numeric(12, 2), nullable=False, server_default=text("0")
-    )
-    overtime_amount: Mapped[decimal.Decimal] = mapped_column(
-        Numeric(12, 2), nullable=False, server_default=text("0")
-    )
+    # How many days' wage this payment covers (informational; nullable for advances
+    # and legacy rows).
+    days: Mapped[decimal.Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
     total_amount: Mapped[decimal.Decimal] = mapped_column(
         Numeric(12, 2), nullable=False, server_default=text("0")
     )
-    # How the total (wage + overtime) was settled — like a bill's split. Only cash
-    # lowers Cash in Hand; due is money still owed to the worker.
+    # How the wage was settled — like a bill's split. Only cash lowers Cash in
+    # Hand; due is money still owed to the worker.
     cash_amount: Mapped[decimal.Decimal] = mapped_column(
         Numeric(12, 2), nullable=False, server_default=text("0")
     )
@@ -79,7 +69,8 @@ class LabourPayment(Base):
     due_amount: Mapped[decimal.Decimal] = mapped_column(
         Numeric(12, 2), nullable=False, server_default=text("0")
     )
-    # 'wage' = a normal payment; 'due_clear' = paying off what's owed to a worker.
+    # 'wage' = a normal payment; 'advance' = paid ahead of work; 'due_clear' =
+    # legacy (paying off what was owed). All three count as money paid to the worker.
     kind: Mapped[str] = mapped_column(Text, nullable=False, server_default=text("'wage'"))
     note: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_by: Mapped[uuid.UUID | None] = mapped_column(
@@ -89,7 +80,7 @@ class LabourPayment(Base):
 
 
 class LabourAttendance(Base):
-    """One record per worker per day: present / absent / half-day + overtime hours."""
+    """One record per worker per day: present / absent / half-day."""
 
     __tablename__ = "labour_attendance"
 
@@ -102,9 +93,6 @@ class LabourAttendance(Base):
     )
     day: Mapped[dt.date] = mapped_column(nullable=False)
     status: Mapped[str] = mapped_column(Text, nullable=False)  # present | absent | half_day
-    overtime_hours: Mapped[decimal.Decimal] = mapped_column(
-        Numeric(12, 2), nullable=False, server_default=text("0")
-    )
     created_by: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )

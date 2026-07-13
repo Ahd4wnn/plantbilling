@@ -6,7 +6,10 @@ import androidx.lifecycle.viewModelScope
 import com.plantora.billing.data.OwnerRepository
 import com.plantora.billing.data.remote.friendlyError
 import com.plantora.billing.domain.DetailedReport
+import com.plantora.billing.domain.Labourer
+import com.plantora.billing.domain.LabourPayment
 import com.plantora.billing.domain.OwnerBill
+import com.plantora.billing.domain.OwnerCashInHand
 import com.plantora.billing.domain.OwnerShop
 import com.plantora.billing.domain.OwnerStaff
 import com.plantora.billing.domain.toApiDate
@@ -42,7 +45,17 @@ data class OwnerShopState(
     val customTo: LocalDate = todayInShopZone(),
     val staff: List<OwnerStaff> = emptyList(),
     val newStaff: NewStaffForm = NewStaffForm(),
+    val cashInHand: OwnerCashInHand? = null,
+    val cashFull: Boolean = true,
+    val labourers: List<Labourer> = emptyList(),
+    val labourerDetail: LabourerDetail? = null,
     val message: String? = null,
+)
+
+data class LabourerDetail(
+    val labourer: Labourer,
+    val loading: Boolean = true,
+    val payments: List<LabourPayment> = emptyList(),
 )
 
 @HiltViewModel
@@ -56,7 +69,7 @@ class OwnerShopViewModel @Inject constructor(
     private val _ui = MutableStateFlow(OwnerShopState())
     val ui: StateFlow<OwnerShopState> = _ui.asStateFlow()
 
-    init { load(); loadReport(); loadBills(); loadStaff() }
+    init { load(); loadReport(); loadBills(); loadStaff(); loadCashInHand(); loadLabourers() }
 
     fun load() {
         _ui.update { it.copy(loading = true, error = null) }
@@ -70,7 +83,7 @@ class OwnerShopViewModel @Inject constructor(
     fun setPeriod(p: OwnerPeriod) {
         if (p == _ui.value.period) return
         _ui.update { it.copy(period = p) }
-        loadReport(); loadBills()
+        loadReport(); loadBills(); loadCashInHand()
     }
 
     fun setCustomFrom(d: LocalDate) {
@@ -117,6 +130,32 @@ class OwnerShopViewModel @Inject constructor(
             runCatching { repo.staff(shopId) }.onSuccess { s -> _ui.update { it.copy(staff = s) } }
         }
     }
+
+    private fun loadCashInHand() {
+        val (_, to) = currentRange()
+        viewModelScope.launch {
+            runCatching { repo.cashInHand(shopId, to.toApiDate()) }
+                .onSuccess { c -> _ui.update { it.copy(cashInHand = c) } }
+        }
+    }
+
+    private fun loadLabourers() {
+        viewModelScope.launch {
+            runCatching { repo.labourers(shopId) }.onSuccess { l -> _ui.update { it.copy(labourers = l) } }
+        }
+    }
+
+    fun setCashFull(full: Boolean) = _ui.update { it.copy(cashFull = full) }
+
+    fun openLabourer(l: Labourer) {
+        _ui.update { it.copy(labourerDetail = LabourerDetail(labourer = l, loading = true)) }
+        viewModelScope.launch {
+            runCatching { repo.labourerPayments(shopId, l.id) }
+                .onSuccess { p -> _ui.update { it.copy(labourerDetail = it.labourerDetail?.copy(loading = false, payments = p)) } }
+                .onFailure { _ui.update { it.copy(labourerDetail = it.labourerDetail?.copy(loading = false)) } }
+        }
+    }
+    fun closeLabourer() = _ui.update { it.copy(labourerDetail = null) }
 
     fun setStaffEmail(v: String) = _ui.update { it.copy(newStaff = it.newStaff.copy(email = v, error = null)) }
     fun setStaffPassword(v: String) = _ui.update { it.copy(newStaff = it.newStaff.copy(password = v, error = null)) }

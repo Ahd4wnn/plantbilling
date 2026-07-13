@@ -103,3 +103,10 @@ data class OwnerShopUpdateDto(
     @SerialName("business_email") val businessEmail: String? = null,
     @SerialName("business_upi") val businessUpi: String? = null,
 )
+
+@Serializable
+data class OwnerCashInHandDto(
+    val date: String,
+    @SerialName("cash_in_hand_running") val running: String,
+    @SerialName("cash_in_hand_today") val today: String,
+)

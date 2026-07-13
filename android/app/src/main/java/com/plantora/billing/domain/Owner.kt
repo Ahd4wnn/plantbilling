@@ -73,3 +73,9 @@ data class OwnerStaff(
     val isActive: Boolean,
     val shopId: String?,
 )
+
+/** Cash in the drawer for an owned shop: running (all-time carry-over) or just this day's. */
+data class OwnerCashInHand(
+    val running: Money,
+    val today: Money,
+)

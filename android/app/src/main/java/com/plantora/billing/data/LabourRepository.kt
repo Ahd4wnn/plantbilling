@@ -18,29 +18,29 @@ import com.plantora.billing.domain.PaymentMethod
 import javax.inject.Inject
 import javax.inject.Singleton
 
-private fun LabourerDto.toDomain() = Labourer(
+internal fun LabourerDto.toDomain() = Labourer(
     id = id,
     name = name,
     phone = phone,
+    aadhaar = aadhaar,
     gender = gender,
     defaultWage = Money.parse(defaultWage),
-    overtimeRate = Money.parse(overtimeRate),
     isActive = isActive,
+    daysWorked = daysWorked,
     totalPaid = Money.parse(totalPaid),
-    outstandingDue = Money.parse(outstandingDue),
+    earned = Money.parse(earned),
+    balanceToPay = Money.parse(balanceToPay),
     createdAt = createdAt,
 )
 
-private fun LabourPaymentDto.toDomain() = LabourPayment(
+internal fun LabourPaymentDto.toDomain() = LabourPayment(
     id = id,
     labourerId = labourerId,
     labourerName = labourerName,
     gender = gender,
     kind = kind,
     wageAmount = Money.parse(wageAmount),
-    overtimeHours = overtimeHours,
-    overtimeRate = Money.parse(overtimeRate),
-    overtimeAmount = Money.parse(overtimeAmount),
+    days = days,
     totalAmount = Money.parse(totalAmount),
     cashAmount = Money.parse(cashAmount),
     upiAmount = Money.parse(upiAmount),
@@ -57,7 +57,6 @@ private fun AttendanceDto.toDomain() = Attendance(
     labourerName = labourerName,
     day = day,
     status = status,
-    overtimeHours = overtimeHours,
     createdAt = createdAt,
 )
 
@@ -68,21 +67,21 @@ class LabourRepository @Inject constructor(
     suspend fun labourers(): List<Labourer> = api.listLabourers().map { it.toDomain() }
 
     suspend fun addLabourer(
-        name: String, phone: String?, gender: String, defaultWage: Money, overtimeRate: Money,
+        name: String, phone: String?, aadhaar: String?, gender: String, defaultWage: Money,
     ): Labourer = api.createLabourer(
         LabourerCreateDto(
-            name = name.trim(), phone = phone?.trim()?.ifBlank { null }, gender = gender,
-            defaultWage = defaultWage.toWire(), overtimeRate = overtimeRate.toWire(),
+            name = name.trim(), phone = phone?.trim()?.ifBlank { null }, aadhaar = aadhaar?.trim()?.ifBlank { null },
+            gender = gender, defaultWage = defaultWage.toWire(),
         ),
     ).toDomain()
 
     suspend fun updateLabourer(
-        id: String, name: String, phone: String?, gender: String, defaultWage: Money, overtimeRate: Money,
+        id: String, name: String, phone: String?, aadhaar: String?, gender: String, defaultWage: Money,
     ): Labourer = api.updateLabourer(
         id,
         LabourerUpdateDto(
-            name = name.trim(), phone = phone?.trim() ?: "", gender = gender,
-            defaultWage = defaultWage.toWire(), overtimeRate = overtimeRate.toWire(),
+            name = name.trim(), phone = phone?.trim() ?: "", aadhaar = aadhaar?.trim() ?: "",
+            gender = gender, defaultWage = defaultWage.toWire(),
         ),
     ).toDomain()
 
@@ -92,23 +91,24 @@ class LabourRepository @Inject constructor(
         api.listPayments(labourerId = labourerId).map { it.toDomain() }
 
     suspend fun recordPayment(
-        labourerId: String, wage: Money, overtimeHours: String,
-        cash: Money, upi: Money, due: Money, note: String?,
+        labourerId: String, kind: String, amount: Money, days: String?,
+        cash: Money, upi: Money, note: String?,
     ): LabourPayment = api.createPayment(
         LabourPaymentCreateDto(
-            labourerId = labourerId, wageAmount = wage.toWire(), overtimeHours = overtimeHours.ifBlank { "0" },
-            cashAmount = cash.toWire(), upiAmount = upi.toWire(), dueAmount = due.toWire(),
+            labourerId = labourerId, kind = kind, wageAmount = amount.toWire(),
+            days = days?.ifBlank { null },
+            cashAmount = cash.toWire(), upiAmount = upi.toWire(), dueAmount = "0",
             note = note?.trim()?.ifBlank { null },
         ),
     ).toDomain()
 
     suspend fun updatePayment(
-        id: String, wage: Money, overtimeHours: String, cash: Money, upi: Money, due: Money, note: String?,
+        id: String, amount: Money, days: String?, cash: Money, upi: Money, note: String?,
     ): LabourPayment = api.updatePayment(
         id,
         LabourPaymentUpdateDto(
-            wageAmount = wage.toWire(), overtimeHours = overtimeHours.ifBlank { "0" },
-            cashAmount = cash.toWire(), upiAmount = upi.toWire(), dueAmount = due.toWire(),
+            wageAmount = amount.toWire(), days = days?.ifBlank { null },
+            cashAmount = cash.toWire(), upiAmount = upi.toWire(), dueAmount = "0",
             note = note?.trim() ?: "",
         ),
     ).toDomain()
@@ -126,8 +126,8 @@ class LabourRepository @Inject constructor(
     suspend fun attendance(day: String): List<Attendance> =
         api.listAttendance(day = day).map { it.toDomain() }
 
-    suspend fun markAttendance(labourerId: String, day: String, status: String, overtimeHours: String): Attendance =
+    suspend fun markAttendance(labourerId: String, day: String, status: String): Attendance =
         api.markAttendance(
-            AttendanceMarkDto(labourerId = labourerId, day = day, status = status, overtimeHours = overtimeHours.ifBlank { "0" }),
+            AttendanceMarkDto(labourerId = labourerId, day = day, status = status),
         ).toDomain()
 }

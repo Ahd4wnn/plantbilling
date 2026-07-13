@@ -5,12 +5,14 @@ data class Labourer(
     val id: String,
     val name: String,
     val phone: String?,
+    val aadhaar: String?,        // optional Aadhaar number
     val gender: String,          // "male" | "female"
-    val defaultWage: Money,
-    val overtimeRate: Money,     // per hour
+    val defaultWage: Money,      // wage per day
     val isActive: Boolean,
+    val daysWorked: String,      // present + ½·half-day (from attendance)
     val totalPaid: Money,
-    val outstandingDue: Money,
+    val earned: Money,           // wage_per_day × days_worked
+    val balanceToPay: Money,     // earned − paid (negative = paid ahead / advance)
     val createdAt: String,
 )
 
@@ -20,11 +22,9 @@ data class LabourPayment(
     val labourerId: String?,
     val labourerName: String,
     val gender: String,
-    val kind: String,            // "wage" | "due_clear"
+    val kind: String,            // "wage" | "advance" | "due_clear"
     val wageAmount: Money,
-    val overtimeHours: String,   // kept as text — may be fractional (e.g. "1.5")
-    val overtimeRate: Money,
-    val overtimeAmount: Money,
+    val days: String?,           // days this wage payment covers (wage kind only)
     val totalAmount: Money,
     val cashAmount: Money,
     val upiAmount: Money,
@@ -42,6 +42,5 @@ data class Attendance(
     val labourerName: String,
     val day: String,
     val status: String,          // "present" | "absent" | "half_day"
-    val overtimeHours: String,
     val createdAt: String,
 )

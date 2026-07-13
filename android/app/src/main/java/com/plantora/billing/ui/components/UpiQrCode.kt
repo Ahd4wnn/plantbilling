@@ -13,6 +13,7 @@ import com.google.zxing.EncodeHintType
 import com.google.zxing.qrcode.QRCodeWriter
 import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 
 /**
@@ -20,14 +21,21 @@ import kotlinx.coroutines.withContext
  * network call, unlike the web's external QR API. The customer scans it with any
  * UPI app and the amount is pre-filled from the embedded `upi://pay` link.
  *
- * The bitmap is built OFF the main thread (produceState + Dispatchers.Default) and
- * with a single bulk `setPixels`, not size*size individual `setPixel` calls — the
- * old per-pixel loop (409k calls at 640px) froze the UI for up to a few seconds
- * whenever the payment QR appeared.
+ * Two things keep this from freezing the UI (it used to — see below):
+ *  1. The bitmap is built OFF the main thread (produceState + Dispatchers.Default)
+ *     with a single bulk `setPixels`, not size*size individual `setPixel` calls.
+ *     The old per-pixel loop (409k calls at 640px) blocked the main thread.
+ *  2. Generation is DEBOUNCED. On the checkout sheet the payable amount — and so
+ *     `content` — changes on every keystroke while the cashier types the split.
+ *     Without a debounce that regenerated the QR (and churned ~0.5 MB bitmaps)
+ *     on each keystroke; the delay coalesces a burst of edits into one build.
  */
 @Composable
-fun UpiQrCode(content: String, sizePx: Int = 640, modifier: Modifier = Modifier) {
+fun UpiQrCode(content: String, sizePx: Int = 512, modifier: Modifier = Modifier) {
     val bitmap by produceState<Bitmap?>(initialValue = null, content, sizePx) {
+        // produceState cancels this block when `content` changes, so a fast burst
+        // of edits only ever runs the encode for the value the user settles on.
+        delay(180)
         value = withContext(Dispatchers.Default) { encodeQr(content, sizePx) }
     }
     bitmap?.let {

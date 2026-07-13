@@ -17,7 +17,6 @@ import {
   createLabourPayment,
   updateLabourPayment,
   deleteLabourPayment,
-  clearLabourDue,
   listAttendance,
   markAttendance,
   type Attendance,
@@ -26,7 +25,7 @@ import {
   type Labourer,
   type LabourPayment,
 } from "@/api/labour";
-import { Plus, Pencil, Trash2, HardHat, Search, CalendarCheck } from "lucide-react";
+import { Plus, Pencil, Trash2, HardHat, Search, CalendarCheck, Wallet } from "lucide-react";
 
 function fmt(v: string | null | undefined): string {
   return formatINR(toPaise(v || "0"));
@@ -35,7 +34,7 @@ function todayISO(): string {
   return new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
 }
 
-type PayMode = "cash" | "upi" | "split" | "due";
+type PayMode = "cash" | "upi" | "split";
 
 export function LabourPage() {
   const user = useAuth((s) => s.user);
@@ -48,9 +47,9 @@ export function LabourPage() {
   const [error, setError] = useState<string | null>(null);
 
   const [workerEdit, setWorkerEdit] = useState<Labourer | "new" | null>(null);
-  const [payEdit, setPayEdit] = useState<LabourPayment | "new" | null>(null);
+  // Payment editor: existing payment, or a {worker, advance} to start a new one.
+  const [payEdit, setPayEdit] = useState<LabourPayment | { worker: Labourer | null; advance: boolean } | null>(null);
   const [detail, setDetail] = useState<Labourer | null>(null);
-  const [clearFor, setClearFor] = useState<Labourer | null>(null);
   const [attendanceOpen, setAttendanceOpen] = useState(false);
   const [deleteWorker, setDeleteWorker] = useState<Labourer | null>(null);
   const [deletePay, setDeletePay] = useState<LabourPayment | null>(null);
@@ -70,6 +69,9 @@ export function LabourPage() {
   }, []);
 
   useEffect(() => { void load(); }, [load]);
+
+  // Keep the open detail sheet in sync with refreshed data.
+  const detailLive = detail ? labourers.find((l) => l.id === detail.id) ?? detail : null;
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -96,7 +98,7 @@ export function LabourPage() {
       </div>
 
       <div className="flex gap-3">
-        <Button variant="primary" size="action" className="flex-1 font-bold" onClick={() => { if (labourers.length === 0) { alert("Add a worker first."); return; } setPayEdit("new"); }}>Record a payment</Button>
+        <Button variant="primary" size="action" className="flex-1 font-bold" onClick={() => { if (labourers.length === 0) { alert("Add a worker first."); return; } setPayEdit({ worker: null, advance: false }); }}>Record a payment</Button>
         <Button variant="secondary" size="action" className="flex-1 font-bold border-2 flex items-center justify-center gap-2" onClick={() => setAttendanceOpen(true)}><CalendarCheck className="h-5 w-5" /> Attendance</Button>
       </div>
 
@@ -119,9 +121,9 @@ export function LabourPage() {
                 <button type="button" onClick={() => setDetail(l)} className="min-w-0 text-left">
                   <p className="font-semibold text-ink truncate">{l.name}</p>
                   <p className="text-sm text-ink-soft">
-                    {l.gender === "male" ? "Male" : "Female"} · Wage {fmt(l.default_wage)} · OT {fmt(l.overtime_rate)}/hr{l.phone ? ` · ${l.phone}` : ""}
+                    {l.gender === "male" ? "Male" : "Female"} · {fmt(l.default_wage)}/day{l.phone ? ` · ${l.phone}` : ""}
                   </p>
-                  {Number(l.outstanding_due) > 0 && <p className="text-sm font-semibold text-danger">Owes worker {fmt(l.outstanding_due)}</p>}
+                  <BalanceLine labourer={l} />
                 </button>
                 {isManager && (
                   <div className="flex items-center gap-2 shrink-0">
@@ -145,12 +147,10 @@ export function LabourPage() {
             {payments.map((p) => (
               <div key={p.id} className="py-3 flex items-center justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="font-semibold text-ink truncate">{p.labourer_name}{p.kind === "due_clear" ? " · due cleared" : ""}</p>
+                  <p className="font-semibold text-ink truncate">{p.labourer_name}{p.kind === "advance" ? " · advance" : p.kind === "due_clear" ? " · due cleared" : ""}</p>
                   <p className="text-sm text-ink-soft">
-                    {formatDateTime(p.created_at)} · {p.payment_method}
-                    {Number(p.overtime_amount) > 0 ? ` · OT ${p.overtime_hours}h ${fmt(p.overtime_amount)}` : ""}
+                    {formatDateTime(p.created_at)} · {p.payment_method}{p.kind === "wage" && p.days ? ` · ${p.days} day(s)` : ""}
                   </p>
-                  {Number(p.due_amount) > 0 && <p className="text-sm font-semibold text-danger">Due {fmt(p.due_amount)}</p>}
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   <span className="font-bold text-ink">{fmt(p.total_amount)}</span>
@@ -169,9 +169,8 @@ export function LabourPage() {
 
       <WorkerSheet worker={workerEdit} onClose={() => setWorkerEdit(null)} onSaved={load} />
       <PaymentSheet edit={payEdit} labourers={labourers} onClose={() => setPayEdit(null)} onSaved={load} />
-      {detail && <DetailSheet labourer={detail} onClose={() => setDetail(null)} onClear={() => { setClearFor(detail); }} onChanged={load} />}
-      {clearFor && <ClearDueSheet labourer={clearFor} onClose={() => setClearFor(null)} onSaved={() => { setClearFor(null); setDetail(null); load(); }} />}
-      {attendanceOpen && <AttendanceSheet labourers={labourers} onClose={() => setAttendanceOpen(false)} />}
+      {detailLive && <DetailSheet labourer={detailLive} onClose={() => setDetail(null)} onRecord={(advance) => { setDetail(null); setPayEdit({ worker: detailLive, advance }); }} />}
+      {attendanceOpen && <AttendanceSheet labourers={labourers} onClose={() => setAttendanceOpen(false)} onChanged={load} />}
 
       <ConfirmDialog open={deleteWorker !== null} title="Remove worker?" body={`Remove ${deleteWorker?.name}? Past payments are kept.`} confirmLabel="Remove" cancelLabel="Cancel" destructive
         onConfirm={async () => { if (!deleteWorker) return; try { await deleteLabourer(deleteWorker.id); setDeleteWorker(null); await load(); } catch (e) { alert(friendlyError(e)); } }}
@@ -181,6 +180,14 @@ export function LabourPage() {
         onCancel={() => setDeletePay(null)} />
     </div>
   );
+}
+
+/** "Balance to pay" (owed) or "Paid ahead" (advance), based on attendance. */
+function BalanceLine({ labourer: l }: { labourer: Labourer }) {
+  const bal = Number(l.balance_to_pay);
+  if (bal > 0) return <p className="text-sm font-semibold text-danger">Balance to pay {fmt(l.balance_to_pay)}</p>;
+  if (bal < 0) return <p className="text-sm font-semibold text-primary-700">Paid ahead {fmt(String(-bal))}</p>;
+  return null;
 }
 
 function GenderPicker({ value, onChange }: { value: Gender; onChange: (g: Gender) => void }) {
@@ -200,16 +207,16 @@ function WorkerSheet({ worker, onClose, onSaved }: { worker: Labourer | "new" | 
   const editing = worker && worker !== "new" ? worker : null;
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
+  const [aadhaar, setAadhaar] = useState("");
   const [gender, setGender] = useState<Gender>("male");
   const [wage, setWage] = useState("");
-  const [otRate, setOtRate] = useState("");
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
   useEffect(() => {
     if (!worker) return;
-    setName(editing?.name ?? ""); setPhone(editing?.phone ?? ""); setGender(editing?.gender ?? "male");
-    setWage(editing ? parseFloat(editing.default_wage).toString() : ""); setOtRate(editing ? parseFloat(editing.overtime_rate).toString() : ""); setErr(null);
+    setName(editing?.name ?? ""); setPhone(editing?.phone ?? ""); setAadhaar(editing?.aadhaar ?? ""); setGender(editing?.gender ?? "male");
+    setWage(editing ? parseFloat(editing.default_wage).toString() : ""); setErr(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [worker]);
 
@@ -217,7 +224,7 @@ function WorkerSheet({ worker, onClose, onSaved }: { worker: Labourer | "new" | 
     if (!name.trim()) return;
     setSaving(true); setErr(null);
     try {
-      const payload = { name: name.trim(), phone: phone.trim() || null, gender, default_wage: wage.trim() || "0", overtime_rate: otRate.trim() || "0" };
+      const payload = { name: name.trim(), phone: phone.trim() || null, aadhaar: aadhaar.trim() || null, gender, default_wage: wage.trim() || "0" };
       if (editing) await updateLabourer(editing.id, payload); else await createLabourer(payload);
       onSaved(); onClose();
     } catch (e) { setErr(friendlyError(e, "Couldn't save worker.")); } finally { setSaving(false); }
@@ -229,21 +236,26 @@ function WorkerSheet({ worker, onClose, onSaved }: { worker: Labourer | "new" | 
       <div className="space-y-4">
         {err && <p className="rounded-control bg-danger-soft px-4 py-3 text-base font-semibold text-danger">{err}</p>}
         <TextInput label="Name" value={name} onChange={(e) => setName(e.target.value)} required />
-        <TextInput label="Phone (optional)" value={phone} onChange={(e) => setPhone(e.target.value)} inputMode="tel" />
+        <TextInput label="Phone number" value={phone} onChange={(e) => setPhone(e.target.value)} inputMode="tel" />
+        <TextInput label="Aadhaar number (optional)" value={aadhaar} onChange={(e) => setAadhaar(e.target.value)} inputMode="numeric" />
         <GenderPicker value={gender} onChange={setGender} />
-        <TextInput label="Default wage (₹)" value={wage} onChange={(e) => setWage(e.target.value.replace(/[^0-9.]/g, ""))} inputMode="decimal" placeholder="0" />
-        <TextInput label="Overtime rate per hour (₹)" value={otRate} onChange={(e) => setOtRate(e.target.value.replace(/[^0-9.]/g, ""))} inputMode="decimal" placeholder="0" />
+        <TextInput label="Wage per day (₹)" value={wage} onChange={(e) => setWage(e.target.value.replace(/[^0-9.]/g, ""))} inputMode="decimal" placeholder="0" />
       </div>
     </BottomSheet>
   );
 }
 
-function PaymentSheet({ edit, labourers, onClose, onSaved }: { edit: LabourPayment | "new" | null; labourers: Labourer[]; onClose: () => void; onSaved: () => void }) {
-  const editing = edit && edit !== "new" ? edit : null;
+type PayStart = LabourPayment | { worker: Labourer | null; advance: boolean };
+
+function PaymentSheet({ edit, labourers, onClose, onSaved }: { edit: PayStart | null; labourers: Labourer[]; onClose: () => void; onSaved: () => void }) {
+  const editing = edit && "id" in edit ? edit : null;
+  const startAdvance = edit && !("id" in edit) ? edit.advance : false;
+
   const [labourerId, setLabourerId] = useState<string | null>(null);
-  const [wage, setWage] = useState("");
-  const [otHours, setOtHours] = useState("");
-  const [otRate, setOtRate] = useState("0");
+  const [isAdvance, setIsAdvance] = useState(false);
+  const [wagePerDay, setWagePerDay] = useState("0");
+  const [days, setDays] = useState("1");
+  const [amount, setAmount] = useState("");
   const [mode, setMode] = useState<PayMode>("cash");
   const [splitCash, setSplitCash] = useState("");
   const [note, setNote] = useState("");
@@ -253,39 +265,62 @@ function PaymentSheet({ edit, labourers, onClose, onSaved }: { edit: LabourPayme
   useEffect(() => {
     if (!edit) return;
     if (editing) {
-      setLabourerId(editing.labourer_id); setWage(parseFloat(editing.wage_amount).toString()); setOtHours(editing.overtime_hours);
-      setOtRate(editing.overtime_rate); setMode(editing.payment_method); setSplitCash(parseFloat(editing.cash_amount).toString()); setNote(editing.note ?? "");
-    } else { setLabourerId(null); setWage(""); setOtHours(""); setOtRate("0"); setMode("cash"); setSplitCash(""); setNote(""); }
+      setLabourerId(editing.labourer_id);
+      setIsAdvance(editing.kind === "advance");
+      const w = labourers.find((l) => l.id === editing.labourer_id);
+      setWagePerDay(w ? parseFloat(w.default_wage).toString() : "0");
+      setDays(editing.days ?? "1");
+      setAmount(parseFloat(editing.wage_amount).toString());
+      setMode(editing.payment_method === "due" ? "cash" : (editing.payment_method as PayMode));
+      setSplitCash(parseFloat(editing.cash_amount).toString());
+      setNote(editing.note ?? "");
+    } else {
+      const w = edit && !("id" in edit) ? edit.worker : null;
+      setLabourerId(w?.id ?? null);
+      setIsAdvance(startAdvance);
+      setWagePerDay(w ? parseFloat(w.default_wage).toString() : "0");
+      setDays("1");
+      setAmount(w && !startAdvance ? parseFloat(w.default_wage).toString() : "");
+      setMode("cash"); setSplitCash(""); setNote("");
+    }
     setErr(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [edit]);
 
-  const selectWorker = (l: Labourer) => { setLabourerId(l.id); setWage(parseFloat(l.default_wage).toString()); setOtRate(l.overtime_rate); };
+  const selectWorker = (l: Labourer) => {
+    setLabourerId(l.id);
+    setWagePerDay(parseFloat(l.default_wage).toString());
+    if (!isAdvance) setAmount((parseFloat(l.default_wage) * (parseFloat(days || "0") || 0)).toString());
+  };
 
-  const totalNum = (parseFloat(wage || "0") || 0) + (parseFloat(otRate || "0") || 0) * (parseFloat(otHours || "0") || 0);
+  const setDaysAndAmount = (d: string) => {
+    setDays(d);
+    if (!isAdvance) setAmount(((parseFloat(wagePerDay || "0") || 0) * (parseFloat(d || "0") || 0)).toString());
+  };
+
+  const totalNum = parseFloat(amount || "0") || 0;
   const totalStr = totalNum.toFixed(2);
   const split = useMemo(() => {
     const cashN = mode === "cash" ? totalNum : mode === "split" ? (parseFloat(splitCash || "0") || 0) : 0;
     const upiN = mode === "upi" ? totalNum : mode === "split" ? Math.max(0, totalNum - cashN) : 0;
-    const dueN = mode === "due" ? totalNum : 0;
-    return { cash: cashN.toFixed(2), upi: upiN.toFixed(2), due: dueN.toFixed(2), upiN };
+    return { cash: cashN.toFixed(2), upi: upiN.toFixed(2) };
   }, [mode, totalNum, splitCash]);
 
   const submit = async () => {
-    if (!labourerId || !wage.trim()) return;
+    if (!labourerId || !amount.trim()) return;
     setSaving(true); setErr(null);
     try {
-      const body = { wage_amount: wage.trim() || "0", overtime_hours: otHours.trim() || "0", cash_amount: split.cash, upi_amount: split.upi, due_amount: split.due, note: note.trim() || null };
-      if (editing) await updateLabourPayment(editing.id, body);
-      else await createLabourPayment({ labourer_id: labourerId, ...body });
+      const body = { wage_amount: amount.trim() || "0", cash_amount: split.cash, upi_amount: split.upi, due_amount: "0", note: note.trim() || null };
+      if (editing) await updateLabourPayment(editing.id, { ...body, days: isAdvance ? null : days.trim() || "0" });
+      else await createLabourPayment({ labourer_id: labourerId, kind: isAdvance ? "advance" : "wage", days: isAdvance ? null : days.trim() || "0", ...body });
       onSaved(); onClose();
     } catch (e) { setErr(friendlyError(e, "Couldn't record the payment.")); } finally { setSaving(false); }
   };
 
-  const modes: PayMode[] = ["cash", "upi", "split", "due"];
+  const modes: PayMode[] = ["cash", "upi", "split"];
   return (
-    <BottomSheet open={edit !== null} onClose={onClose} title={editing ? "Edit payment" : "Record payment"}
-      footer={<Button variant="primary" size="action" className="w-full font-bold" disabled={!labourerId || !wage.trim() || saving} loading={saving} onClick={submit}>{editing ? "Save changes" : "Record payment"}</Button>}>
+    <BottomSheet open={edit !== null} onClose={onClose} title={editing ? "Edit payment" : isAdvance ? "Give advance" : "Record payment"}
+      footer={<Button variant="primary" size="action" className="w-full font-bold" disabled={!labourerId || !amount.trim() || saving} loading={saving} onClick={submit}>{editing ? "Save changes" : isAdvance ? "Give advance" : "Record payment"}</Button>}>
       <div className="space-y-4">
         {err && <p className="rounded-control bg-danger-soft px-4 py-3 text-base font-semibold text-danger">{err}</p>}
         {editing ? (
@@ -300,13 +335,28 @@ function PaymentSheet({ edit, labourers, onClose, onSaved }: { edit: LabourPayme
             </div>
           </div>
         )}
-        <TextInput label="Wage (₹)" value={wage} onChange={(e) => setWage(e.target.value.replace(/[^0-9.]/g, ""))} inputMode="decimal" />
-        <TextInput label="Overtime hours" value={otHours} onChange={(e) => setOtHours(e.target.value.replace(/[^0-9.]/g, ""))} inputMode="decimal" placeholder="0" />
-        {Number(otRate) > 0 && <p className="text-sm text-ink-soft -mt-2">Overtime: {fmt(((parseFloat(otRate) || 0) * (parseFloat(otHours || "0") || 0)).toFixed(2))} (at {fmt(otRate)}/hr)</p>}
+
+        {/* Wage payment vs advance */}
+        {!editing && (
+          <div className="grid grid-cols-2 gap-2">
+            {[{ v: false, label: "Wage payment" }, { v: true, label: "Advance" }].map((o) => (
+              <button key={o.label} type="button" onClick={() => { setIsAdvance(o.v); if (o.v) { setAmount(""); } else { setAmount(((parseFloat(wagePerDay || "0") || 0) * (parseFloat(days || "0") || 0)).toString()); } }}
+                className={`rounded-control border px-4 py-3 text-base font-bold ${isAdvance === o.v ? "bg-primary-50 text-primary-700 border-primary-300 ring-2 ring-primary-600/10" : "bg-white text-ink-soft border-border"}`}>{o.label}</button>
+            ))}
+          </div>
+        )}
+
+        {!isAdvance && (
+          <>
+            <p className="text-sm text-ink-soft">Wage per day: <span className="font-semibold text-ink">{fmt(wagePerDay)}</span></p>
+            <TextInput label="Number of days" value={days} onChange={(e) => setDaysAndAmount(e.target.value.replace(/[^0-9.]/g, ""))} inputMode="decimal" />
+          </>
+        )}
+        <TextInput label={isAdvance ? "Advance amount (₹)" : "Amount (₹)"} value={amount} onChange={(e) => setAmount(e.target.value.replace(/[^0-9.]/g, ""))} inputMode="decimal" />
 
         <div>
           <label className="field-label">Payment method</label>
-          <div className="grid grid-cols-4 gap-2">
+          <div className="grid grid-cols-3 gap-2">
             {modes.map((m) => (
               <button key={m} type="button" onClick={() => { setMode(m); if (m === "split" && !splitCash) setSplitCash(totalStr); }} className={`rounded-control border px-2 py-2.5 text-sm font-bold capitalize ${mode === m ? "bg-primary-50 text-primary-700 border-primary-300 ring-2 ring-primary-600/10" : "bg-white text-ink-soft border-border"}`}>{m}</button>
             ))}
@@ -318,7 +368,6 @@ function PaymentSheet({ edit, labourers, onClose, onSaved }: { edit: LabourPayme
             <p className="text-sm text-ink-soft -mt-2">UPI part: {fmt(split.upi)}</p>
           </>
         )}
-        {mode === "due" && <p className="text-sm text-ink-soft">This whole amount will be recorded as owed to the worker.</p>}
 
         <TextInput label="Note (optional)" value={note} onChange={(e) => setNote(e.target.value)} />
         <div className="flex items-center justify-between border-t border-border pt-3">
@@ -330,20 +379,35 @@ function PaymentSheet({ edit, labourers, onClose, onSaved }: { edit: LabourPayme
   );
 }
 
-function DetailSheet({ labourer, onClose, onClear, onChanged }: { labourer: Labourer; onClose: () => void; onClear: () => void; onChanged: () => void }) {
+function DetailSheet({ labourer, onClose, onRecord }: { labourer: Labourer; onClose: () => void; onRecord: (advance: boolean) => void }) {
   const [history, setHistory] = useState<LabourPayment[] | null>(null);
   useEffect(() => {
     listLabourPayments(labourer.id).then(setHistory).catch(() => setHistory([]));
-  }, [labourer.id, onChanged]);
+  }, [labourer.id]);
 
+  const bal = Number(labourer.balance_to_pay);
   return (
     <BottomSheet open onClose={onClose} title={labourer.name}
-      footer={Number(labourer.outstanding_due) > 0 ? <Button variant="primary" size="action" className="w-full font-bold" onClick={onClear}>Clear due · {fmt(labourer.outstanding_due)}</Button> : undefined}>
-      <div className="space-y-4">
-        <div className="grid grid-cols-2 gap-3">
-          <div className="rounded-card border border-border p-3"><div className="text-xs text-ink-soft">Total paid</div><div className="text-lg font-bold text-ink">{fmt(labourer.total_paid)}</div></div>
-          <div className="rounded-card border border-border p-3"><div className="text-xs text-ink-soft">Outstanding</div><div className={`text-lg font-bold ${Number(labourer.outstanding_due) > 0 ? "text-danger" : "text-ink"}`}>{fmt(labourer.outstanding_due)}</div></div>
+      footer={
+        <div className="flex gap-2">
+          <Button variant="secondary" size="action" className="flex-1 font-bold" onClick={() => onRecord(true)}>Give advance</Button>
+          <Button variant="primary" size="action" className="flex-1 font-bold" onClick={() => onRecord(false)}>Record payment</Button>
         </div>
+      }>
+      <div className="space-y-4">
+        <p className="text-sm text-ink-soft">{labourer.gender === "male" ? "Male" : "Female"}{labourer.phone ? ` · ${labourer.phone}` : ""}{labourer.aadhaar ? ` · Aadhaar ${labourer.aadhaar}` : ""}</p>
+
+        {/* Statement of pay */}
+        <div className="rounded-card border border-border divide-y divide-border">
+          <StatementRow label={`Days worked`} value={`${labourer.days_worked} day(s)`} />
+          <StatementRow label={`Earned (${fmt(labourer.default_wage)}/day)`} value={fmt(labourer.earned)} />
+          <StatementRow label="Total paid" value={fmt(labourer.total_paid)} />
+          <div className="flex items-center justify-between px-4 py-3">
+            <span className="flex items-center gap-2 font-bold text-ink"><Wallet className="h-4 w-4" /> {bal < 0 ? "Paid ahead" : "Balance to pay"}</span>
+            <span className={`text-lg font-bold ${bal > 0 ? "text-danger" : bal < 0 ? "text-primary-700" : "text-ink"}`}>{bal < 0 ? fmt(String(-bal)) : fmt(labourer.balance_to_pay)}</span>
+          </div>
+        </div>
+
         <div>
           <h3 className="font-bold text-ink mb-2">Payment history</h3>
           {!history ? <div className="flex justify-center py-6"><Spinner className="h-5 w-5 text-primary-600" /></div>
@@ -352,8 +416,7 @@ function DetailSheet({ labourer, onClose, onClear, onChanged }: { labourer: Labo
                 {history.map((p) => (
                   <div key={p.id} className="py-2 flex items-center justify-between gap-2">
                     <div className="min-w-0">
-                      <p className="text-sm text-ink">{formatDateTime(p.created_at)} · {p.payment_method}{p.kind === "due_clear" ? " · due cleared" : ""}</p>
-                      {Number(p.due_amount) > 0 && <p className="text-xs font-semibold text-danger">Due {fmt(p.due_amount)}</p>}
+                      <p className="text-sm text-ink">{formatDateTime(p.created_at)} · {p.payment_method}{p.kind === "advance" ? " · advance" : p.kind === "due_clear" ? " · due cleared" : p.days ? ` · ${p.days} day(s)` : ""}</p>
                     </div>
                     <span className="font-semibold text-ink">{fmt(p.total_amount)}</span>
                   </div>
@@ -365,58 +428,34 @@ function DetailSheet({ labourer, onClose, onClear, onChanged }: { labourer: Labo
   );
 }
 
-function ClearDueSheet({ labourer, onClose, onSaved }: { labourer: Labourer; onClose: () => void; onSaved: () => void }) {
-  const [amount, setAmount] = useState(parseFloat(labourer.outstanding_due).toString());
-  const [viaUpi, setViaUpi] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
-
-  const submit = async () => {
-    if (!amount.trim()) return;
-    setSaving(true); setErr(null);
-    try {
-      await clearLabourDue({ labourer_id: labourer.id, cash_amount: viaUpi ? "0" : amount.trim(), upi_amount: viaUpi ? amount.trim() : "0", note: "Cleared due" });
-      onSaved();
-    } catch (e) { setErr(friendlyError(e, "Couldn't clear the due.")); } finally { setSaving(false); }
-  };
-
+function StatementRow({ label, value }: { label: string; value: string }) {
   return (
-    <BottomSheet open onClose={onClose} title={`Clear due · ${labourer.name}`}
-      footer={<Button variant="primary" size="action" className="w-full font-bold" disabled={!amount.trim() || saving} loading={saving} onClick={submit}>Pay {fmt(amount || "0")}</Button>}>
-      <div className="space-y-4">
-        {err && <p className="rounded-control bg-danger-soft px-4 py-3 text-base font-semibold text-danger">{err}</p>}
-        <p className="text-base font-semibold text-danger">Outstanding: {fmt(labourer.outstanding_due)}</p>
-        <TextInput label="Amount to pay (₹)" value={amount} onChange={(e) => setAmount(e.target.value.replace(/[^0-9.]/g, ""))} inputMode="decimal" />
-        <div className="grid grid-cols-2 gap-2">
-          {(["cash", "upi"] as const).map((m) => (
-            <button key={m} type="button" onClick={() => setViaUpi(m === "upi")} className={`rounded-control border px-4 py-3 text-base font-bold ${(m === "upi") === viaUpi ? "bg-primary-50 text-primary-700 border-primary-300 ring-2 ring-primary-600/10" : "bg-white text-ink-soft border-border"}`}>{m === "cash" ? "Cash" : "UPI"}</button>
-          ))}
-        </div>
-      </div>
-    </BottomSheet>
+    <div className="flex items-center justify-between px-4 py-3">
+      <span className="text-sm text-ink-soft">{label}</span>
+      <span className="font-semibold text-ink">{value}</span>
+    </div>
   );
 }
 
-function AttendanceSheet({ labourers, onClose }: { labourers: Labourer[]; onClose: () => void }) {
+function AttendanceSheet({ labourers, onClose, onChanged }: { labourers: Labourer[]; onClose: () => void; onChanged: () => void }) {
   const day = todayISO();
   const [records, setRecords] = useState<Record<string, Attendance>>({});
   const [busyId, setBusyId] = useState<string | null>(null);
-  const [ot, setOt] = useState<Record<string, string>>({});
 
   useEffect(() => {
     listAttendance(day).then((rows) => {
       const m: Record<string, Attendance> = {};
-      const o: Record<string, string> = {};
-      rows.forEach((r) => { m[r.labourer_id] = r; o[r.labourer_id] = r.overtime_hours; });
-      setRecords(m); setOt(o);
+      rows.forEach((r) => { m[r.labourer_id] = r; });
+      setRecords(m);
     }).catch(() => {});
   }, [day]);
 
   const mark = async (l: Labourer, status: AttendanceStatus) => {
     setBusyId(l.id);
     try {
-      const rec = await markAttendance({ labourer_id: l.id, day, status, overtime_hours: ot[l.id] || "0" });
+      const rec = await markAttendance({ labourer_id: l.id, day, status });
       setRecords((m) => ({ ...m, [l.id]: rec }));
+      onChanged();
     } catch (e) { alert(friendlyError(e)); } finally { setBusyId(null); }
   };
 
@@ -429,7 +468,10 @@ function AttendanceSheet({ labourers, onClose }: { labourers: Labourer[]; onClos
           const rec = records[l.id];
           return (
             <div key={l.id} className="border-b border-border pb-3 last:border-0">
-              <p className="font-semibold text-ink">{l.name}</p>
+              <div className="flex items-center justify-between">
+                <p className="font-semibold text-ink">{l.name}</p>
+                <p className="text-sm text-ink-soft">{l.days_worked} day(s) worked</p>
+              </div>
               <div className="mt-1.5 grid grid-cols-3 gap-2">
                 {(["present", "half_day", "absent"] as AttendanceStatus[]).map((s) => (
                   <button key={s} type="button" disabled={busyId === l.id} onClick={() => mark(l, s)}
@@ -438,8 +480,6 @@ function AttendanceSheet({ labourers, onClose }: { labourers: Labourer[]; onClos
                   </button>
                 ))}
               </div>
-              <input value={ot[l.id] || ""} onChange={(e) => setOt((o) => ({ ...o, [l.id]: e.target.value.replace(/[^0-9.]/g, "") }))} placeholder="Overtime hours (optional)"
-                className="mt-2 h-10 w-full rounded-control border border-border px-3 text-ink focus:border-primary-600 focus:outline-none" />
             </div>
           );
         })}

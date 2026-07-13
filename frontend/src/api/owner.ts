@@ -186,6 +186,19 @@ export async function getShopCashInHand(shopId: string, date?: string): Promise<
   return data;
 }
 
+// ── Labour (read-only for owner) ──────────────────────────────────────────────
+import type { Labourer, LabourPayment } from "./labour";
+
+export async function getShopLabourers(shopId: string): Promise<Labourer[]> {
+  const { data } = await api.get<Labourer[]>(`/owner/shops/${shopId}/labourers`);
+  return data;
+}
+
+export async function getShopLabourerPayments(shopId: string, labourerId: string): Promise<LabourPayment[]> {
+  const { data } = await api.get<LabourPayment[]>(`/owner/shops/${shopId}/labourers/${labourerId}/payments`);
+  return data;
+}
+
 export async function listShopStaff(shopId: string): Promise<OwnerStaff[]> {
   const { data } = await api.get<OwnerStaff[]>(`/owner/shops/${shopId}/staff`);
   return data;
