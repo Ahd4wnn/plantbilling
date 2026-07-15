@@ -4,10 +4,6 @@ import { friendlyError } from "@/api/client";
 import { Spinner } from "@/components/Spinner";
 import { Button } from "@/components/Button";
 
-function inr(v: string): string {
-  const n = Number(v);
-  return "₹" + (isFinite(n) ? n : 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
 function fromNow(iso: string | null): string {
   if (!iso) return "Never";
   const days = Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000);
@@ -93,7 +89,7 @@ export function StaffPage() {
             <table className="w-full text-left text-base">
               <thead className="border-b border-border bg-surface-muted text-sm text-ink-soft">
                 <tr>
-                  <Th>Person</Th><Th>Role</Th><Th>Shop</Th><Th>Status</Th><Th>Bills</Th><Th>Sales</Th><Th>Last active</Th>
+                  <Th>Person</Th><Th>Role</Th><Th>Shop</Th><Th>Status</Th><Th>Bills</Th><Th>Last active</Th>
                 </tr>
               </thead>
               <tbody>
@@ -107,8 +103,7 @@ export function StaffPage() {
                         {r.is_active ? "Active" : "Disabled"}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-ink-soft">{r.bill_count.toLocaleString("en-IN")}</td>
-                    <td className="px-4 py-3 font-semibold text-ink">{inr(r.total_sales)}</td>
+                    <td className="px-4 py-3 font-semibold text-ink">{r.bill_count.toLocaleString("en-IN")}</td>
                     <td className="px-4 py-3 text-ink-soft">{fromNow(r.last_bill_at)}</td>
                   </tr>
                 ))}
@@ -130,9 +125,8 @@ export function StaffPage() {
                   </span>
                 </div>
                 <div className="mt-2 text-base text-ink-soft">{r.shop_name ?? "—"}</div>
-                <div className="mt-1 flex items-center justify-between text-base">
-                  <span className="text-ink-soft">{r.bill_count} bills · {fromNow(r.last_bill_at)}</span>
-                  <span className="font-semibold text-ink">{inr(r.total_sales)}</span>
+                <div className="mt-1 text-base text-ink-soft">
+                  {r.bill_count} {r.bill_count === 1 ? "bill" : "bills"} · {fromNow(r.last_bill_at)}
                 </div>
               </div>
             ))}

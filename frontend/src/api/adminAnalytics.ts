@@ -5,21 +5,17 @@ export interface AdminShopRow {
   shop_name: string;
   is_active: boolean;
   owner_email: string | null;
-  total_sales: string;
-  bill_count: number;
-  cash_total: string;
-  upi_total: string;
-  due_total: string;
-  total_expenses: string;
-  net_sales: string;
+  owner_count: number;
+  created_at: string;
+  bills_in_period: number;
   staff_count: number;
   last_bill_at: string | null;
 }
 
 export interface TrendPoint {
   date: string;
-  sales: string;
-  bill_count: number;
+  bills: number;
+  new_shops: number;
 }
 
 export interface AttentionItem {
@@ -29,32 +25,19 @@ export interface AttentionItem {
   detail: string;
 }
 
-export interface AdminStaffPerformance {
-  user_id: string | null;
-  email: string | null;
-  shop_id: string;
-  shop_name: string;
-  role: string;
-  total_sales: string;
-  bill_count: number;
-}
-
 export interface AdminOverview {
   start_date: string;
   end_date: string;
   total_shops: number;
   active_shops: number;
-  total_sales: string;
-  bill_count: number;
-  cash_total: string;
-  upi_total: string;
-  due_total: string;
-  total_expenses: string;
-  net_sales: string;
+  inactive_shops: number;
+  new_shops: number;
+  total_staff: number;
+  total_owners: number;
+  total_bills: number;
   shops: AdminShopRow[];
   trend: TrendPoint[];
   attention: AttentionItem[];
-  staff: AdminStaffPerformance[];
 }
 
 export interface AdminStaffRow {
@@ -65,52 +48,35 @@ export interface AdminStaffRow {
   shop_id: string | null;
   shop_name: string | null;
   created_at: string;
-  total_sales: string;
   bill_count: number;
   last_bill_at: string | null;
 }
 
-/** Mirrors the backend DetailedReportResponse (money as 2dp strings). */
-export interface ReportData {
-  start_date: string;
-  end_date: string;
-  total_sales: string;
-  bill_count: number;
-  cash_total: string;
-  upi_total: string;
-  due_total: string;
-  average_bill_value: string;
-  total_expenses: string;
-  net_sales: string;
-  expenses: { id: string; amount: string; reason: string; created_at: string }[];
-  categories: { category: string | null; quantity: number; total_sales: string }[];
-  top_products: { product_name: string; quantity: number; total_sales: string }[];
-}
-
-export interface AdminRecentBill {
-  id: string;
+export interface AdminActivity {
   created_at: string;
-  total: string;
-  payment_method: string;
-  customer_name: string | null;
   salesperson_email: string | null;
+  item_count: number;
 }
 
 export interface AdminShopDetail {
   shop_id: string;
   shop_name: string;
   is_active: boolean;
+  created_at: string;
   business_name: string | null;
   business_address: string | null;
   business_phone: string | null;
   business_email: string | null;
   business_upi: string | null;
   owner_email: string | null;
-  cash_in_hand_running: string;
-  last_bill_at: string | null;
+  owner_emails: string[];
   staff_count: number;
-  report: ReportData;
-  recent_bills: AdminRecentBill[];
+  products_count: number;
+  customers_count: number;
+  bills_7: number;
+  bills_30: number;
+  last_bill_at: string | null;
+  recent_activity: AdminActivity[];
 }
 
 export interface ExportStatus {

@@ -12,18 +12,13 @@ import { ResetPasswordModal } from "./ResetPasswordModal";
 import { BusinessDetailsModal } from "./BusinessDetailsModal";
 import { ShopDetailDrawer } from "./ShopDetailDrawer";
 import { VoiceSearchButton } from "@/components/VoiceSearchButton";
+import { Pencil, KeyRound, Power, Trash2 } from "lucide-react";
 
 type StatusFilter = "all" | "active" | "inactive";
 
 interface ShopStat {
-  total_sales: string;
-  bill_count: number;
+  bills: number;
   last_bill_at: string | null;
-}
-
-function inr(v: string): string {
-  const n = Number(v);
-  return "₹" + (isFinite(n) ? n : 0).toLocaleString("en-IN", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 }
 
 /** Health signal from the most recent bill: green today, amber this week, red silent. */
@@ -94,7 +89,7 @@ export function ShopsPage() {
       .then((o) => {
         const map: Record<string, ShopStat> = {};
         for (const s of o.shops) {
-          map[s.shop_id] = { total_sales: s.total_sales, bill_count: s.bill_count, last_bill_at: s.last_bill_at };
+          map[s.shop_id] = { bills: s.bills_in_period, last_bill_at: s.last_bill_at };
         }
         setStats(map);
       })
@@ -265,7 +260,7 @@ export function ShopsPage() {
                     <td className="px-4 py-3 text-ink-soft">{s.owner_email ?? "—"}</td>
                     <td className="px-4 py-3 text-ink-soft">
                       {st ? (
-                        <span>{inr(st.total_sales)} · {st.bill_count} bills</span>
+                        <span className="font-semibold text-ink">{st.bills} {st.bills === 1 ? "bill" : "bills"}</span>
                       ) : (
                         <span className="text-ink-soft/60">—</span>
                       )}
@@ -310,7 +305,7 @@ export function ShopsPage() {
                 </div>
                 <div className="mt-2 space-y-0.5 text-base text-ink-soft">
                   <div className="truncate">{s.owner_email ?? "—"}</div>
-                  <div>{st ? `${inr(st.total_sales)} · ${st.bill_count} bills · ` : ""}{h.label}</div>
+                  <div>{st ? `${st.bills} ${st.bills === 1 ? "bill" : "bills"} · ` : ""}{h.label}</div>
                   <div className="flex items-center justify-between pt-1">
                     <span>Auto WhatsApp:</span>
                     <label className="relative inline-flex items-center cursor-pointer">
@@ -399,6 +394,8 @@ function StatusBadge({ active }: { active: boolean }) {
   );
 }
 
+/** Symmetric icon actions — equal square buttons, aligned to the right on desktop
+ *  and evenly spread on mobile. Labels live in tooltips + aria for clarity. */
 function RowActions({
   shop, busy, onToggle, onReset, onDelete, onEditDetails,
 }: {
@@ -409,44 +406,49 @@ function RowActions({
   onDelete: (s: ShopRow) => void;
   onEditDetails: (s: ShopRow) => void;
 }) {
+  const base =
+    "flex h-10 w-10 items-center justify-center rounded-control border transition-colors disabled:opacity-50";
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <div className="flex items-center gap-2 md:justify-end">
       <button
         type="button"
         disabled={busy}
         onClick={() => onEditDetails(shop)}
-        className="rounded-control border border-border-strong px-3 py-1.5 text-sm font-semibold text-ink hover:bg-surface-muted disabled:opacity-50"
+        title="Business details"
+        aria-label="Business details"
+        className={`${base} border-border-strong text-ink hover:bg-surface-muted`}
       >
-        Business details
-      </button>
-      <button
-        type="button"
-        disabled={busy}
-        onClick={() => onToggle(shop)}
-        className={[
-          "rounded-control px-3 py-1.5 text-sm font-semibold disabled:opacity-50",
-          shop.is_active
-            ? "border border-border-strong text-danger hover:bg-danger-soft"
-            : "border border-border-strong text-success hover:bg-success-soft",
-        ].join(" ")}
-      >
-        {shop.is_active ? "Deactivate" : "Activate"}
+        <Pencil className="h-4.5 w-4.5" />
       </button>
       <button
         type="button"
         disabled={busy}
         onClick={() => onReset(shop)}
-        className="rounded-control border border-border-strong px-3 py-1.5 text-sm font-semibold text-ink hover:bg-surface-muted disabled:opacity-50"
+        title="Reset password"
+        aria-label="Reset password"
+        className={`${base} border-border-strong text-ink hover:bg-surface-muted`}
       >
-        Reset password
+        <KeyRound className="h-4.5 w-4.5" />
+      </button>
+      <button
+        type="button"
+        disabled={busy}
+        onClick={() => onToggle(shop)}
+        title={shop.is_active ? "Deactivate" : "Activate"}
+        aria-label={shop.is_active ? "Deactivate" : "Activate"}
+        className={`${base} ${shop.is_active ? "border-border-strong text-danger hover:bg-danger-soft" : "border-border-strong text-success hover:bg-success-soft"}`}
+      >
+        <Power className="h-4.5 w-4.5" />
       </button>
       <button
         type="button"
         disabled={busy}
         onClick={() => onDelete(shop)}
-        className="rounded-control border border-danger-soft px-3 py-1.5 text-sm font-semibold text-danger hover:bg-danger-soft disabled:opacity-50"
+        title="Delete shop"
+        aria-label="Delete shop"
+        className={`${base} border-danger-soft text-danger hover:bg-danger-soft`}
       >
-        Delete
+        <Trash2 className="h-4.5 w-4.5" />
       </button>
     </div>
   );

@@ -14,9 +14,6 @@ import { friendlyError } from "@/api/client";
 import { Spinner } from "@/components/Spinner";
 import { Button } from "@/components/Button";
 
-function inr(n: number): string {
-  return "₹" + (isFinite(n) ? n : 0).toLocaleString("en-IN", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
-}
 function ymd(d: Date): string {
   return d.toISOString().slice(0, 10);
 }
@@ -40,7 +37,7 @@ export function OwnersPage() {
   const [createErr, setCreateErr] = useState<string | null>(null);
   const [created, setCreated] = useState<{ email: string; password: string } | null>(null);
   const [toast, setToast] = useState<string | null>(null);
-  const [salesByShop, setSalesByShop] = useState<Record<string, number>>({});
+  const [billsByShop, setBillsByShop] = useState<Record<string, number>>({});
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -60,7 +57,7 @@ export function OwnersPage() {
     load();
   }, [load]);
 
-  // Combined 30-day GMV per shop — best-effort, so a stats failure never blocks the page.
+  // 30-day activity (bill count) per shop — best-effort, never blocks the page.
   useEffect(() => {
     const now = new Date();
     const from = new Date(now);
@@ -68,25 +65,25 @@ export function OwnersPage() {
     getAdminOverview(ymd(from), ymd(now))
       .then((o) => {
         const map: Record<string, number> = {};
-        for (const s of o.shops) map[s.shop_id] = Number(s.total_sales);
-        setSalesByShop(map);
+        for (const s of o.shops) map[s.shop_id] = s.bills_in_period;
+        setBillsByShop(map);
       })
       .catch(() => {});
   }, []);
 
-  // Per-owner portfolio: their shops + combined 30-day GMV.
+  // Per-owner portfolio: their shops + combined 30-day activity (bills, not money).
   const portfolio = useMemo(() => {
-    const map: Record<string, { shops: ShopRow[]; gmv: number }> = {};
-    for (const o of owners) map[o.id] = { shops: [], gmv: 0 };
+    const map: Record<string, { shops: ShopRow[]; bills: number }> = {};
+    for (const o of owners) map[o.id] = { shops: [], bills: 0 };
     for (const s of shops) {
       for (const link of s.owners) {
-        if (!map[link.id]) map[link.id] = { shops: [], gmv: 0 };
+        if (!map[link.id]) map[link.id] = { shops: [], bills: 0 };
         map[link.id].shops.push(s);
-        map[link.id].gmv += salesByShop[s.id] ?? 0;
+        map[link.id].bills += billsByShop[s.id] ?? 0;
       }
     }
     return map;
-  }, [owners, shops, salesByShop]);
+  }, [owners, shops, billsByShop]);
 
   const create = async () => {
     setCreating(true);
@@ -184,13 +181,13 @@ export function OwnersPage() {
           {/* Owner portfolios */}
           <section>
             <h2 className="mb-2 text-lg font-bold text-ink">Owners ({owners.length})</h2>
-            <p className="mb-2 text-sm text-ink-soft">Combined sales are across each owner's shops over the last 30 days.</p>
+            <p className="mb-2 text-sm text-ink-soft">Activity is bills created across each owner's shops in the last 30 days.</p>
             {owners.length === 0 ? (
               <p className="text-ink-soft">No owner accounts yet.</p>
             ) : (
               <div className="grid gap-3 sm:grid-cols-2">
                 {owners.map((o) => {
-                  const p = portfolio[o.id] ?? { shops: [], gmv: 0 };
+                  const p = portfolio[o.id] ?? { shops: [], bills: 0 };
                   return (
                     <div key={o.id} className="rounded-card border border-border bg-surface p-4 shadow-card">
                       <div className="flex items-start justify-between gap-2">
@@ -201,8 +198,8 @@ export function OwnersPage() {
                           </div>
                         </div>
                         <div className="shrink-0 text-right">
-                          <div className="text-lg font-extrabold text-primary-700">{inr(p.gmv)}</div>
-                          <div className="text-xs text-ink-soft">30-day sales</div>
+                          <div className="text-lg font-extrabold tracking-tight text-primary-700">{p.bills}</div>
+                          <div className="text-xs text-ink-soft">bills · 30 days</div>
                         </div>
                       </div>
                       {p.shops.length > 0 && (

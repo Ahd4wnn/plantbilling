@@ -120,6 +120,12 @@ def list_shops(db: Session = Depends(get_db)) -> list[ShopListRow]:
             Shop.is_active,
             Shop.created_at,
             Shop.settings,
+            Shop.business_name,
+            Shop.business_address,
+            Shop.business_phone,
+            Shop.business_email,
+            Shop.business_upi,
+            Shop.whatsapp_message_template,
             User.email.label("owner_email"),
         )
         .outerjoin(User, (User.shop_id == Shop.id) & (User.role == ROLE_MANAGER))
@@ -146,6 +152,12 @@ def list_shops(db: Session = Depends(get_db)) -> list[ShopListRow]:
             is_active=r.is_active,
             created_at=r.created_at,
             whatsapp_auto_send=r.settings.get("whatsapp_auto_send", False) if r.settings else False,
+            business_name=r.business_name,
+            business_address=r.business_address,
+            business_phone=r.business_phone,
+            business_email=r.business_email,
+            business_upi=r.business_upi,
+            whatsapp_message_template=r.whatsapp_message_template,
         )
         for r in rows
     ]
