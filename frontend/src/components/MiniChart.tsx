@@ -47,15 +47,18 @@ interface BarsProps {
 export function Bars({ data, className = "", height = 180, format }: BarsProps) {
   const max = Math.max(...data.map((d) => d.value), 1);
   return (
-    <div className={`flex items-end gap-1 ${className}`} style={{ height }}>
+    // items-stretch (default) so each column fills the fixed height; justify-end
+    // drops the bar to the baseline. Using items-end would collapse the columns to
+    // content height, making the percentage-height bars invisible.
+    <div className={`flex items-stretch gap-1 ${className}`} style={{ height }}>
       {data.map((d, i) => {
         const pct = (d.value / max) * 100;
         const fmt = format ? format(d.value) : String(d.value);
         return (
-          <div key={i} className="group relative flex flex-1 flex-col items-center justify-end" title={`${d.label}: ${fmt}`}>
+          <div key={i} className="group relative flex flex-1 flex-col justify-end" title={`${d.label}: ${fmt}`}>
             <div
               className="w-full rounded-t bg-primary-500/80 transition-all group-hover:bg-primary-600"
-              style={{ height: `${Math.max(pct, 1.5)}%` }}
+              style={{ height: `${Math.max(pct, 2)}%` }}
             />
           </div>
         );
