@@ -125,7 +125,6 @@ def list_shops(db: Session = Depends(get_db)) -> list[ShopListRow]:
             Shop.business_phone,
             Shop.business_email,
             Shop.business_upi,
-            Shop.whatsapp_message_template,
             User.email.label("owner_email"),
         )
         .outerjoin(User, (User.shop_id == Shop.id) & (User.role == ROLE_MANAGER))
@@ -157,7 +156,10 @@ def list_shops(db: Session = Depends(get_db)) -> list[ShopListRow]:
             business_phone=r.business_phone,
             business_email=r.business_email,
             business_upi=r.business_upi,
-            whatsapp_message_template=r.whatsapp_message_template,
+            # whatsapp_message_template lives in the settings JSON (a Python
+            # property, not a column), so read it from there — selecting it as a
+            # column raises and 500s the whole endpoint.
+            whatsapp_message_template=(r.settings or {}).get("whatsapp_message_template"),
         )
         for r in rows
     ]
