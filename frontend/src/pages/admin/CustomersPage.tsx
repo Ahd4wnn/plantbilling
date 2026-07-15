@@ -6,6 +6,7 @@ import {
   type AdminCustomerRow,
   type ShopRow,
 } from "@/api/admin";
+import { getExportStatus, type ExportStatus } from "@/api/adminAnalytics";
 import { friendlyError } from "@/api/client";
 import { Spinner } from "@/components/Spinner";
 import { Button } from "@/components/Button";
@@ -15,6 +16,9 @@ const PAGE_SIZE = 50;
 
 function formatDate(iso: string): string {
   return new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short", year: "numeric" }).format(new Date(iso));
+}
+function formatDateTime(iso: string): string {
+  return new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit" }).format(new Date(iso));
 }
 
 export function CustomersPage() {
@@ -28,25 +32,43 @@ export function CustomersPage() {
   const [search, setSearch] = useState("");
   const [debouncedQ, setDebouncedQ] = useState("");
   const [shopId, setShopId] = useState<string>("");
-  const [exporting, setExporting] = useState(false);
+  const [exporting, setExporting] = useState<null | "since_last" | "all" | "range">(null);
+  const [exportStatus, setExportStatus] = useState<ExportStatus | null>(null);
+  const [showRange, setShowRange] = useState(false);
+  const [rangeFrom, setRangeFrom] = useState("");
+  const [rangeTo, setRangeTo] = useState("");
 
-  const handleExport = async () => {
-    setExporting(true);
+  const refreshStatus = useCallback(() => {
+    getExportStatus().then(setExportStatus).catch(() => {});
+  }, []);
+
+  const handleExport = async (mode: "since_last" | "all" | "range") => {
+    if (mode === "range" && !rangeFrom && !rangeTo) {
+      alert("Pick at least one date for the range export.");
+      return;
+    }
+    setExporting(mode);
     try {
       await downloadAdminCustomersCSV({
         q: debouncedQ || undefined,
         shop_id: shopId || undefined,
+        mode,
+        created_from: mode === "range" ? rangeFrom || undefined : undefined,
+        created_to: mode === "range" ? rangeTo || undefined : undefined,
       });
+      // "since_last" advanced the server watermark — reflect that in the UI.
+      if (mode === "since_last") refreshStatus();
     } catch (e) {
       alert("Failed to export customer list.");
     } finally {
-      setExporting(false);
+      setExporting(null);
     }
   };
 
   useEffect(() => {
     listShops().then(setShops).catch(() => setShops([]));
-  }, []);
+    refreshStatus();
+  }, [refreshStatus]);
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedQ(search.trim()), 300);
@@ -95,21 +117,78 @@ export function CustomersPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-extrabold text-ink">Customers</h1>
           <p className="text-sm text-ink-soft">{loading ? "Loading…" : countLabel}</p>
         </div>
-        <Button
-          variant="secondary"
-          size="tap"
-          className="border-2 bg-white flex items-center gap-1.5 font-bold"
-          onClick={handleExport}
-          disabled={loading || exporting || rows.length === 0}
-        >
-          <Download className="h-4.5 w-4.5" />
-          {exporting ? "Exporting..." : "Export Excel"}
-        </Button>
+      </div>
+
+      {/* Export panel: incremental "since last download" + all + date range. */}
+      <div className="mt-3 rounded-card border border-border bg-white p-4 shadow-card">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="text-sm text-ink-soft">
+            {exportStatus ? (
+              exportStatus.last_exported_at ? (
+                <>
+                  Last download: <span className="font-semibold text-ink">{formatDateTime(exportStatus.last_exported_at)}</span>
+                  {" · "}
+                  <span className="font-semibold text-primary-700">{exportStatus.new_since_last.toLocaleString("en-IN")} new</span> since then
+                </>
+              ) : (
+                <>Never downloaded · <span className="font-semibold text-ink">{exportStatus.total_customers.toLocaleString("en-IN")}</span> total</>
+              )
+            ) : (
+              "Loading export status…"
+            )}
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              variant="primary"
+              size="tap"
+              className="flex items-center gap-1.5 font-bold"
+              onClick={() => handleExport("since_last")}
+              disabled={exporting !== null || (exportStatus?.new_since_last === 0)}
+            >
+              <Download className="h-4.5 w-4.5" />
+              {exporting === "since_last" ? "Exporting…" : `Export new${exportStatus ? ` (${exportStatus.new_since_last.toLocaleString("en-IN")})` : ""}`}
+            </Button>
+            <Button
+              variant="secondary"
+              size="tap"
+              className="border-2 bg-white font-bold"
+              onClick={() => handleExport("all")}
+              disabled={exporting !== null || rows.length === 0}
+            >
+              {exporting === "all" ? "Exporting…" : "Export all"}
+            </Button>
+            <Button
+              variant="ghost"
+              size="tap"
+              className="font-semibold"
+              onClick={() => setShowRange((v) => !v)}
+              disabled={exporting !== null}
+            >
+              Date range
+            </Button>
+          </div>
+        </div>
+        {showRange && (
+          <div className="mt-3 flex flex-wrap items-end gap-2 border-t border-border pt-3">
+            <label className="text-sm text-ink-soft">
+              From
+              <input type="date" value={rangeFrom} onChange={(e) => setRangeFrom(e.target.value)} className="mt-1 block h-11 rounded-control border-2 border-border bg-white px-3 text-base text-ink focus:border-primary-600 focus:outline-none" />
+            </label>
+            <label className="text-sm text-ink-soft">
+              To
+              <input type="date" value={rangeTo} onChange={(e) => setRangeTo(e.target.value)} className="mt-1 block h-11 rounded-control border-2 border-border bg-white px-3 text-base text-ink focus:border-primary-600 focus:outline-none" />
+            </label>
+            <Button variant="secondary" size="tap" className="border-2 bg-white font-bold" onClick={() => handleExport("range")} disabled={exporting !== null}>
+              {exporting === "range" ? "Exporting…" : "Download range"}
+            </Button>
+          </div>
+        )}
+        <p className="mt-2 text-xs text-ink-soft/80">Exports are de-duplicated by phone number. “Export new” only includes customers added since your last download.</p>
       </div>
 
       {/* Privacy note */}

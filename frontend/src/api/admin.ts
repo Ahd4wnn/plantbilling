@@ -163,10 +163,20 @@ export async function removeShopOwner(shopId: string, ownerId: string): Promise<
   return data;
 }
 
-export async function downloadAdminCustomersCSV(params: AdminCustomerParams): Promise<void> {
-  const query: Record<string, string | number> = {};
-  if (params.q?.trim()) query.q = params.q.trim();
-  if (params.shop_id) query.shop_id = params.shop_id;
+export interface CustomerExportOptions extends AdminCustomerParams {
+  /** since_last (default): only rows created after the last download; all: every
+   *  row; range: rows created within [created_from, created_to]. */
+  mode?: "since_last" | "all" | "range";
+  created_from?: string; // YYYY-MM-DD (range mode)
+  created_to?: string;   // YYYY-MM-DD (range mode)
+}
+
+export async function downloadAdminCustomersCSV(opts: CustomerExportOptions = {}): Promise<void> {
+  const query: Record<string, string | number> = { mode: opts.mode ?? "since_last" };
+  if (opts.q?.trim()) query.q = opts.q.trim();
+  if (opts.shop_id) query.shop_id = opts.shop_id;
+  if (opts.created_from) query.created_from = opts.created_from;
+  if (opts.created_to) query.created_to = opts.created_to;
 
   const { data } = await api.get("/admin/customers/download", {
     params: query,
@@ -176,7 +186,8 @@ export async function downloadAdminCustomersCSV(params: AdminCustomerParams): Pr
   const url = window.URL.createObjectURL(new Blob([data]));
   const link = document.createElement("a");
   link.href = url;
-  link.setAttribute("download", `admin_customers_export.csv`);
+  const stamp = new Date().toISOString().slice(0, 10);
+  link.setAttribute("download", `customers_${opts.mode ?? "since_last"}_${stamp}.csv`);
   document.body.appendChild(link);
   link.click();
   link.remove();

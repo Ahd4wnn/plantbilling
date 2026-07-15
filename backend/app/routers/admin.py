@@ -7,6 +7,7 @@ them.
 """
 from __future__ import annotations
 
+import datetime as dt
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
@@ -20,6 +21,7 @@ from app.models.customer import Customer
 from app.models.shop import Shop
 from app.models.shop_owner import ShopOwner
 from app.models.user import ROLE_MANAGER, ROLE_OWNER, User
+from app.schemas.admin_analytics import ExportStatus
 from app.schemas.admin import (
     AddOwnerRequest,
     AdminCustomerList,
@@ -277,17 +279,65 @@ def list_all_customers(
     return AdminCustomerList(items=items, total=total, limit=limit, offset=offset)
 
 
+@router.get("/customers/export-status", response_model=ExportStatus)
+def customers_export_status(
+    db: Session = Depends(get_db),
+    admin: User = Depends(require_admin),
+) -> ExportStatus:
+    """Where the 'since last download' watermark stands, for the export UI."""
+    total = db.execute(select(func.count()).select_from(Customer)).scalar_one()
+    watermark = admin.customers_exported_at
+    if watermark is None:
+        new_since = total
+    else:
+        new_since = db.execute(
+            select(func.count()).select_from(Customer).where(Customer.created_at > watermark)
+        ).scalar_one()
+    return ExportStatus(
+        last_exported_at=watermark, new_since_last=int(new_since), total_customers=int(total)
+    )
+
+
+def _dedup_by_phone(rows):
+    """Keep the most-recent customer per phone number; rows are ordered newest-first.
+    Rows with no phone can't be de-duplicated, so all of them are kept."""
+    seen: set[str] = set()
+    out = []
+    for c, shop_name in rows:
+        phone = (c.phone or "").strip()
+        if phone:
+            if phone in seen:
+                continue
+            seen.add(phone)
+        out.append((c, shop_name))
+    return out
+
+
 @router.get("/customers/download")
 def download_all_customers_csv(
     db: Session = Depends(get_db),
     q: str | None = Query(default=None),
     shop_id: uuid.UUID | None = Query(default=None),
-    _admin: User = Depends(require_admin),
+    mode: str = Query(default="since_last", pattern="^(since_last|all|range)$"),
+    created_from: dt.date | None = Query(default=None),
+    created_to: dt.date | None = Query(default=None),
+    admin: User = Depends(require_admin),
 ):
-    """Download all customers matching filters as a CSV file (admin only)."""
+    """Download customers as a CSV (admin only), de-duplicated by phone number.
+
+    Export modes:
+    - ``since_last`` (default): only customers created after the admin's watermark
+      (``users.customers_exported_at``). No repeats of rows already downloaded.
+      On success the watermark advances to now.
+    - ``all``: every customer (does not touch the watermark).
+    - ``range``: customers created within [created_from, created_to] (IST days);
+      does not touch the watermark.
+    """
     import csv
     import io
     from fastapi.responses import StreamingResponse
+
+    from app.routers.bills import _ist_day_bounds_utc
 
     base = select(Customer, Shop.name.label("shop_name")).join(Shop, Shop.id == Customer.shop_id)
     if q:
@@ -296,17 +346,40 @@ def download_all_customers_csv(
     if shop_id is not None:
         base = base.where(Customer.shop_id == shop_id)
 
+    now = dt.datetime.now(tz=dt.timezone.utc)
+    if mode == "since_last":
+        if admin.customers_exported_at is not None:
+            base = base.where(Customer.created_at > admin.customers_exported_at)
+    elif mode == "range":
+        if created_from is not None:
+            base = base.where(Customer.created_at >= _ist_day_bounds_utc(created_from)[0])
+        if created_to is not None:
+            base = base.where(Customer.created_at < _ist_day_bounds_utc(created_to)[1])
+
     rows = db.execute(base.order_by(Customer.created_at.desc())).all()
+    rows = _dedup_by_phone(rows)
 
     output = io.StringIO()
     writer = csv.writer(output)
 
     writer.writerow(["Admin Customer Database Export"])
+    label = {
+        "since_last": "New since last download",
+        "all": "All customers",
+        "range": "By date range",
+    }[mode]
+    writer.writerow([f"Mode: {label}", f"Generated: {now.astimezone().strftime('%Y-%m-%d %H:%M')}", f"Rows: {len(rows)}"])
     writer.writerow([])
     writer.writerow(["Name", "Phone Number", "Nursery / Shop", "Joined Date"])
     for c, shop_name in rows:
         joined_str = c.created_at.strftime("%Y-%m-%d") if c.created_at else ""
         writer.writerow([c.name, c.phone or "—", shop_name, joined_str])
+
+    # Advance the watermark only for the incremental mode, and only after the CSV
+    # has been fully built (so a query error never bumps it past un-exported rows).
+    if mode == "since_last":
+        admin.customers_exported_at = now
+        db.flush()
 
     output.seek(0)
     headers = {

@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { AnimatePresence, motion } from "motion/react";
 import { listShops, updateShop, deleteShop, type ShopRow } from "@/api/admin";
+import { getAdminOverview } from "@/api/adminAnalytics";
 import { friendlyError } from "@/api/client";
 import { Spinner } from "@/components/Spinner";
 import { Button } from "@/components/Button";
@@ -8,12 +10,29 @@ import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { CreateShopModal } from "./CreateShopModal";
 import { ResetPasswordModal } from "./ResetPasswordModal";
 import { BusinessDetailsModal } from "./BusinessDetailsModal";
+import { ShopDetailDrawer } from "./ShopDetailDrawer";
 import { VoiceSearchButton } from "@/components/VoiceSearchButton";
 
 type StatusFilter = "all" | "active" | "inactive";
 
-function formatDate(iso: string): string {
-  return new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short", year: "numeric" }).format(new Date(iso));
+interface ShopStat {
+  total_sales: string;
+  bill_count: number;
+  last_bill_at: string | null;
+}
+
+function inr(v: string): string {
+  const n = Number(v);
+  return "₹" + (isFinite(n) ? n : 0).toLocaleString("en-IN", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+}
+
+/** Health signal from the most recent bill: green today, amber this week, red silent. */
+function health(lastBillAt: string | null): { dot: string; label: string } {
+  if (!lastBillAt) return { dot: "bg-slate-300", label: "Never billed" };
+  const days = Math.floor((Date.now() - new Date(lastBillAt).getTime()) / 86_400_000);
+  if (days <= 0) return { dot: "bg-success", label: "Billed today" };
+  if (days <= 6) return { dot: "bg-amber-400", label: days === 1 ? "Billed yesterday" : `${days} days ago` };
+  return { dot: "bg-danger", label: `Quiet ${days} days` };
 }
 
 export function ShopsPage() {
@@ -29,7 +48,11 @@ export function ShopsPage() {
   const [editDetailsShop, setEditDetailsShop] = useState<ShopRow | null>(null);
   const [deactivateShop, setDeactivateShop] = useState<ShopRow | null>(null);
   const [deleteShopTarget, setDeleteShopTarget] = useState<ShopRow | null>(null);
+  const [drawerShop, setDrawerShop] = useState<ShopRow | null>(null);
+  const [stats, setStats] = useState<Record<string, ShopStat>>({});
   const [busyId, setBusyId] = useState<string | null>(null);
+
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const [toast, setToast] = useState<string | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -59,6 +82,35 @@ export function ShopsPage() {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  // Live activity (last 7 days) merged in from the analytics overview — best-effort,
+  // so a stats failure never blocks the shops list.
+  useEffect(() => {
+    const now = new Date();
+    const from = new Date(now);
+    from.setDate(from.getDate() - 6);
+    const ymd = (d: Date) => d.toISOString().slice(0, 10);
+    getAdminOverview(ymd(from), ymd(now))
+      .then((o) => {
+        const map: Record<string, ShopStat> = {};
+        for (const s of o.shops) {
+          map[s.shop_id] = { total_sales: s.total_sales, bill_count: s.bill_count, last_bill_at: s.last_bill_at };
+        }
+        setStats(map);
+      })
+      .catch(() => {});
+  }, []);
+
+  // Deep link: /admin/shops?focus=<shopId> opens that shop's drawer once loaded.
+  useEffect(() => {
+    const focus = searchParams.get("focus");
+    if (focus && shops.length > 0) {
+      const target = shops.find((s) => s.id === focus);
+      if (target) setDrawerShop(target);
+      searchParams.delete("focus");
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, [shops, searchParams, setSearchParams]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -190,14 +242,35 @@ export function ShopsPage() {
             <table className="w-full text-left text-base">
               <thead className="border-b border-border bg-surface-muted text-sm text-ink-soft">
                 <tr>
-                  <Th>Shop</Th><Th>Owner Email</Th><Th>Status</Th><Th>Auto WhatsApp</Th><Th>Created</Th><Th>Actions</Th>
+                  <Th>Shop</Th><Th>Owner Email</Th><Th>7-day activity</Th><Th>Status</Th><Th>Auto WhatsApp</Th><Th>Actions</Th>
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((s) => (
+                {filtered.map((s) => {
+                  const st = stats[s.id];
+                  const h = health(st?.last_bill_at ?? null);
+                  return (
                   <tr key={s.id} className="border-b border-border last:border-b-0">
-                    <td className="px-4 py-3 font-semibold text-ink">{s.name}</td>
+                    <td className="px-4 py-3">
+                      <button
+                        type="button"
+                        onClick={() => setDrawerShop(s)}
+                        className="flex items-center gap-2 font-semibold text-ink hover:text-primary-700"
+                        title={h.label}
+                      >
+                        <span className={["h-2.5 w-2.5 shrink-0 rounded-full", h.dot].join(" ")} />
+                        <span className="underline-offset-2 hover:underline">{s.name}</span>
+                      </button>
+                    </td>
                     <td className="px-4 py-3 text-ink-soft">{s.owner_email ?? "—"}</td>
+                    <td className="px-4 py-3 text-ink-soft">
+                      {st ? (
+                        <span>{inr(st.total_sales)} · {st.bill_count} bills</span>
+                      ) : (
+                        <span className="text-ink-soft/60">—</span>
+                      )}
+                      <span className="block text-xs text-ink-soft/70">{h.label}</span>
+                    </td>
                     <td className="px-4 py-3"><StatusBadge active={s.is_active} /></td>
                     <td className="px-4 py-3">
                       <label className="relative inline-flex items-center cursor-pointer">
@@ -211,29 +284,33 @@ export function ShopsPage() {
                         <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div>
                       </label>
                     </td>
-                    <td className="px-4 py-3 text-ink-soft">{formatDate(s.created_at)}</td>
                     <td className="px-4 py-3">
                       <RowActions shop={s} busy={busyId === s.id} onToggle={toggleActive} onReset={setResetShop} onDelete={setDeleteShopTarget} onEditDetails={setEditDetailsShop} />
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>
 
           {/* Mobile cards */}
           <div className="mt-4 space-y-3 md:hidden">
-            {filtered.map((s) => (
+            {filtered.map((s) => {
+              const st = stats[s.id];
+              const h = health(st?.last_bill_at ?? null);
+              return (
               <div key={s.id} className="rounded-card border border-border bg-surface p-4 shadow-card">
                 <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <div className="truncate text-lg font-bold text-ink">{s.name}</div>
-                  </div>
+                  <button type="button" onClick={() => setDrawerShop(s)} className="flex min-w-0 items-center gap-2 text-left">
+                    <span className={["h-2.5 w-2.5 shrink-0 rounded-full", h.dot].join(" ")} />
+                    <span className="truncate text-lg font-bold text-ink underline-offset-2">{s.name}</span>
+                  </button>
                   <StatusBadge active={s.is_active} />
                 </div>
                 <div className="mt-2 space-y-0.5 text-base text-ink-soft">
                   <div className="truncate">{s.owner_email ?? "—"}</div>
-                  <div>Created: {formatDate(s.created_at)}</div>
+                  <div>{st ? `${inr(st.total_sales)} · ${st.bill_count} bills · ` : ""}{h.label}</div>
                   <div className="flex items-center justify-between pt-1">
                     <span>Auto WhatsApp:</span>
                     <label className="relative inline-flex items-center cursor-pointer">
@@ -252,10 +329,20 @@ export function ShopsPage() {
                   <RowActions shop={s} busy={busyId === s.id} onToggle={toggleActive} onReset={setResetShop} onDelete={setDeleteShopTarget} onEditDetails={setEditDetailsShop} />
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         </>
       )}
+
+      <ShopDetailDrawer
+        shop={drawerShop}
+        onClose={() => setDrawerShop(null)}
+        onEditDetails={(s) => { setDrawerShop(null); setEditDetailsShop(s); }}
+        onReset={(s) => { setDrawerShop(null); setResetShop(s); }}
+        onToggle={(s) => { setDrawerShop(null); toggleActive(s); }}
+        onDelete={(s) => { setDrawerShop(null); setDeleteShopTarget(s); }}
+      />
 
       <CreateShopModal open={createOpen} onClose={() => setCreateOpen(false)} onCreated={load} />
       <ResetPasswordModal shop={resetShop} onClose={() => setResetShop(null)} />

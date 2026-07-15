@@ -3,7 +3,7 @@ from __future__ import annotations
 import datetime as dt
 import uuid
 
-from sqlalchemy import Boolean, ForeignKey, Text, text
+from sqlalchemy import Boolean, DateTime, ForeignKey, Text, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -30,3 +30,9 @@ class User(Base):
     role: Mapped[str] = mapped_column(Text, nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
     created_at: Mapped[dt.datetime] = created_at_col()
+    # Admin-only: when this admin last downloaded the customer directory. Drives the
+    # "since last export" watermark so repeated CSV downloads don't repeat rows.
+    customers_exported_at: Mapped[dt.datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )

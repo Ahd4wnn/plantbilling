@@ -17,6 +17,8 @@ import { ShopsPage } from "@/pages/admin/ShopsPage";
 import { OwnersPage } from "@/pages/admin/OwnersPage";
 import { CustomersPage } from "@/pages/admin/CustomersPage";
 import { CrashReportsPage } from "@/pages/admin/CrashReportsPage";
+import { DashboardPage } from "@/pages/admin/DashboardPage";
+import { StaffPage } from "@/pages/admin/StaffPage";
 import { CustomersPage as ShopCustomersPage } from "@/pages/shop/CustomersPage";
 import { PublicBillReceiptPage } from "@/pages/shop/PublicBillReceiptPage";
 import { OwnerLayout } from "@/layouts/OwnerLayout";
@@ -80,9 +82,10 @@ export default function App() {
         {/* Admin area (Sales removed — admin no longer views sales) */}
         <Route element={<ProtectedRoute role="admin" />}>
           <Route path="/admin" element={<AdminLayout />}>
-            <Route index element={<Navigate to="/admin/shops" replace />} />
+            <Route index element={<DashboardPage />} />
             <Route path="shops" element={<ShopsPage />} />
             <Route path="owners" element={<OwnersPage />} />
+            <Route path="staff" element={<StaffPage />} />
             <Route path="customers" element={<CustomersPage />} />
             <Route path="crashes" element={<CrashReportsPage />} />
           </Route>
