@@ -51,6 +51,10 @@ class Bill(Base):
         ForeignKey("users.id", ondelete="SET NULL"),
         nullable=True,
     )
+    # The biller's email, denormalized (snapshotted) at sale time so "who billed"
+    # survives the salesperson being deleted (created_by is SET NULL on delete).
+    # Source of truth for display; a live user lookup is only a fallback.
+    created_by_email: Mapped[str | None] = mapped_column(Text, nullable=True)
     # Client-generated key making POST /bills idempotent: a retry/double-tap with
     # the same key returns the original bill instead of creating a duplicate.
     # Unique per shop (partial unique index in migration 0002).

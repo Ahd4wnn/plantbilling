@@ -14,7 +14,8 @@ from app.models.bill import Bill, BillItem
 from app.models.expense import Expense
 from app.models.due_settlement import DueSettlement
 from app.models.labour import Labourer, LabourPayment, LabourAttendance
+from app.models.borrowing import Borrowing
 from app.models.crash_report import CrashReport
 from app.models.bill_audit import BillAuditLog
 
-__all__ = ["Base", "Shop", "ShopOwner", "User", "Product", "Customer", "Bill", "BillItem", "Expense", "DueSettlement", "Labourer", "LabourPayment", "LabourAttendance", "CrashReport", "BillAuditLog"]
+__all__ = ["Base", "Shop", "ShopOwner", "User", "Product", "Customer", "Bill", "BillItem", "Expense", "DueSettlement", "Labourer", "LabourPayment", "LabourAttendance", "Borrowing", "CrashReport", "BillAuditLog"]

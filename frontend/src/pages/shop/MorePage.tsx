@@ -16,7 +16,7 @@ import {
   type Salesperson,
 } from "@/api/shop_users";
 import { friendlyError } from "@/api/client";
-import { UserPlus, Key, UserCheck, UserX, AlertCircle, Trash2, Bluetooth, Printer, MessageSquare, Wallet, HardHat, ChevronRight } from "lucide-react";
+import { UserPlus, Key, UserCheck, UserX, AlertCircle, Trash2, Bluetooth, Printer, MessageSquare, Wallet, HardHat, HandCoins, ChevronRight } from "lucide-react";
 import { useBluetoothPrinter } from "@/store/bluetooth";
 import { getShopSettings, updateShopSettings, setCashInHand, type ShopSettings } from "@/api/shop";
 import { useCashInHandCumulative } from "@/lib/cashInHand";
@@ -227,6 +227,22 @@ export function MorePage() {
           <p className="text-sm text-ink-soft mt-0.5">
             {isOwner ? "Manage workers and record payments" : "Record payments to workers"}
           </p>
+        </div>
+        <ChevronRight className="h-5 w-5 text-ink-soft shrink-0" />
+      </button>
+
+      {/* Money borrowed link */}
+      <button
+        type="button"
+        onClick={() => navigate("/app/borrowings")}
+        className="w-full rounded-2xl border border-border bg-white p-5 shadow-sm flex items-center gap-3 text-left hover:bg-surface-muted active:scale-[0.99] transition"
+      >
+        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary-50 text-primary-700">
+          <HandCoins className="h-6 w-6" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <h2 className="text-xl font-bold text-ink">Money borrowed</h2>
+          <p className="text-sm text-ink-soft mt-0.5">Track money you borrowed and mark it paid</p>
         </div>
         <ChevronRight className="h-5 w-5 text-ink-soft shrink-0" />
       </button>

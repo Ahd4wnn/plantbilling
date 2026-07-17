@@ -24,6 +24,7 @@ from app.routers.shop_users import router as shop_users_router
 from app.routers.expenses import router as expenses_router
 from app.routers.settlements import router as settlements_router
 from app.routers.labour import router as labour_router
+from app.routers.borrowings import router as borrowings_router
 from app.routers.owner import router as owner_router
 from app.routers.crash import router as crash_router
 from app.services.whatsapp.worker import start_whatsapp_worker, stop_whatsapp_worker
@@ -106,5 +107,6 @@ app.include_router(shop_users_router)
 app.include_router(expenses_router)
 app.include_router(settlements_router)
 app.include_router(labour_router)
+app.include_router(borrowings_router)
 app.include_router(owner_router)
 app.include_router(crash_router)

@@ -10,6 +10,7 @@ import { BillPage } from "@/pages/shop/BillPage";
 import { ProductsPage } from "@/pages/shop/ProductsPage";
 import { SalesPage } from "@/pages/shop/SalesPage";
 import { LabourPage } from "@/pages/shop/LabourPage";
+import { BorrowingsPage } from "@/pages/shop/BorrowingsPage";
 import { MorePage } from "@/pages/shop/MorePage";
 import { StyleGuide } from "@/pages/StyleGuide";
 import { NotFound } from "@/pages/NotFound";
@@ -66,6 +67,7 @@ export default function App() {
             <Route path="products" element={<ProductsPage />} />
             <Route path="sales" element={<SalesPage />} />
             <Route path="labour" element={<LabourPage />} />
+            <Route path="borrowings" element={<BorrowingsPage />} />
             <Route path="customers" element={<ShopCustomersPage />} />
             <Route path="more" element={<MorePage />} />
           </Route>

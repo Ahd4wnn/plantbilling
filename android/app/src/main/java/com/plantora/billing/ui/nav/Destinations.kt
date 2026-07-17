@@ -46,6 +46,7 @@ object Routes {
     const val DUES = "dues"
     const val APPROVALS = "approvals"
     const val LABOUR = "labour"
+    const val BORROWINGS = "borrowings"
     const val CUSTOMER_DETAIL = "customer_detail/{customerId}"
     const val DETAILED_REPORT = "detailed_report"
     const val PRODUCT_EDIT = "product_edit"

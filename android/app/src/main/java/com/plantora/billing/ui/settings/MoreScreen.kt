@@ -17,6 +17,7 @@ import androidx.compose.material.icons.rounded.AccountBalanceWallet
 import androidx.compose.material.icons.rounded.Engineering
 import androidx.compose.material.icons.rounded.Groups
 import androidx.compose.material.icons.rounded.Print
+import androidx.compose.material.icons.rounded.RequestQuote
 import androidx.compose.material.icons.rounded.Store
 import androidx.compose.material.icons.rounded.SupportAgent
 import androidx.compose.material3.AlertDialog
@@ -50,6 +51,7 @@ fun MoreScreen(
     onOpenPrinter: () -> Unit,
     onOpenStaff: () -> Unit,
     onOpenLabour: () -> Unit,
+    onOpenBorrowings: () -> Unit,
     onLogout: () -> Unit,
     viewModel: MoreViewModel = hiltViewModel(),
 ) {
@@ -92,6 +94,12 @@ fun MoreScreen(
             "Labour",
             if (user.role == Role.MANAGER) "Manage workers and record payments" else "Record payments to workers",
             onOpenLabour,
+        )
+        MenuRow(
+            Icons.Rounded.RequestQuote,
+            "Money borrowed",
+            "Track money you borrowed and mark it paid",
+            onOpenBorrowings,
         )
 
         // Cash-in-hand controls. The switch is a per-device display choice; the

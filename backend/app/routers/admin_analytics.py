@@ -205,7 +205,7 @@ def admin_shop_detail(
     ).scalar_one()
 
     activity_rows = db.execute(
-        select(Bill.id, Bill.created_at, User.email)
+        select(Bill.id, Bill.created_at, func.coalesce(Bill.created_by_email, User.email).label("email"))
         .outerjoin(User, User.id == Bill.created_by)
         .where(Bill.shop_id == shop_id)
         .order_by(Bill.created_at.desc(), Bill.id.desc())

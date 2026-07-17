@@ -117,7 +117,10 @@ def _serialize(
         customer_id=bill.customer_id,
         customer_name=customer_name,
         created_by=bill.created_by,
-        salesperson_email=salesperson_email,
+        # Prefer the snapshot captured at sale time; fall back to any live lookup
+        # the caller passed. This is what keeps the biller from becoming "Unknown"
+        # after a salesperson is deleted.
+        salesperson_email=bill.created_by_email or salesperson_email,
         remarks=bill.remarks,
         is_edited=bill.is_edited,
         created_at=bill.created_at,
@@ -294,6 +297,7 @@ async def create_bill(
         due_amount=due_amount,
         remarks=payload.remarks,
         created_by=owner.id,
+        created_by_email=owner.email,  # snapshot the biller so it survives deletion
         idempotency_key=payload.idempotency_key,
     )
     bill_items: list[BillItem] = []
@@ -592,7 +596,7 @@ def get_bill(
             customer_name, customer_phone = c.name, c.phone
 
     shop = db.execute(select(Shop).where(Shop.id == bill.shop_id)).scalar_one_or_none()
-    creator_email = _user_email(db, bill.created_by)
+    creator_email = bill.created_by_email or _user_email(db, bill.created_by)
 
     return BillDetailOut(
         id=bill.id,
@@ -763,7 +767,7 @@ def update_bill(
             customer_name, customer_phone = c.name, c.phone
 
     shop = db.execute(select(Shop).where(Shop.id == bill.shop_id)).scalar_one_or_none()
-    creator_email = _user_email(db, bill.created_by)
+    creator_email = bill.created_by_email or _user_email(db, bill.created_by)
 
     return BillDetailOut(
         id=bill.id,
@@ -1144,7 +1148,7 @@ def download_detailed_report(
             Bill,
             Customer.name.label("cname"),
             Customer.phone.label("cphone"),
-            User.email.label("staff"),
+            func.coalesce(Bill.created_by_email, User.email).label("staff"),
         )
         .outerjoin(Customer, Customer.id == Bill.customer_id)
         .outerjoin(User, User.id == Bill.created_by)
@@ -1429,7 +1433,7 @@ def get_public_bill(
                 customer_name, customer_phone = c.name, c.phone
 
         shop = db.execute(select(Shop).where(Shop.id == bill.shop_id)).scalar_one_or_none()
-        creator_email = _user_email(db, bill.created_by)
+        creator_email = bill.created_by_email or _user_email(db, bill.created_by)
 
         return BillDetailOut(
             id=bill.id,

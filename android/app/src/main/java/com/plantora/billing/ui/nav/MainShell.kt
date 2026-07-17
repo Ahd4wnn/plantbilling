@@ -23,6 +23,7 @@ import com.plantora.billing.ui.billing.BillScreen
 import com.plantora.billing.ui.customers.CustomerDetailScreen
 import com.plantora.billing.ui.customers.CustomersScreen
 import com.plantora.billing.ui.labour.LabourScreen
+import com.plantora.billing.ui.borrowings.BorrowingsScreen
 import com.plantora.billing.ui.printer.PrinterScreen
 import com.plantora.billing.ui.products.ProductsScreen
 import com.plantora.billing.ui.sales.BillDetailScreen
@@ -129,6 +130,9 @@ fun MainShell(
             composable(Routes.LABOUR) {
                 LabourScreen(onBack = { navController.popBackStack() })
             }
+            composable(Routes.BORROWINGS) {
+                BorrowingsScreen(onBack = { navController.popBackStack() })
+            }
             composable(Tab.CUSTOMERS.route) {
                 CustomersScreen(onOpenCustomer = { id -> navController.navigate(Routes.customerDetail(id)) })
             }
@@ -169,6 +173,7 @@ fun MainShell(
                     onOpenPrinter = { navController.navigate(Routes.PRINTER_SETTINGS) },
                     onOpenStaff = { navController.navigate(Routes.STAFF_MANAGEMENT) },
                     onOpenLabour = { navController.navigate(Routes.LABOUR) },
+                    onOpenBorrowings = { navController.navigate(Routes.BORROWINGS) },
                     onLogout = onLogout,
                 )
             }

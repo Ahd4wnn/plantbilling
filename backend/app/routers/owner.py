@@ -151,7 +151,7 @@ def shop_bills(
             Bill.due_amount,
             Customer.name.label("customer_name"),
             Customer.phone.label("customer_phone"),
-            User.email.label("salesperson_email"),
+            func.coalesce(Bill.created_by_email, User.email).label("salesperson_email"),
             User.role.label("salesperson_role"),
         )
         .outerjoin(Customer, Customer.id == Bill.customer_id)
@@ -284,7 +284,7 @@ def shop_bill_detail(
         customer_id=bill.customer_id,
         customer_name=customer_name,
         customer_phone=customer_phone,
-        salesperson_email=_user_email(db, bill.created_by),
+        salesperson_email=bill.created_by_email or _user_email(db, bill.created_by),
         remarks=bill.remarks,
         is_edited=bill.is_edited,
         created_at=bill.created_at,
