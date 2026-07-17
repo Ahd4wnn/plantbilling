@@ -40,7 +40,9 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -343,6 +345,7 @@ private fun OwnerShopScreen(
 ) {
     val ui by viewModel.ui.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
+    var pendingStaffDelete by remember { mutableStateOf<OwnerStaff?>(null) }
     LaunchedEffect(ui.message) { ui.message?.let { snackbar.showSnackbar(it); viewModel.dismissMessage() } }
 
     Scaffold(
@@ -430,7 +433,7 @@ private fun OwnerShopScreen(
             }
 
             item { SectionHeader("Staff") }
-            items(ui.staff, key = { it.id }) { s -> StaffRow(s, onRemove = { viewModel.deleteStaff(s) }) }
+            items(ui.staff, key = { it.id }) { s -> StaffRow(s, onRemove = { pendingStaffDelete = s }) }
             item { AddStaff(ui.newStaff, viewModel) }
         }
     }
@@ -439,6 +442,17 @@ private fun OwnerShopScreen(
         ModalBottomSheet(onDismissRequest = viewModel::closeLabourer, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
             OwnerLabourerDetailSheet(detail)
         }
+    }
+
+    pendingStaffDelete?.let { s ->
+        com.plantora.billing.ui.components.TypeEmailToDeleteDialog(
+            email = s.email,
+            title = "Remove staff account?",
+            body = "This permanently deletes ${s.email}. Their past bills are kept.",
+            confirmLabel = "Delete account",
+            onConfirm = { viewModel.deleteStaff(s); pendingStaffDelete = null },
+            onDismiss = { pendingStaffDelete = null },
+        )
     }
 }
 

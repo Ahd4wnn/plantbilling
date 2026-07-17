@@ -6,6 +6,7 @@ import { Spinner } from "@/components/Spinner";
 import { TextInput } from "@/components/TextInput";
 import { BottomSheet } from "@/components/BottomSheet";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { TypeToConfirmDialog } from "@/components/TypeToConfirmDialog";
 import { generatePassword } from "@/lib/password";
 import {
   listSalespeople,
@@ -713,14 +714,14 @@ export function MorePage() {
         onCancel={() => setToggleUser(null)}
       />
 
-      {/* Delete Salesperson Confirmation */}
-      <ConfirmDialog
+      {/* Delete Salesperson Confirmation — must re-type the email. */}
+      <TypeToConfirmDialog
         open={deleteUser !== null}
         title="Delete Salesperson?"
-        body={`Are you sure you want to permanently delete the salesperson account ${deleteUser?.email}? This action cannot be undone.`}
-        confirmLabel="Delete"
-        cancelLabel="Cancel"
-        destructive
+        expected={deleteUser?.email ?? ""}
+        loading={busyId === deleteUser?.id}
+        body={`This permanently deletes the salesperson account ${deleteUser?.email ?? ""}. This cannot be undone.`}
+        confirmLabel="Delete account"
         onConfirm={handleDeleteSalesperson}
         onCancel={() => setDeleteUser(null)}
       />

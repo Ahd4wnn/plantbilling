@@ -1316,7 +1316,7 @@ def download_detailed_report(
         ).order_by(BillAuditLog.created_at.asc())
     ).scalars().all()
     audit_tab = [
-        [ist(a.created_at), a.action, short_id(a.bill_id), a.changed_by_email or "—", a.summary or ""]
+        [ist(a.created_at), a.action.replace("_", " "), short_id(a.bill_id), a.changed_by_email or "—", a.summary or ""]
         for a in audit_rows
     ]
 

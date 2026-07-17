@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from app.auth.dependencies import get_db, require_manager_only
 from app.auth.security import hash_password
 from app.models.user import ROLE_SALESPERSON, User
+from app.services.audit import record_account_deletion
 from app.schemas.shop_user import (
     SalespersonActivateRequest,
     SalespersonCreate,
@@ -122,6 +123,14 @@ def delete_salesperson(
 ):
     """Delete a salesperson. RLS enforces shop isolation."""
     salesperson = _get_salesperson_or_404(db, user_id)
+    # Record the removal before deleting so it shows in the sales report's log.
+    record_account_deletion(
+        db,
+        shop_id=salesperson.shop_id,
+        actor=_owner,
+        target_email=salesperson.email,
+        target_role="salesperson",
+    )
     db.delete(salesperson)
     db.flush()
 

@@ -41,6 +41,7 @@ from app.routers.bills import (
 )
 from pydantic import BaseModel
 from app.routers.bills import _user_email
+from app.services.audit import record_account_deletion
 from app.schemas.bill import BillDetailOut, BillItemOut
 from app.schemas.report import DetailedReportResponse
 from app.schemas.owner import (
@@ -507,5 +508,12 @@ def delete_staff(
 ):
     _owned_shop_or_404(db, owner, shop_id)
     user = _staff_or_404(db, shop_id, user_id)
+    record_account_deletion(
+        db,
+        shop_id=shop_id,
+        actor=owner,
+        target_email=user.email,
+        target_role=user.role,
+    )
     db.delete(user)
     db.flush()

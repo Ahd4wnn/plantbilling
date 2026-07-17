@@ -206,12 +206,13 @@ fun StaffManagementScreen(
     }
 
     pendingDelete?.let { sp ->
-        AlertDialog(
-            onDismissRequest = { pendingDelete = null },
-            title = { Text("Remove salesperson?") },
-            text = { Text("Remove ${sp.email}? Their past bills are kept.") },
-            confirmButton = { TextButton(onClick = { viewModel.deleteStaff(sp); pendingDelete = null }) { Text("Remove") } },
-            dismissButton = { TextButton(onClick = { pendingDelete = null }) { Text("Cancel") } },
+        com.plantora.billing.ui.components.TypeEmailToDeleteDialog(
+            email = sp.email,
+            title = "Remove salesperson?",
+            body = "This permanently deletes ${sp.email}. Their past bills are kept.",
+            confirmLabel = "Delete account",
+            onConfirm = { viewModel.deleteStaff(sp); pendingDelete = null },
+            onDismiss = { pendingDelete = null },
         )
     }
 }

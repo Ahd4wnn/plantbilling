@@ -117,7 +117,8 @@ export function BillDetailView({ billId, onClose, onUpdated }: BillDetailViewPro
 
   const user = useAuth((s) => s.user);
   const canEdit = user?.role === "manager" || user?.role === "admin";
-  const canDelete = user?.role === "admin";
+  // Managers can delete bills (backend allows manager+admin, matching the app).
+  const canDelete = user?.role === "manager" || user?.role === "admin";
 
   useEffect(() => {
     if (!billId) return;

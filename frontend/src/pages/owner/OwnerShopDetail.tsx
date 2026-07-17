@@ -24,6 +24,7 @@ import {
 import type { Labourer, LabourPayment } from "@/api/labour";
 import { friendlyError } from "@/api/client";
 import { Spinner } from "@/components/Spinner";
+import { TypeToConfirmDialog } from "@/components/TypeToConfirmDialog";
 
 function inr(v: string | number): string {
   const n = typeof v === "string" ? Number(v) : v;
@@ -516,6 +517,8 @@ function StaffManager({
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<OwnerStaff | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const add = async () => {
     setBusy(true);
@@ -543,10 +546,18 @@ function StaffManager({
     await resetStaffPassword(shopId, s.id, pw).catch(() => {});
     onMessage("Password reset.");
   };
-  const remove = async (s: OwnerStaff) => {
-    if (!confirm(`Remove ${s.email}? Their past bills are kept.`)) return;
-    await deleteShopStaff(shopId, s.id).catch(() => {});
-    onChange();
+  const confirmRemove = async () => {
+    if (!pendingDelete) return;
+    setDeleting(true);
+    try {
+      await deleteShopStaff(shopId, pendingDelete.id);
+      setPendingDelete(null);
+      onChange();
+    } catch (e) {
+      onMessage(friendlyError(e, "Couldn't remove staff."));
+    } finally {
+      setDeleting(false);
+    }
   };
 
   return (
@@ -569,7 +580,7 @@ function StaffManager({
               <button type="button" onClick={() => reset(s)} className="rounded-control border border-border px-2.5 py-1 font-semibold text-ink">
                 Reset
               </button>
-              <button type="button" onClick={() => remove(s)} className="rounded-control border border-danger/40 px-2.5 py-1 font-semibold text-danger">
+              <button type="button" onClick={() => setPendingDelete(s)} className="rounded-control border border-danger/40 px-2.5 py-1 font-semibold text-danger">
                 Remove
               </button>
             </div>
@@ -588,6 +599,17 @@ function StaffManager({
         </div>
         {err && <p className="mt-2 text-sm text-danger">{err}</p>}
       </div>
+
+      <TypeToConfirmDialog
+        open={pendingDelete !== null}
+        title="Remove staff account?"
+        expected={pendingDelete?.email ?? ""}
+        loading={deleting}
+        body={`This permanently deletes ${pendingDelete?.email ?? ""}. Their past bills are kept.`}
+        confirmLabel="Delete account"
+        onConfirm={confirmRemove}
+        onCancel={() => setPendingDelete(null)}
+      />
     </section>
   );
 }
