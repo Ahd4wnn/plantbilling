@@ -49,6 +49,7 @@ data class OwnerShopState(
     val cashFull: Boolean = true,
     val labourers: List<Labourer> = emptyList(),
     val labourerDetail: LabourerDetail? = null,
+    val billDetail: BillDetailState? = null,
     val message: String? = null,
 )
 
@@ -56,6 +57,12 @@ data class LabourerDetail(
     val labourer: Labourer,
     val loading: Boolean = true,
     val payments: List<LabourPayment> = emptyList(),
+)
+
+/** The bill whose full detail (items + totals) sheet is open. */
+data class BillDetailState(
+    val loading: Boolean = true,
+    val bill: com.plantora.billing.domain.BillDetail? = null,
 )
 
 @HiltViewModel
@@ -156,6 +163,17 @@ class OwnerShopViewModel @Inject constructor(
         }
     }
     fun closeLabourer() = _ui.update { it.copy(labourerDetail = null) }
+
+    fun openBill(billId: String) {
+        _ui.update { it.copy(billDetail = BillDetailState(loading = true)) }
+        viewModelScope.launch {
+            runCatching { repo.billDetail(shopId, billId) }
+                .onSuccess { b -> _ui.update { it.copy(billDetail = BillDetailState(loading = false, bill = b)) } }
+                .onFailure { e -> _ui.update { it.copy(billDetail = null, message = friendlyError(e)) } }
+        }
+    }
+
+    fun closeBill() = _ui.update { it.copy(billDetail = null) }
 
     fun setStaffEmail(v: String) = _ui.update { it.copy(newStaff = it.newStaff.copy(email = v, error = null)) }
     fun setStaffPassword(v: String) = _ui.update { it.copy(newStaff = it.newStaff.copy(password = v, error = null)) }

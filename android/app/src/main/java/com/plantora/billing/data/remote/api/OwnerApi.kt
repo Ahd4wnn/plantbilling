@@ -1,5 +1,6 @@
 package com.plantora.billing.data.remote.api
 
+import com.plantora.billing.data.remote.dto.BillDetailDto
 import com.plantora.billing.data.remote.dto.DetailedReportDto
 import com.plantora.billing.data.remote.dto.LabourPaymentDto
 import com.plantora.billing.data.remote.dto.LabourerDto
@@ -45,6 +46,9 @@ interface OwnerApi {
         @Query("date_to") dateTo: String? = null,
         @Query("limit") limit: Int = 50,
     ): OwnerBillListDto
+
+    @GET("/owner/shops/{shopId}/bills/{billId}")
+    suspend fun billDetail(@Path("shopId") shopId: String, @Path("billId") billId: String): BillDetailDto
 
     @GET("/owner/shops/{id}/cash-in-hand")
     suspend fun cashInHand(@Path("id") id: String, @Query("date") date: String? = null): OwnerCashInHandDto

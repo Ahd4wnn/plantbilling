@@ -2,6 +2,8 @@ package com.plantora.billing.ui.owner
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -421,7 +423,7 @@ private fun OwnerShopScreen(
             } else if (ui.bills.isEmpty()) {
                 item { Text("No bills in this period.", color = MaterialTheme.colorScheme.onSurfaceVariant) }
             } else {
-                items(ui.bills, key = { it.id }) { b -> OwnerBillRow(b) }
+                items(ui.bills, key = { it.id }) { b -> OwnerBillRow(b, onClick = { viewModel.openBill(b.id) }) }
             }
 
             // Labour roster (read-only) — workers, wage, days worked, balance.
@@ -441,6 +443,12 @@ private fun OwnerShopScreen(
     ui.labourerDetail?.let { detail ->
         ModalBottomSheet(onDismissRequest = viewModel::closeLabourer, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
             OwnerLabourerDetailSheet(detail)
+        }
+    }
+
+    ui.billDetail?.let { detail ->
+        ModalBottomSheet(onDismissRequest = viewModel::closeBill, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
+            OwnerBillDetailSheet(detail)
         }
     }
 
@@ -567,8 +575,8 @@ private fun OwnerStatementRow(label: String, value: String) {
 }
 
 @Composable
-private fun OwnerBillRow(b: com.plantora.billing.domain.OwnerBill) {
-    PlantoraCard {
+private fun OwnerBillRow(b: com.plantora.billing.domain.OwnerBill, onClick: () -> Unit) {
+    PlantoraCard(modifier = Modifier.clickable(onClick = onClick)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text(
@@ -595,6 +603,56 @@ private fun OwnerBillRow(b: com.plantora.billing.domain.OwnerBill) {
 
 private fun salespersonName(email: String?): String =
     email?.substringBefore("@")?.takeIf { it.isNotBlank() } ?: "Unknown"
+
+@Composable
+private fun OwnerBillDetailSheet(detail: BillDetailState) {
+    Column(Modifier.fillMaxWidth().imePadding().verticalScroll(rememberScrollState()).padding(horizontal = Dimens.lg).padding(bottom = Dimens.xl)) {
+        Text("Bill details", style = MaterialTheme.typography.headlineMedium)
+        Spacer(Modifier.height(Dimens.md))
+        val b = detail.bill
+        if (detail.loading || b == null) {
+            Text("Loading…", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Spacer(Modifier.height(Dimens.lg))
+            return@Column
+        }
+        Text(
+            "${com.plantora.billing.domain.formatBillTime(b.createdAt)} • by ${salespersonName(b.salespersonEmail)}" + if (b.isEdited) " • edited" else "",
+            style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(Modifier.height(Dimens.xs))
+        Text(b.customerName?.takeIf { it.isNotBlank() } ?: "Walk-in customer", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+        b.customerPhone?.takeIf { it.isNotBlank() }?.let {
+            Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        Spacer(Modifier.height(Dimens.md))
+        if (b.items.isEmpty()) {
+            Text("No items.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+        } else {
+            b.items.forEach { it2 ->
+                Row(Modifier.fillMaxWidth().padding(vertical = Dimens.xs), verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text(it2.productName, style = MaterialTheme.typography.bodyLarge)
+                        Text("${it2.unitPrice.format()} × ${it2.quantity}", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    MoneyText(it2.lineTotal, style = MaterialTheme.typography.titleMedium)
+                }
+            }
+        }
+        Spacer(Modifier.height(Dimens.sm))
+        HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
+        Spacer(Modifier.height(Dimens.sm))
+        OwnerStatementRow("Subtotal", b.subtotal.format())
+        if (b.discountAmount.isPositive()) OwnerStatementRow("Discount", "− ${b.discountAmount.format()}")
+        OwnerStatementRow("Total", b.total.format())
+        if (b.cashAmount.isPositive()) OwnerStatementRow("Cash", b.cashAmount.format())
+        if (b.upiAmount.isPositive()) OwnerStatementRow("UPI", b.upiAmount.format())
+        if (b.dueAmount.isPositive()) OwnerStatementRow("Due", b.dueAmount.format())
+        b.remarks?.takeIf { it.isNotBlank() }?.let {
+            Spacer(Modifier.height(Dimens.sm))
+            Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}
 
 @Composable
 private fun StaffRow(s: OwnerStaff, onRemove: () -> Unit) {

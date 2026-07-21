@@ -38,6 +38,9 @@ class OwnerRepository @Inject constructor(
     suspend fun bills(shopId: String, dateFrom: String?, dateTo: String?): List<OwnerBill> =
         api.bills(shopId, dateFrom, dateTo).items.map { it.toDomain() }
 
+    suspend fun billDetail(shopId: String, billId: String): com.plantora.billing.domain.BillDetail =
+        api.billDetail(shopId, billId).toDomain()
+
     suspend fun cashInHand(shopId: String, date: String?): OwnerCashInHand {
         val d = api.cashInHand(shopId, date)
         return OwnerCashInHand(running = Money.parse(d.running), today = Money.parse(d.today))
