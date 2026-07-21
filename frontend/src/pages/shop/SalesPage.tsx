@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { HandCoins, ClipboardCheck } from "lucide-react";
 import { useAuth } from "@/store/auth";
 import {
   fetchBills,
@@ -21,6 +23,7 @@ const PAGE_SIZE = 20;
 
 export function SalesPage() {
   const user = useAuth((s) => s.user);
+  const navigate = useNavigate();
   const isOwner = user?.role === "manager";
 
   // Staff listing & filtering state (Owner only)
@@ -144,6 +147,38 @@ export function SalesPage() {
         >
           Detailed Reports
         </Button>
+      </div>
+
+      {/* Quick actions — Dues (all staff) and Approvals (manager only). */}
+      <div className="grid grid-cols-2 gap-3">
+        <button
+          type="button"
+          onClick={() => navigate("/app/dues")}
+          className="flex items-center gap-3 rounded-2xl border border-border bg-white p-4 text-left shadow-sm hover:bg-surface-muted active:scale-[0.99] transition"
+        >
+          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-amber-50 text-amber-700">
+            <HandCoins className="h-6 w-6" />
+          </div>
+          <div className="min-w-0">
+            <div className="text-base font-bold text-ink">Dues</div>
+            <div className="text-sm text-ink-soft">Collect money owed</div>
+          </div>
+        </button>
+        {isOwner && (
+          <button
+            type="button"
+            onClick={() => navigate("/app/approvals")}
+            className="flex items-center gap-3 rounded-2xl border border-border bg-white p-4 text-left shadow-sm hover:bg-surface-muted active:scale-[0.99] transition"
+          >
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary-50 text-primary-700">
+              <ClipboardCheck className="h-6 w-6" />
+            </div>
+            <div className="min-w-0">
+              <div className="text-base font-bold text-ink">Approvals</div>
+              <div className="text-sm text-ink-soft">Confirm staff collections</div>
+            </div>
+          </button>
+        )}
       </div>
 
       {/* Staff filter dropdown (Owner only) */}

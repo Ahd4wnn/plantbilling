@@ -23,10 +23,14 @@ export interface BillListItem {
   id: string;
   created_at: string;
   total: string;
+  due_amount: string;
   customer_name: string | null;
+  customer_phone: string | null;
   item_count: number;
   payment_method: PaymentMethod;
   is_edited: boolean;
+  /** A salesperson's due-collection is waiting for a manager to approve it. */
+  pending_settlement: boolean;
 }
 
 export interface BillListResponse {
@@ -89,6 +93,7 @@ export interface BillListParams {
   date_to?: string;
   created_by?: string;
   is_edited?: boolean;
+  has_due?: boolean;
   shop_id?: string;
   limit?: number;
   offset?: number;
@@ -103,6 +108,7 @@ export async function fetchBills(params: BillListParams): Promise<BillListRespon
   if (params.date_to) query.date_to = params.date_to;
   if (params.created_by) query.created_by = params.created_by;
   if (params.is_edited !== undefined) query.is_edited = params.is_edited;
+  if (params.has_due !== undefined) query.has_due = params.has_due;
   if (params.shop_id) query.shop_id = params.shop_id;
   const { data } = await api.get<BillListResponse>("/bills", { params: query });
   return data;
