@@ -46,13 +46,15 @@ data class AddEditor(
 /** Mark-paid form for a specific borrowing. */
 data class PayEditor(
     val borrowing: Borrowing,
+    val amount: String = "",
     val mode: BorrowMode = BorrowMode.CASH,
     val splitCash: String = "",
     val saving: Boolean = false,
     val error: String? = null,
 ) {
-    val canSave: Boolean get() = !saving &&
-        (mode != BorrowMode.SPLIT || Money.parse(splitCash) <= borrowing.amount)
+    val total: Money get() = Money.parse(amount)
+    val canSave: Boolean get() = !saving && total.isPositive() && total <= borrowing.outstanding &&
+        (mode != BorrowMode.SPLIT || Money.parse(splitCash) <= total)
 }
 
 data class BorrowingsUiState(
@@ -114,11 +116,12 @@ class BorrowingsViewModel @Inject constructor(
     }
 
     // ── Pay editor ──
-    fun openPay(b: Borrowing) = _ui.update { it.copy(payEditor = PayEditor(borrowing = b, splitCash = "")) }
+    fun openPay(b: Borrowing) = _ui.update { it.copy(payEditor = PayEditor(borrowing = b, amount = b.outstanding.toInput())) }
     fun closePay() = _ui.update { it.copy(payEditor = null) }
+    fun setPayAmount(v: String) = _ui.update { it.copy(payEditor = it.payEditor?.copy(amount = v, error = null)) }
     fun setPayMode(m: BorrowMode) = _ui.update {
         val ed = it.payEditor ?: return@update it
-        val seeded = if (m == BorrowMode.SPLIT && ed.splitCash.isBlank()) ed.copy(mode = m, splitCash = ed.borrowing.amount.toInput()) else ed.copy(mode = m)
+        val seeded = if (m == BorrowMode.SPLIT && ed.splitCash.isBlank()) ed.copy(mode = m, splitCash = ed.total.toInput()) else ed.copy(mode = m)
         it.copy(payEditor = seeded.copy(error = null))
     }
     fun setPaySplitCash(v: String) = _ui.update { it.copy(payEditor = it.payEditor?.copy(splitCash = v, error = null)) }
@@ -127,10 +130,10 @@ class BorrowingsViewModel @Inject constructor(
         val e = _ui.value.payEditor ?: return
         if (!e.canSave) return
         _ui.update { it.copy(payEditor = e.copy(saving = true, error = null)) }
-        val (cash, upi) = split(e.borrowing.amount, e.mode, e.splitCash)
+        val (cash, upi) = split(e.total, e.mode, e.splitCash)
         viewModelScope.launch {
             runCatching { repo.pay(e.borrowing.id, cash, upi) }
-                .onSuccess { _ui.update { it.copy(payEditor = null, message = "Marked paid.") }; load() }
+                .onSuccess { _ui.update { it.copy(payEditor = null, message = "Repayment recorded.") }; load() }
                 .onFailure { err -> _ui.update { it.copy(payEditor = e.copy(saving = false, error = friendlyError(err))) } }
         }
     }

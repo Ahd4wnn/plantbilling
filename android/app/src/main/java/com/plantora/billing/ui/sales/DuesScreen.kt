@@ -172,9 +172,9 @@ fun DuesScreen(
             SettleSheet(
                 target = target,
                 isManager = ui.isManager,
+                onAmount = viewModel::setSettleAmount,
                 onMode = viewModel::setSettleMode,
-                onCash = viewModel::setSettleCash,
-                onUpi = viewModel::setSettleUpi,
+                onSplitCash = viewModel::setSettleSplitCash,
                 onConfirm = viewModel::confirmSettle,
             )
         }
@@ -186,9 +186,9 @@ fun DuesScreen(
 private fun SettleSheet(
     target: SettleTarget,
     isManager: Boolean,
+    onAmount: (String) -> Unit,
     onMode: (SettleMode) -> Unit,
-    onCash: (String) -> Unit,
-    onUpi: (String) -> Unit,
+    onSplitCash: (String) -> Unit,
     onConfirm: () -> Unit,
 ) {
     Column(
@@ -210,6 +210,13 @@ private fun SettleSheet(
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text("Amount owed", style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
             MoneyText(target.entry.dueAmount, style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.error)
+        }
+
+        Spacer(Modifier.height(Dimens.md))
+        PlantoraTextField(target.amount, onAmount, label = "Collecting now (₹)", keyboardType = KeyboardType.Decimal)
+        if (target.total > target.entry.dueAmount) {
+            Spacer(Modifier.height(Dimens.xs))
+            Text("Can't be more than the ${target.entry.dueAmount.format()} owed.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.error)
         }
 
         Spacer(Modifier.height(Dimens.lg))
@@ -235,14 +242,9 @@ private fun SettleSheet(
 
         if (target.mode == SettleMode.SPLIT) {
             Spacer(Modifier.height(Dimens.md))
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Dimens.md)) {
-                Column(Modifier.weight(1f)) {
-                    PlantoraTextField(target.cash, onCash, label = "Cash (₹)", keyboardType = KeyboardType.Decimal)
-                }
-                Column(Modifier.weight(1f)) {
-                    PlantoraTextField(target.upi, onUpi, label = "UPI (₹)", keyboardType = KeyboardType.Decimal)
-                }
-            }
+            PlantoraTextField(target.splitCash, onSplitCash, label = "Cash part (₹)", keyboardType = KeyboardType.Decimal)
+            Spacer(Modifier.height(Dimens.xs))
+            Text("UPI part: ${target.upiAmount.format()}", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
 
         target.error?.let {
@@ -261,8 +263,9 @@ private fun SettleSheet(
 
         Spacer(Modifier.height(Dimens.xl))
         PrimaryButton(
-            text = if (isManager) "Collect ${target.entry.dueAmount.format()}" else "Send for approval",
+            text = if (isManager) "Collect ${target.total.format()}" else "Send for approval",
             onClick = onConfirm,
+            enabled = target.valid,
             loading = target.submitting,
             modifier = Modifier.fillMaxWidth(),
         )

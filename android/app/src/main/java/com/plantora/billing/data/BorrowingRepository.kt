@@ -55,6 +55,7 @@ private fun BorrowingDto.toDomain() = Borrowing(
     remarks = remarks,
     isPaid = isPaid,
     paidMethod = paidMethod,
+    outstanding = Money.parse(outstanding),
     paidAt = paidAt,
     createdAt = createdAt,
 )

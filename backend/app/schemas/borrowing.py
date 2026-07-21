@@ -44,6 +44,8 @@ class BorrowingOut(BaseModel):
     paid_cash_amount: MoneyOut
     paid_upi_amount: MoneyOut
     paid_method: PaymentMethod
+    # How much is still owed to the lender (amount − what's been paid back so far).
+    outstanding: MoneyOut
     paid_at: dt.datetime | None = None
     created_at: dt.datetime
 

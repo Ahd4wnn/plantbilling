@@ -165,6 +165,13 @@ private fun BorrowingRow(b: Borrowing, onPay: () -> Unit, onDelete: () -> Unit) 
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.primary,
                         )
+                    } else if (b.outstanding < b.amount) {
+                        Text(
+                            "Partly paid",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.tertiary,
+                        )
                     }
                 }
                 b.lenderPhone?.takeIf { it.isNotBlank() }?.let {
@@ -187,11 +194,19 @@ private fun BorrowingRow(b: Borrowing, onPay: () -> Unit, onDelete: () -> Unit) 
                     textDecoration = if (b.isPaid) TextDecoration.LineThrough else null,
                     color = if (b.isPaid) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
                 )
+                if (!b.isPaid && b.outstanding < b.amount) {
+                    Text(
+                        "${b.outstanding.format()} left",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     if (!b.isPaid) {
                         TextButton(onClick = onPay) {
                             Icon(Icons.Rounded.Check, contentDescription = null, modifier = Modifier.height(18.dp))
-                            Text(" Mark paid")
+                            Text(" Pay back")
                         }
                     }
                     IconButton(onClick = onDelete) { Icon(Icons.Rounded.DeleteOutline, contentDescription = "Delete borrowing") }
@@ -227,21 +242,27 @@ private fun AddSheet(editor: AddEditor, vm: BorrowingsViewModel) {
 private fun PaySheet(editor: PayEditor, vm: BorrowingsViewModel) {
     val b = editor.borrowing
     Column(Modifier.fillMaxWidth().imePadding().verticalScroll(rememberScrollState()).padding(horizontal = Dimens.lg).padding(bottom = Dimens.xl)) {
-        Text("Mark paid — ${b.lenderName}", style = MaterialTheme.typography.headlineMedium)
+        Text("Pay back — ${b.lenderName}", style = MaterialTheme.typography.headlineMedium)
         Spacer(Modifier.height(Dimens.md))
         Surface(color = MaterialTheme.colorScheme.surfaceVariant, shape = MaterialTheme.shapes.medium) {
             Row(Modifier.fillMaxWidth().padding(Dimens.md), verticalAlignment = Alignment.CenterVertically) {
-                Text("Amount owed", style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
-                MoneyText(b.amount, style = MaterialTheme.typography.titleLarge)
+                Text("Still owed", style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+                MoneyText(b.outstanding, style = MaterialTheme.typography.titleLarge)
             }
+        }
+        Spacer(Modifier.height(Dimens.md))
+        PlantoraTextField(editor.amount, vm::setPayAmount, label = "Paying back now (₹)", keyboardType = KeyboardType.Decimal)
+        if (editor.total > b.outstanding) {
+            Spacer(Modifier.height(Dimens.xs))
+            Text("Can't be more than the ${b.outstanding.format()} owed.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.error)
         }
         Spacer(Modifier.height(Dimens.md))
         Text("How did you pay it back?", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Spacer(Modifier.height(Dimens.sm))
-        MethodPicker(editor.mode, b.amount, editor.splitCash, vm::setPayMode, vm::setPaySplitCash)
+        MethodPicker(editor.mode, editor.total, editor.splitCash, vm::setPayMode, vm::setPaySplitCash)
         editor.error?.let { Spacer(Modifier.height(Dimens.md)); Text(it, color = MaterialTheme.colorScheme.error) }
         Spacer(Modifier.height(Dimens.xl))
-        PrimaryButton(text = "Mark ${b.amount.format()} paid", onClick = vm::savePay, enabled = editor.canSave, loading = editor.saving, modifier = Modifier.fillMaxWidth())
+        PrimaryButton(text = "Pay back ${editor.total.format()}", onClick = vm::savePay, enabled = editor.canSave, loading = editor.saving, modifier = Modifier.fillMaxWidth())
     }
 }
 

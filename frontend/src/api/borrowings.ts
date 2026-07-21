@@ -15,6 +15,7 @@ export interface Borrowing {
   paid_cash_amount: string;
   paid_upi_amount: string;
   paid_method: BorrowMethod;
+  outstanding: string;
   paid_at: string | null;
   created_at: string;
 }

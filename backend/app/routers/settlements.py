@@ -40,17 +40,20 @@ router = APIRouter(prefix="/settlements", tags=["settlements"])
 
 
 def _apply_to_bill(db: Session, bill: Bill, cash, upi, *, actor: User) -> None:
-    """Move a collected due onto the bill: add to cash/UPI and clear the due."""
+    """Move a collected due onto the bill: add to cash/UPI and reduce the due by
+    what was collected. A partial collection leaves the remainder still owed."""
+    collected = q2(cash + upi)
     bill.cash_amount = q2(bill.cash_amount + cash)
     bill.upi_amount = q2(bill.upi_amount + upi)
-    bill.due_amount = ZERO
+    remaining = q2(bill.due_amount - collected)
+    bill.due_amount = remaining if remaining > ZERO else ZERO
     _record_bill_audit(
         db,
         bill=bill,
         action="edit",
         actor=actor,
-        summary=f"Due collected: cash INR {cash}, UPI INR {upi}",
-        details={"settlement": {"cash": str(cash), "upi": str(upi)}},
+        summary=f"Due collected: cash INR {cash}, UPI INR {upi}" + (f" (INR {bill.due_amount} still owed)" if bill.due_amount > ZERO else ""),
+        details={"settlement": {"cash": str(cash), "upi": str(upi), "remaining_due": str(bill.due_amount)}},
     )
 
 
@@ -73,9 +76,13 @@ def create_settlement(
     upi = q2(payload.upi_amount)
     if cash < ZERO or upi < ZERO:
         raise _http422("Amounts can't be negative.")
-    if cash + upi != due:
+    collected = q2(cash + upi)
+    if collected <= ZERO:
+        raise _http422("Enter an amount to collect.")
+    # Partial collection is allowed — the rest stays owed. Can't collect more than owed.
+    if collected > due:
         raise _http422(
-            f"Cash + UPI (₹{cash + upi:.2f}) must equal the amount owed (₹{due:.2f})."
+            f"Cash + UPI (₹{collected:.2f}) can't be more than the amount owed (₹{due:.2f})."
         )
 
     # Guard against a second collection for the same bill sitting in the queue.
@@ -188,9 +195,9 @@ def approve_settlement(
     if bill is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Bill not found")
 
-    # The due may have changed since the request was raised (e.g. the bill was
-    # edited). Only apply if it still matches exactly, else ask them to redo it.
-    if q2(bill.due_amount) != q2(rec.cash_amount + rec.upi_amount):
+    # The due may have shrunk since the request was raised (e.g. the bill was
+    # edited or another collection landed). We can't apply more than is still owed.
+    if q2(rec.cash_amount + rec.upi_amount) > q2(bill.due_amount):
         raise _http422(
             "This bill's amount owed has changed since the request. Reject it and collect again."
         )

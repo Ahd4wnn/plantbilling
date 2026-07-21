@@ -118,6 +118,9 @@ class BillSummaryOut(BaseModel):
     # the cash part, which is what lowers Cash in Hand.
     labour_total: MoneyOut = Decimal("0.00")  # type: ignore[assignment]
     labour_cash: MoneyOut = Decimal("0.00")  # type: ignore[assignment]
+    # Net cash that borrowings put into the drawer today (cash borrowed − cash
+    # repaid). Adds to the per-day Cash in Hand alongside cash sales.
+    borrow_cash_today: MoneyOut = Decimal("0.00")  # type: ignore[assignment]
     # Running (cumulative) cash in hand = the shop's baseline + every day's cash
     # (cash sales − cash expenses) through this day. The client shows this instead
     # of the per-day figure when the device has the running-total switch on.

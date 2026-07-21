@@ -36,6 +36,7 @@ from app.routers.bills import (
     _ist_day_bounds_utc,
     _payment_method,
     _today_ist,
+    borrowing_cash_net,
     cash_flows_through,
     q2,
 )
@@ -234,7 +235,8 @@ def shop_cash_in_hand(
             LabourPayment.created_at >= start, LabourPayment.created_at < end,
         )
     ).scalar_one()
-    today_val = q2(Decimal(cash_sales) - Decimal(cash_exp) - Decimal(labour_cash))
+    borrow_net_today = borrowing_cash_net(db, shop_id, start_utc=start, end_utc=end)
+    today_val = q2(Decimal(cash_sales) - Decimal(cash_exp) - Decimal(labour_cash) + borrow_net_today)
 
     return OwnerCashInHand(date=day, cash_in_hand_running=running, cash_in_hand_today=today_val)
 

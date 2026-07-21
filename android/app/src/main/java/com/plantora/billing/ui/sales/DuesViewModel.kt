@@ -31,34 +31,39 @@ private const val PRIORITY_DAYS = 30
 /** How a collection is being split. */
 enum class SettleMode { CASH, UPI, SPLIT }
 
-/** The "collect this due" bottom sheet. */
+/** The "collect this due" bottom sheet. A partial amount may be collected — the
+ *  rest stays owed. `amount` is how much to collect now (≤ the due). */
 data class SettleTarget(
     val entry: BillListEntry,
+    val amount: String = entry.dueAmount.toWire(),
     val mode: SettleMode = SettleMode.CASH,
-    val cash: String = "",
-    val upi: String = "",
+    val splitCash: String = "",
     val submitting: Boolean = false,
     val error: String? = null,
 ) {
-    /** The cash portion actually being collected, given the mode. */
+    /** How much is being collected now. */
+    val total: Money get() = Money.parse(amount)
+
+    /** The cash portion being collected, given the mode. */
     val cashAmount: Money
         get() = when (mode) {
-            SettleMode.CASH -> entry.dueAmount
+            SettleMode.CASH -> total
             SettleMode.UPI -> Money.ZERO
-            SettleMode.SPLIT -> Money.parse(cash)
+            SettleMode.SPLIT -> Money.parse(splitCash)
         }
 
-    /** The UPI portion actually being collected, given the mode. */
+    /** The UPI portion being collected, given the mode. */
     val upiAmount: Money
         get() = when (mode) {
             SettleMode.CASH -> Money.ZERO
-            SettleMode.UPI -> entry.dueAmount
-            SettleMode.SPLIT -> Money.parse(upi)
+            SettleMode.UPI -> total
+            SettleMode.SPLIT -> (total - Money.parse(splitCash)).let { if (it.isNegative()) Money.ZERO else it }
         }
 
-    /** Split must add up exactly to what's owed. */
-    val balances: Boolean
-        get() = (cashAmount.amount + upiAmount.amount).compareTo(entry.dueAmount.amount) == 0
+    /** Positive, no more than what's owed, and any split fits inside the amount. */
+    val valid: Boolean
+        get() = total.isPositive() && total <= entry.dueAmount &&
+            (mode != SettleMode.SPLIT || Money.parse(splitCash) <= total)
 }
 
 data class DuesUiState(
@@ -123,48 +128,49 @@ class DuesViewModel @Inject constructor(
     // ── Collect (settle) sheet ──
     fun openSettle(entry: BillListEntry) = _ui.update { it.copy(settle = SettleTarget(entry)) }
     fun closeSettle() = _ui.update { it.copy(settle = null) }
-    fun setSettleMode(mode: SettleMode) = _ui.update { s ->
-        // Seed the split fields with the full amount in cash so it starts balanced.
+    fun setSettleAmount(v: String) = _ui.update { s ->
         val t = s.settle ?: return@update s
-        val seeded = if (mode == SettleMode.SPLIT && t.cash.isBlank() && t.upi.isBlank())
-            t.copy(mode = mode, cash = t.entry.dueAmount.toWire(), upi = "0", error = null)
+        s.copy(settle = t.copy(amount = v, error = null))
+    }
+
+    fun setSettleMode(mode: SettleMode) = _ui.update { s ->
+        // Seed the split's cash part with the whole amount so it starts valid.
+        val t = s.settle ?: return@update s
+        val seeded = if (mode == SettleMode.SPLIT && t.splitCash.isBlank())
+            t.copy(mode = mode, splitCash = t.total.toWire(), error = null)
         else t.copy(mode = mode, error = null)
         s.copy(settle = seeded)
     }
 
-    fun setSettleCash(v: String) = _ui.update { s ->
+    fun setSettleSplitCash(v: String) = _ui.update { s ->
         val t = s.settle ?: return@update s
-        // In split mode, auto-fill UPI with the remainder so the two always balance.
-        val remainder = t.entry.dueAmount.amount - (Money.parse(v).amount)
-        val upi = if (remainder.signum() >= 0) Money(remainder).toWire() else "0"
-        s.copy(settle = t.copy(cash = v, upi = upi, error = null))
-    }
-
-    fun setSettleUpi(v: String) = _ui.update { s ->
-        val t = s.settle ?: return@update s
-        val remainder = t.entry.dueAmount.amount - (Money.parse(v).amount)
-        val cash = if (remainder.signum() >= 0) Money(remainder).toWire() else "0"
-        s.copy(settle = t.copy(upi = v, cash = cash, error = null))
+        s.copy(settle = t.copy(splitCash = v, error = null))
     }
 
     fun confirmSettle() {
         val t = _ui.value.settle ?: return
         if (t.submitting) return
-        if (!t.balances) {
-            _ui.update { it.copy(settle = t.copy(error = "Cash + UPI must equal ${t.entry.dueAmount.format()}.")) }
+        if (!t.valid) {
+            _ui.update { it.copy(settle = t.copy(error = "Enter an amount up to ${t.entry.dueAmount.format()}.")) }
             return
         }
+        val remainingDue = (t.entry.dueAmount - t.total).let { if (it.isNegative()) Money.ZERO else it }
         _ui.update { it.copy(settle = t.copy(submitting = true, error = null)) }
         viewModelScope.launch {
             runCatching { settlementRepo.collect(t.entry.id, t.cashAmount, t.upiAmount) }
                 .onSuccess { status ->
                     if (status == "approved") {
-                        // Applied now — drop it from the outstanding list.
+                        // Applied now. Drop it if fully cleared, else keep with the
+                        // reduced due still showing.
                         _ui.update { s ->
                             s.copy(
                                 settle = null,
-                                dues = s.dues.filterNot { it.id == t.entry.id },
-                                message = "Collected — ${t.entry.dueAmount.format()}.",
+                                dues = if (remainingDue.isPositive())
+                                    s.dues.map { if (it.id == t.entry.id) it.copy(dueAmount = remainingDue) else it }
+                                else s.dues.filterNot { it.id == t.entry.id },
+                                message = if (remainingDue.isPositive())
+                                    "Collected ${t.total.format()} — ${remainingDue.format()} still owed."
+                                else "Collected — ${t.total.format()}.",
                             )
                         }
                     } else {

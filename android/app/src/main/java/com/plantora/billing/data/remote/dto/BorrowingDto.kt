@@ -17,6 +17,7 @@ data class BorrowingDto(
     @SerialName("paid_cash_amount") val paidCashAmount: String = "0.00",
     @SerialName("paid_upi_amount") val paidUpiAmount: String = "0.00",
     @SerialName("paid_method") val paidMethod: String = "none",
+    val outstanding: String = "0.00",
     @SerialName("paid_at") val paidAt: String? = null,
     @SerialName("created_at") val createdAt: String,
 )

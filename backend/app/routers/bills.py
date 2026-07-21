@@ -144,11 +144,39 @@ def _user_email(db: Session, user_id: uuid.UUID | None) -> str | None:
     return u.email if u else None
 
 
+def borrowing_cash_net(
+    db: Session,
+    shop_id: uuid.UUID,
+    *,
+    end_utc: dt.datetime,
+    start_utc: dt.datetime | None = None,
+) -> Decimal:
+    """Net cash borrowings put INTO the drawer over a window (or up to `end_utc`):
+    Σ(cash received) − Σ(cash repaid). Borrowed cash raises Cash in Hand; repaying
+    in cash lowers it (UPI legs never touch the drawer). If `start_utc` is given the
+    window is [start, end); otherwise it's everything before `end_utc` (cumulative).
+    Cash received is dated by the borrowing's creation; cash repaid by `paid_at`."""
+    from app.models.borrowing import Borrowing
+
+    cash_in_q = select(func.coalesce(func.sum(Borrowing.cash_amount), 0)).where(
+        Borrowing.shop_id == shop_id, Borrowing.created_at < end_utc
+    )
+    cash_out_q = select(func.coalesce(func.sum(Borrowing.paid_cash_amount), 0)).where(
+        Borrowing.shop_id == shop_id, Borrowing.paid_at.is_not(None), Borrowing.paid_at < end_utc
+    )
+    if start_utc is not None:
+        cash_in_q = cash_in_q.where(Borrowing.created_at >= start_utc)
+        cash_out_q = cash_out_q.where(Borrowing.paid_at >= start_utc)
+    cash_in = db.execute(cash_in_q).scalar_one()
+    cash_out = db.execute(cash_out_q).scalar_one()
+    return q2(Decimal(cash_in) - Decimal(cash_out))
+
+
 def cash_flows_through(db: Session, shop_id: uuid.UUID, end_utc: dt.datetime) -> Decimal:
     """Net cash that has passed through the drawer for a shop up to `end_utc`:
-    Σ(bill cash) − Σ(cash expenses) − Σ(labour paid). Due settlements land in
-    bill.cash_amount, so they're already counted; labour payments are cash out.
-    Used for the running (cumulative) cash-in-hand."""
+    Σ(bill cash) − Σ(cash expenses) − Σ(labour paid) + net borrowed cash. Due
+    settlements land in bill.cash_amount, so they're already counted; labour
+    payments are cash out. Used for the running (cumulative) cash-in-hand."""
     from app.models.expense import Expense
     from app.models.labour import LabourPayment
 
@@ -170,7 +198,8 @@ def cash_flows_through(db: Session, shop_id: uuid.UUID, end_utc: dt.datetime) ->
             LabourPayment.created_at < end_utc,
         )
     ).scalar_one()
-    return q2(Decimal(bills_cash) - Decimal(cash_expenses) - Decimal(labour_cash))
+    borrow_net = borrowing_cash_net(db, shop_id, end_utc=end_utc)
+    return q2(Decimal(bills_cash) - Decimal(cash_expenses) - Decimal(labour_cash) + borrow_net)
 
 
 def _record_bill_audit(
@@ -447,11 +476,13 @@ def summary_for_day(
     # Running (cumulative) cash in hand — shop-wide, so it ignores any staff
     # filter: the drawer is shared. base + all cash flows through end of this day.
     cash_in_hand_running = ZERO
+    borrow_cash_today = ZERO
     if target_shop_id is not None:
         base = db.execute(
             select(Shop.cash_in_hand_base).where(Shop.id == target_shop_id)
         ).scalar_one_or_none() or ZERO
         cash_in_hand_running = q2(Decimal(base) + cash_flows_through(db, target_shop_id, end))
+        borrow_cash_today = borrowing_cash_net(db, target_shop_id, start_utc=start, end_utc=end)
 
     return BillSummaryOut(
         date=day,
@@ -465,6 +496,7 @@ def summary_for_day(
         upi_expenses=q2(upi_expenses),
         labour_total=labour_total,
         labour_cash=labour_cash,
+        borrow_cash_today=borrow_cash_today,
         cash_in_hand_running=cash_in_hand_running,
         net_sales=q2(net_sales),
         expenses=expenses_rows,

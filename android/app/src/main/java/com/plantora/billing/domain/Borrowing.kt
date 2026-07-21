@@ -10,6 +10,7 @@ data class Borrowing(
     val remarks: String?,
     val isPaid: Boolean,
     val paidMethod: String,      // how it was repaid
+    val outstanding: Money,      // how much is still owed (amount − repaid so far)
     val paidAt: String?,
     val createdAt: String,
 )

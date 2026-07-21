@@ -1,8 +1,10 @@
 """Borrowings — money the shop borrowed from people (a lenders ledger).
 
-A standalone debt note per lender. Creating or repaying a borrowing does NOT
-touch Cash in Hand or the cash book by design, so it never entangles with daily
-reconciliation. RLS scopes every row to the shop (see the d1e2f3a4b5c6 migration).
+A debt note per lender. The CASH portion of a borrowing flows through the drawer:
+cash received bumps Cash in Hand up, cash repaid brings it back down (the UPI legs
+never touch the cash drawer). See `cash_flows_through` in bills.py. Repayment can
+be partial — the remaining balance stays owed until fully paid. RLS scopes every
+row to the shop (see the d1e2f3a4b5c6 migration).
 """
 from __future__ import annotations
 
@@ -52,6 +54,7 @@ def _serialize(b: Borrowing) -> BorrowingOut:
         paid_cash_amount=b.paid_cash_amount,
         paid_upi_amount=b.paid_upi_amount,
         paid_method=_method(b.paid_cash_amount, b.paid_upi_amount),
+        outstanding=q2(b.amount - b.paid_cash_amount - b.paid_upi_amount),
         paid_at=b.paid_at,
         created_at=b.created_at,
     )
@@ -72,8 +75,14 @@ def list_borrowings(
     stmt = stmt.order_by(Borrowing.is_paid.asc(), Borrowing.created_at.desc())
     rows = list(db.execute(stmt).scalars())
 
+    # Sum what's still owed (amount minus anything already repaid) across open rows.
     outstanding = db.execute(
-        select(func.coalesce(func.sum(Borrowing.amount), 0)).where(Borrowing.is_paid.is_(False))
+        select(
+            func.coalesce(
+                func.sum(Borrowing.amount - Borrowing.paid_cash_amount - Borrowing.paid_upi_amount),
+                0,
+            )
+        ).where(Borrowing.is_paid.is_(False))
     ).scalar_one()
 
     return BorrowingList(
@@ -135,20 +144,26 @@ def pay_borrowing(
     db: Session = Depends(get_db),
     _user: User = Depends(require_shop_staff),
 ) -> BorrowingOut:
-    """Mark a borrowing fully repaid, recording how it was paid back."""
+    """Record a repayment (full or partial). The remainder stays owed until paid."""
     b = _get_or_404(db, borrowing_id)
     if b.is_paid:
-        raise _http422("This borrowing is already marked paid.")
+        raise _http422("This borrowing is already fully paid.")
     cash = q2(payload.paid_cash_amount)
     upi = q2(payload.paid_upi_amount)
-    if cash + upi != b.amount:
-        raise _http422(
-            f"Cash + UPI (₹{cash + upi:.2f}) must equal the amount owed (₹{b.amount:.2f})."
-        )
-    b.paid_cash_amount = cash
-    b.paid_upi_amount = upi
-    b.is_paid = True
+    if cash < 0 or upi < 0:
+        raise _http422("Amounts can't be negative.")
+    pay = q2(cash + upi)
+    if pay <= 0:
+        raise _http422("Enter an amount to pay back.")
+    remaining = q2(b.amount - b.paid_cash_amount - b.paid_upi_amount)
+    if pay > remaining:
+        raise _http422(f"You can pay back at most the ₹{remaining:.2f} still owed.")
+
+    b.paid_cash_amount = q2(b.paid_cash_amount + cash)
+    b.paid_upi_amount = q2(b.paid_upi_amount + upi)
     b.paid_at = dt.datetime.now(tz=dt.timezone.utc)
+    if q2(b.paid_cash_amount + b.paid_upi_amount) >= b.amount:
+        b.is_paid = True
     db.flush()
     db.refresh(b)
     return _serialize(b)

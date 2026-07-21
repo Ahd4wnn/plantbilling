@@ -134,9 +134,11 @@ export function BorrowingsPage() {
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
                     <span className="truncate text-lg font-bold text-ink">{b.lender_name}</span>
-                    {b.is_paid && (
+                    {b.is_paid ? (
                       <span className="shrink-0 rounded-full bg-success-soft px-2 py-0.5 text-xs font-bold text-success">Paid</span>
-                    )}
+                    ) : toPaise(b.outstanding) < toPaise(b.amount) ? (
+                      <span className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-700">Partly paid</span>
+                    ) : null}
                   </div>
                   {b.lender_phone && (
                     <a href={`tel:${b.lender_phone}`} className="mt-0.5 inline-flex items-center gap-1 text-sm text-ink-soft">
@@ -151,13 +153,16 @@ export function BorrowingsPage() {
                 </div>
                 <div className="shrink-0 text-right">
                   <div className={`text-xl font-extrabold tracking-tight ${b.is_paid ? "text-ink-soft line-through" : "text-ink"}`}>{fmt(b.amount)}</div>
+                  {!b.is_paid && toPaise(b.outstanding) < toPaise(b.amount) && (
+                    <div className="text-xs font-bold text-danger">{fmt(b.outstanding)} left</div>
+                  )}
                 </div>
               </div>
 
               <div className="mt-3 flex items-center justify-end gap-2 border-t border-border pt-3">
                 {!b.is_paid && (
                   <Button variant="primary" size="tap" className="font-bold" onClick={() => setPayTarget(b)}>
-                    <Check className="h-5 w-5" /> Mark paid
+                    <Check className="h-5 w-5" /> Pay back
                   </Button>
                 )}
                 <button
@@ -275,20 +280,27 @@ function AddSheet({ onClose, onSaved }: { onClose: () => void; onSaved: () => vo
 }
 
 function PaySheet({ borrowing, onClose, onSaved }: { borrowing: Borrowing; onClose: () => void; onSaved: () => void }) {
+  // Repay the whole outstanding by default, but allow paying only part of it.
+  const [amount, setAmount] = useState(fromPaise(toPaise(borrowing.outstanding)));
   const [mode, setMode] = useState<PayMode>("cash");
   const [splitCash, setSplitCash] = useState("");
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
+  const owed = toPaise(borrowing.outstanding);
+  const pay = toPaise(amount);
+  const tooMuch = pay > owed;
+  const canSave = pay > 0 && !tooMuch && !saving;
+
   const submit = async () => {
     setSaving(true);
     setErr(null);
     try {
-      const { cash, upi } = resolveSplit(borrowing.amount, mode, splitCash);
+      const { cash, upi } = resolveSplit(amount, mode, splitCash);
       await payBorrowing(borrowing.id, { paid_cash_amount: cash, paid_upi_amount: upi });
       onSaved();
     } catch (e) {
-      setErr(friendlyError(e, "Couldn't mark paid."));
+      setErr(friendlyError(e, "Couldn't record the repayment."));
       setSaving(false);
     }
   };
@@ -297,16 +309,23 @@ function PaySheet({ borrowing, onClose, onSaved }: { borrowing: Borrowing; onClo
     <BottomSheet
       open
       onClose={onClose}
-      title={`Mark paid — ${borrowing.lender_name}`}
-      footer={<Button variant="primary" size="action" className="w-full font-bold" loading={saving} onClick={submit}>Mark {fmt(borrowing.amount)} paid</Button>}
+      title={`Pay back — ${borrowing.lender_name}`}
+      footer={<Button variant="primary" size="action" className="w-full font-bold" disabled={!canSave} loading={saving} onClick={submit}>Pay back {fmt(amount)}</Button>}
     >
       <div className="space-y-4">
         <div className="flex items-center justify-between rounded-control border border-border bg-slate-50 px-4 py-3">
-          <span className="text-base font-semibold text-ink-soft">Amount owed</span>
-          <span className="text-xl font-bold text-ink">{fmt(borrowing.amount)}</span>
+          <span className="text-base font-semibold text-ink-soft">Still owed</span>
+          <span className="text-xl font-bold text-ink">{fmt(borrowing.outstanding)}</span>
         </div>
+        <TextInput
+          label="Paying back now (₹)"
+          value={amount}
+          onChange={(e) => setAmount(e.target.value.replace(/[^0-9.]/g, ""))}
+          inputMode="decimal"
+        />
+        {tooMuch && <p className="-mt-2 text-sm font-semibold text-danger">Can't be more than the {fmt(borrowing.outstanding)} owed.</p>}
         <p className="text-sm text-ink-soft">How did you pay it back?</p>
-        <MethodPicker total={borrowing.amount} mode={mode} setMode={setMode} splitCash={splitCash} setSplitCash={setSplitCash} />
+        <MethodPicker total={amount} mode={mode} setMode={setMode} splitCash={splitCash} setSplitCash={setSplitCash} />
         {err && <p className="text-sm font-semibold text-danger">{err}</p>}
       </div>
     </BottomSheet>
