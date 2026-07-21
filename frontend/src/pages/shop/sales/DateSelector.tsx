@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Calendar } from "lucide-react";
 import { friendlyDayLabel, shiftDay, todayISO } from "@/lib/datetime";
 
 interface DateSelectorProps {
@@ -17,7 +17,8 @@ export function DateSelector({ value, onChange }: DateSelectorProps) {
         <ChevronLeft className="h-6 w-6" />
       </StepBtn>
 
-      <label className="relative flex h-12 flex-1 items-center justify-center rounded-control border-2 border-border bg-white px-3 text-lg font-bold text-ink">
+      <label className="relative flex h-12 flex-1 items-center justify-center gap-2 rounded-control border-2 border-border bg-white px-3 text-lg font-bold text-ink">
+        <Calendar className="h-5 w-5 text-primary-600" />
         {friendlyDayLabel(value)}
         {/* Native date input overlaid for full-day selection; visually hidden. */}
         <input

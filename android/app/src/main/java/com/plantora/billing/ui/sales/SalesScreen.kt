@@ -127,10 +127,11 @@ fun SalesScreen(
 
             item {
                 DateSelector(
-                    label = if (ui.isToday) "Today" else ui.date.toDisplay(),
+                    date = ui.date,
                     canGoNext = !ui.isToday,
                     onPrev = viewModel::goToPreviousDay,
                     onNext = viewModel::goToNextDay,
+                    onPick = viewModel::changeDate,
                 )
             }
 
@@ -235,10 +236,22 @@ private fun StaffLeaderboard(rows: List<StaffSales>) {
 }
 
 @Composable
-private fun DateSelector(label: String, canGoNext: Boolean, onPrev: () -> Unit, onNext: () -> Unit) {
+private fun DateSelector(
+    date: java.time.LocalDate,
+    canGoNext: Boolean,
+    onPrev: () -> Unit,
+    onNext: () -> Unit,
+    onPick: (java.time.LocalDate) -> Unit,
+) {
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         IconButton(onClick = onPrev) { Icon(Icons.AutoMirrored.Rounded.KeyboardArrowLeft, contentDescription = "Previous day") }
-        Text(label, style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
+        // Tap the pill to jump to any past date from a calendar.
+        com.plantora.billing.ui.components.DatePickerField(
+            date = date,
+            onDate = onPick,
+            maxDate = com.plantora.billing.domain.todayInShopZone(),
+            modifier = Modifier.weight(1f),
+        )
         IconButton(onClick = onNext, enabled = canGoNext) { Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, contentDescription = "Next day") }
     }
 }

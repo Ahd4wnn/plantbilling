@@ -136,7 +136,12 @@ private fun PeriodPicker(ui: ReportUiState, vm: ReportViewModel) {
         }
         Spacer(Modifier.height(Dimens.md))
         when (ui.period) {
-            ReportPeriod.DAILY -> Stepper(ui.anchorDate.toDisplay(), { vm.setAnchorDate(ui.anchorDate.minusDays(1)) }, { vm.setAnchorDate(ui.anchorDate.plusDays(1)) })
+            ReportPeriod.DAILY -> com.plantora.billing.ui.components.DatePickerField(
+                date = ui.anchorDate,
+                onDate = { vm.setAnchorDate(it) },
+                maxDate = com.plantora.billing.domain.todayInShopZone(),
+                modifier = Modifier.fillMaxWidth(),
+            )
             ReportPeriod.WEEKLY -> {
                 val (f, t) = ui.bounds()
                 Stepper("${f.toDisplay()} – ${t.toDisplay()}", { vm.setAnchorDate(ui.anchorDate.minusWeeks(1)) }, { vm.setAnchorDate(ui.anchorDate.plusWeeks(1)) })
@@ -147,10 +152,20 @@ private fun PeriodPicker(ui: ReportUiState, vm: ReportViewModel) {
             }
             ReportPeriod.CUSTOM -> {
                 Text("From", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Stepper(ui.customFrom.toDisplay(), { vm.setCustomFrom(ui.customFrom.minusDays(1)) }, { vm.setCustomFrom(ui.customFrom.plusDays(1)) })
+                com.plantora.billing.ui.components.DatePickerField(
+                    date = ui.customFrom,
+                    onDate = { vm.setCustomFrom(it) },
+                    maxDate = com.plantora.billing.domain.todayInShopZone(),
+                    modifier = Modifier.fillMaxWidth(),
+                )
                 Spacer(Modifier.height(Dimens.sm))
                 Text("To", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Stepper(ui.customTo.toDisplay(), { vm.setCustomTo(ui.customTo.minusDays(1)) }, { vm.setCustomTo(ui.customTo.plusDays(1)) })
+                com.plantora.billing.ui.components.DatePickerField(
+                    date = ui.customTo,
+                    onDate = { vm.setCustomTo(it) },
+                    maxDate = com.plantora.billing.domain.todayInShopZone(),
+                    modifier = Modifier.fillMaxWidth(),
+                )
             }
         }
     }

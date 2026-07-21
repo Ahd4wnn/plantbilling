@@ -147,21 +147,13 @@ private fun DateStepper(label: String, date: java.time.LocalDate, onChange: (jav
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.width(44.dp),
         )
-        IconButton(onClick = { onChange(date.minusDays(1)) }) {
-            Icon(Icons.AutoMirrored.Rounded.KeyboardArrowLeft, contentDescription = "Earlier")
-        }
-        Text(
-            date.toDisplay(),
-            style = MaterialTheme.typography.titleMedium,
+        // Tap to pick any date from a calendar.
+        com.plantora.billing.ui.components.DatePickerField(
+            date = date,
+            onDate = onChange,
+            maxDate = com.plantora.billing.domain.todayInShopZone(),
             modifier = Modifier.weight(1f),
-            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
         )
-        IconButton(
-            onClick = { onChange(date.plusDays(1)) },
-            enabled = date.isBefore(com.plantora.billing.domain.todayInShopZone()),
-        ) {
-            Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, contentDescription = "Later")
-        }
     }
 }
 
