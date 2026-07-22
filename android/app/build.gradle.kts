@@ -22,14 +22,14 @@ plugins {
 
 android {
     namespace = "com.plantora.billing"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.plantora.billing"
         minSdk = 24
-        targetSdk = 35
-        versionCode = 19
-        versionName = "0.1.18"
+        targetSdk = 36
+        versionCode = 20
+        versionName = "0.1.19"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         // Default backend: the hosted production API. Overridable at runtime in
