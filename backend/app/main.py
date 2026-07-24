@@ -16,6 +16,7 @@ from app.config import get_settings
 from app.media import ensure_media_dirs, media_root
 from app.routers.admin import router as admin_router
 from app.routers.admin_analytics import router as admin_analytics_router
+from app.routers.admin_ledger import router as admin_ledger_router
 from app.routers.bills import router as bills_router
 from app.routers.customers import router as customers_router
 from app.routers.products import router as products_router
@@ -99,6 +100,7 @@ app.mount(
 app.include_router(auth_router)
 app.include_router(admin_router)
 app.include_router(admin_analytics_router)
+app.include_router(admin_ledger_router)
 app.include_router(products_router)
 app.include_router(customers_router)
 app.include_router(bills_router)

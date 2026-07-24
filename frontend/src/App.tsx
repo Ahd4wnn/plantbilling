@@ -22,6 +22,7 @@ import { CustomersPage } from "@/pages/admin/CustomersPage";
 import { CrashReportsPage } from "@/pages/admin/CrashReportsPage";
 import { DashboardPage } from "@/pages/admin/DashboardPage";
 import { StaffPage } from "@/pages/admin/StaffPage";
+import { LedgerPage } from "@/pages/admin/LedgerPage";
 import { CustomersPage as ShopCustomersPage } from "@/pages/shop/CustomersPage";
 import { PublicBillReceiptPage } from "@/pages/shop/PublicBillReceiptPage";
 import { OwnerLayout } from "@/layouts/OwnerLayout";
@@ -92,6 +93,7 @@ export default function App() {
             <Route path="shops" element={<ShopsPage />} />
             <Route path="owners" element={<OwnersPage />} />
             <Route path="staff" element={<StaffPage />} />
+            <Route path="ledger" element={<LedgerPage />} />
             <Route path="customers" element={<CustomersPage />} />
             <Route path="crashes" element={<CrashReportsPage />} />
           </Route>
