@@ -1,0 +1,237 @@
+<meta charset="utf-8">
+<title>PlantBill — Brochure</title>
+<style>
+  :root{
+    --bg:#0A2A18;          /* deep botanical green */
+    --bg2:#07200F;         /* darker vignette */
+    --green:#38D07A;       /* bright accent */
+    --green-2:#2FB86A;
+    --ink:#0E1A12;         /* near-black on white cards */
+    --muted:#B7CFBF;       /* light desaturated */
+    --line:rgba(255,255,255,.14);
+  }
+  *{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  html,body{margin:0;padding:0;background:#20302a;}
+  body{font-family:"Segoe UI",system-ui,-apple-system,Arial,sans-serif;color:#fff;}
+  @page{size:A4 portrait;margin:0;}
+
+  .page{
+    position:relative;width:210mm;height:297mm;overflow:hidden;
+    background:radial-gradient(120% 90% at 50% 0%,#0E3620 0%,var(--bg) 42%,var(--bg2) 100%);
+    padding:16mm 15mm 12mm;
+    page-break-after:always;
+  }
+  .page:last-child{page-break-after:auto;}
+  .page::after{ /* subtle leaf texture wash, pure CSS */
+    content:"";position:absolute;inset:0;pointer-events:none;
+    background:
+      radial-gradient(60% 40% at 90% 12%,rgba(56,208,122,.10),transparent 60%),
+      radial-gradient(50% 40% at 8% 88%,rgba(56,208,122,.08),transparent 60%);
+  }
+  .page>*{position:relative;z-index:1;}
+
+  /* ---------- Typography ---------- */
+  h1{font-size:40pt;line-height:1.02;letter-spacing:-.02em;font-weight:800;margin:0;}
+  h1 .g{color:var(--green);}
+  .lead{font-size:11.5pt;line-height:1.5;color:#D7E6DC;max-width:78%;font-weight:400;margin:14px 0 0;}
+  .kicker{font-size:9pt;letter-spacing:.22em;font-weight:700;color:var(--green);text-transform:uppercase;}
+
+  /* ---------- Footer ---------- */
+  .foot{position:absolute;left:15mm;right:15mm;bottom:9mm;display:flex;justify-content:space-between;
+    align-items:center;font-size:8pt;letter-spacing:.16em;color:rgba(255,255,255,.45);
+    text-transform:uppercase;border-top:1px solid var(--line);padding-top:7px;z-index:2;}
+
+  /* ---------- Phone mockups ---------- */
+  .phone{border-radius:26px;background:#0b0f0c;padding:6px;
+    box-shadow:0 22px 50px -18px rgba(0,0,0,.65),0 4px 14px rgba(0,0,0,.4);
+    border:1px solid rgba(255,255,255,.10);}
+  .screen{border-radius:20px;overflow:hidden;aspect-ratio:1080/2260;background:#fff;position:relative;}
+  .screen img{width:100%;height:100%;object-fit:cover;object-position:50% 100%;display:block;}
+
+  /* ---------- Pills / badges ---------- */
+  .pill{display:inline-flex;align-items:center;gap:8px;border:1.5px solid rgba(255,255,255,.55);
+    border-radius:999px;padding:9px 16px;font-size:9.5pt;font-weight:600;color:#fff;background:rgba(255,255,255,.04);}
+  .pill-solid{background:var(--green);border:none;color:#04240F;font-weight:700;box-shadow:0 8px 20px -8px rgba(56,208,122,.7);}
+  .pill-white{background:#fff;color:var(--ink);border:none;font-weight:700;}
+
+  /* ---------- Google Play badge (inline) ---------- */
+  .play{display:inline-flex;align-items:center;gap:10px;background:#fff;color:#0b1110;border-radius:12px;
+    padding:8px 16px 8px 12px;box-shadow:0 8px 20px -10px rgba(0,0,0,.5);}
+  .play svg{width:26px;height:26px;}
+  .play .pt{font-size:6.5pt;letter-spacing:.12em;text-transform:uppercase;color:#5a625c;line-height:1;}
+  .play .pn{font-size:12.5pt;font-weight:800;line-height:1.05;}
+
+  /* ---------- Numbered steps ---------- */
+  .steps{margin-top:26px;display:flex;flex-direction:column;gap:18px;max-width:70%;}
+  .step{display:flex;align-items:center;gap:16px;}
+  .num{flex:none;width:38px;height:38px;border-radius:999px;border:2px solid var(--green);
+    display:flex;align-items:center;justify-content:center;font-weight:800;color:var(--green);font-size:14pt;}
+  .step .t{font-size:13pt;font-weight:600;color:#EAF4EE;}
+
+  /* ---------- Feature rows ---------- */
+  .feat{margin-top:24px;display:flex;flex-direction:column;gap:20px;max-width:56%;}
+  .frow{display:flex;gap:16px;align-items:flex-start;}
+  .ficon{flex:none;width:44px;height:44px;border-radius:12px;background:rgba(56,208,122,.14);
+    border:1px solid rgba(56,208,122,.35);display:flex;align-items:center;justify-content:center;color:var(--green);}
+  .ficon svg{width:22px;height:22px;}
+  .frow .ft{font-size:13.5pt;font-weight:700;color:#fff;margin:2px 0 3px;}
+  .frow .fs{font-size:10pt;line-height:1.45;color:#C4D8CB;}
+
+  /* ---------- Cover logo card ---------- */
+  .brandcard{background:#fff;color:var(--ink);border-radius:20px;padding:20px 22px;
+    display:flex;gap:20px;align-items:center;box-shadow:0 26px 60px -24px rgba(0,0,0,.6);}
+  .blogo{flex:none;width:70px;height:70px;border-radius:18px;background:var(--green);
+    display:flex;align-items:center;justify-content:center;box-shadow:0 10px 22px -8px rgba(56,208,122,.7);}
+  .blogo svg{width:40px;height:40px;color:#fff;}
+  .bname{font-size:22pt;font-weight:800;letter-spacing:-.01em;line-height:1;}
+  .bname .b2{color:var(--green-2);}
+  .btag{font-size:9pt;color:#5c665f;margin-top:3px;font-weight:600;}
+  .blist{margin-left:auto;display:grid;grid-template-columns:1fr 1fr;gap:8px 22px;}
+  .bli{display:flex;align-items:center;gap:8px;font-size:9.5pt;font-weight:600;color:#25302a;white-space:nowrap;}
+  .bli svg{width:16px;height:16px;color:var(--green-2);flex:none;}
+
+  .row{display:flex;align-items:flex-start;}
+  .spacer{flex:1;}
+</style>
+
+<!-- ============================================================ PAGE 1 : COVER -->
+<section class="page">
+  <div class="row" style="justify-content:space-between;align-items:flex-start;">
+    <div>
+      <h1>Billing made simple<br><span class="g">for plant shops.</span></h1>
+      <div style="margin-top:22px;">
+        <span class="play">
+          <svg viewBox="0 0 512 512" aria-hidden="true"><path fill="#00D0FF" d="M48 32 300 258 48 484c-9-5-16-15-16-27V59c0-12 7-22 16-27z"/><path fill="#00E37A" d="M48 32c4-2 9-2 14 1l248 143-57 82L48 32z"/><path fill="#FF3A44" d="M310 175l64 37c22 13 22 44 0 57l-64 37-57-82 57-86z"/><path fill="#FFC500" d="M253 340l57 82L62 479c-5 3-10 3-14 1l205-140z"/></svg>
+          <span><span class="pt">Get it on</span><br><span class="pn">Google Play</span></span>
+        </span>
+      </div>
+    </div>
+    <div style="text-align:right;">
+      <span class="pill pill-white" style="font-size:11pt;">Including Printer</span>
+    </div>
+  </div>
+
+  <!-- three phones -->
+  <div style="display:flex;gap:14px;justify-content:center;align-items:flex-end;margin-top:30px;height:118mm;">
+    <div class="phone" style="width:52mm;margin-bottom:14px;"><div class="screen"><img src="img/sales.png" alt="Sales report"></div></div>
+    <div class="phone" style="width:60mm;z-index:2;"><div class="screen"><img src="img/catalog.png" alt="Product catalogue"></div></div>
+    <div class="phone" style="width:52mm;margin-bottom:14px;"><div class="screen"><img src="img/cart.png" alt="Create a bill"></div></div>
+  </div>
+
+  <div style="text-align:center;margin-top:8px;">
+    <span class="pill pill-solid" style="font-size:12pt;">Book Yours Now:&nbsp; +91 62381 93133</span>
+  </div>
+
+  <!-- brand card -->
+  <div class="brandcard" style="margin-top:22px;">
+    <div class="blogo">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"/><path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"/></svg>
+    </div>
+    <div>
+      <div class="bname">Plant<span class="b2">Bill</span></div>
+      <div class="btag">A complete solution for plant billing</div>
+    </div>
+    <div class="blist">
+      <span class="bli"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg> Everything at finger tip</span>
+      <span class="bli"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg> Tracks Profits and Loss</span>
+      <span class="bli"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg> Daily detailed Report</span>
+      <span class="bli"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg> No computer Needed</span>
+    </div>
+  </div>
+
+  <div class="foot"><span>A product by Dofida Private Limited</span><span>plantbill.in</span></div>
+</section>
+
+<!-- ============================================================ PAGE 2 : PROMISE -->
+<section class="page">
+  <div class="row" style="justify-content:space-between;align-items:flex-start;">
+    <h1 style="max-width:74%;">Everything the counter<br>needs — <span class="g">nothing it<br>doesn't.</span></h1>
+    <span class="pill pill-white" style="font-size:11pt;margin-top:6px;">Just 3 Steps</span>
+  </div>
+
+  <p class="lead">A billing app built for plant nurseries in India. Big buttons, clear
+    numbers, and no clutter — so anyone at the counter can make a bill in seconds, even
+    on a busy morning. Your sales, your cash, and your customers, all in one calm place.</p>
+
+  <div class="steps">
+    <div class="step"><div class="num">1</div><div class="t">Add a Plant</div></div>
+    <div class="step"><div class="num">2</div><div class="t">Set the Price and Payment method</div></div>
+    <div class="step"><div class="num">3</div><div class="t">Take the Payment</div></div>
+  </div>
+
+  <p class="lead" style="margin-top:28px;max-width:52%;">Built the way good tools should feel — nothing hidden,
+    nothing silent. Every action shows a clear "saved", sends a plain-language
+    message instead of a raw error code, and because many shop owners aren't young,
+    the whole app is drawn large, high-contrast, and forgiving.</p>
+
+  <div class="phone" style="width:60mm;position:absolute;right:18mm;bottom:20mm;"><div class="screen"><img src="img/catalog.png" alt="Product catalogue"></div></div>
+
+  <div class="foot"><span>PlantBill</span><span>02</span></div>
+</section>
+
+<!-- ============================================================ PAGE 3 : BILLING -->
+<section class="page">
+  <h1>The Heart —<br><span class="g">Creating Bills</span></h1>
+  <p class="lead" style="max-width:52%;">The billing screen is the heart of PlantBill — fast for the shop,
+    exact for the money. Add a plant, set its price, take payment. Done.</p>
+
+  <div class="feat">
+    <div class="frow"><div class="ficon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5v14"/></svg></div>
+      <div><div class="ft">Add a Plant</div><div class="fs">Tap any plant with a photo. Big +/− buttons set the quantity.</div></div></div>
+
+    <div class="frow"><div class="ficon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div>
+      <div><div class="ft">Price it your way</div><div class="fs">Prices fill in automatically, but every line stays editable — the same plant sells at different prices by size.</div></div></div>
+
+    <div class="frow"><div class="ficon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg></div>
+      <div><div class="ft">Cash, UPI or split</div><div class="fs">Show a UPI QR at the counter; the app fills in the remaining amount for you.</div></div></div>
+
+    <div class="frow"><div class="ficon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg></div>
+      <div><div class="ft">Take part-payment</div><div class="fs">Customer pays some now and owes the rest — saved cleanly as a due.</div></div></div>
+
+    <div class="frow"><div class="ficon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="10"/></svg></div>
+      <div><div class="ft">No double bills</div><div class="fs">A quick double-tap can never charge twice — every checkout is protected.</div></div></div>
+  </div>
+
+  <!-- phone right -->
+  <div class="phone" style="width:62mm;position:absolute;right:16mm;top:64mm;"><div class="screen"><img src="img/cart.png" alt="Revise bill"></div></div>
+
+  <!-- bottom pills -->
+  <div style="position:absolute;left:15mm;right:15mm;bottom:20mm;display:flex;gap:10px;flex-wrap:wrap;justify-content:center;">
+    <span class="pill">Voice Search</span>
+    <span class="pill">Quick Add</span>
+    <span class="pill">Flat ₹ or % discount</span>
+    <span class="pill">UPI QR Payment</span>
+  </div>
+
+  <div class="foot"><span>PlantBill</span><span>03</span></div>
+</section>
+
+<!-- ============================================================ PAGE 4 : WHOLE SHOP -->
+<section class="page">
+  <h1>The whole shop,<br><span class="g">in your pocket.</span></h1>
+  <p class="lead" style="max-width:54%;">Past the counter, PlantBill keeps the rest of the shop in order —
+    dues, daily cash book, staff, and a report for any day. The numbers you check at
+    night, all in one place.</p>
+
+  <div class="feat" style="max-width:52%;">
+    <div class="frow"><div class="ficon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M9 15h6M9 11h2"/></svg></div>
+      <div><div class="ft">Money you're owed</div><div class="fs">A clear khata of who owes what; collect the full amount or part of it.</div></div></div>
+
+    <div class="frow"><div class="ficon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/></svg></div>
+      <div><div class="ft">Daily cash book</div><div class="fs">Opening balance, cash sales, expenses and a live "cash in hand" figure.</div></div></div>
+
+    <div class="frow"><div class="ficon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5M12 15V3"/></svg></div>
+      <div><div class="ft">Reports & staff</div><div class="fs">Download any day, week or month as Excel — and see who sold the most.</div></div></div>
+  </div>
+
+  <div class="phone" style="width:62mm;position:absolute;right:18mm;top:70mm;"><div class="screen"><img src="img/sales.png" alt="Sales"></div></div>
+
+  <div style="position:absolute;left:15mm;right:15mm;bottom:22mm;text-align:center;">
+    <span class="pill pill-solid" style="font-size:12pt;">Get PlantBill for your shop today</span>
+    <div style="margin-top:14px;font-size:9.5pt;letter-spacing:.04em;color:#C4D8CB;">
+      📞 +91 62381 93133 &nbsp;·&nbsp; 🌐 plantbill.in &nbsp;·&nbsp; Available on Google Play
+    </div>
+  </div>
+
+  <div class="foot"><span>A product by Dofida Private Limited</span><span>04</span></div>
+</section>
