@@ -544,4 +544,6 @@
     <string name="notif_empty_title">अभी कोई सूचना नहीं</string>
     <string name="notif_empty_message">अपडेट और घोषणाएं यहां दिखेंगी.</string>
     <string name="notif_action">खोलें</string>
+    <!-- Login contact (for prospective customers) -->
+    <string name="login_interested">PlantBill में रुचि है? हमसे संपर्क करें:</string>
 </resources>

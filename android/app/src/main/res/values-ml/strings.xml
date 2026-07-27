@@ -544,4 +544,6 @@
     <string name="notif_empty_title">അറിയിപ്പുകൾ ഒന്നുമില്ല</string>
     <string name="notif_empty_message">പുതിയ വിവരങ്ങളും അറിയിപ്പുകളും ഇവിടെ കാണാം.</string>
     <string name="notif_action">തുറക്കുക</string>
+    <!-- Login contact (for prospective customers) -->
+    <string name="login_interested">PlantBill-ൽ താൽപ്പര്യമുണ്ടോ? ഞങ്ങളെ ബന്ധപ്പെടുക:</string>
 </resources>

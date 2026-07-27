@@ -16,6 +16,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
@@ -126,6 +127,52 @@ fun LoginScreen(viewModel: LoginViewModel = hiltViewModel()) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
             )
+
+            // "Interested in the product?" contact block — for prospective shops who
+            // land on the login screen (there is no public sign-up). Phone taps to
+            // dial; email taps to compose.
+            Spacer(Modifier.height(Dimens.xl))
+            Text(
+                stringResource(com.plantora.billing.R.string.login_interested),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+            )
+            Spacer(Modifier.height(Dimens.sm))
+            Text(
+                "+91 7975402266",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.primary,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.clickable {
+                    runCatching {
+                        loginCtx.startActivity(
+                            android.content.Intent(
+                                android.content.Intent.ACTION_DIAL,
+                                android.net.Uri.parse("tel:+917975402266"),
+                            ),
+                        )
+                    }
+                },
+            )
+            Spacer(Modifier.height(Dimens.sm))
+            Text(
+                "support@dofida.in",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.primary,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.clickable {
+                    runCatching {
+                        loginCtx.startActivity(
+                            android.content.Intent(
+                                android.content.Intent.ACTION_SENDTO,
+                                android.net.Uri.parse("mailto:support@dofida.in"),
+                            ),
+                        )
+                    }
+                },
+            )
+            Spacer(Modifier.height(Dimens.xl))
         }
     }
 }

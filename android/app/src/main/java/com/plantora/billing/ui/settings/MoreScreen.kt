@@ -41,7 +41,9 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.plantora.billing.BuildConfig
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.plantora.billing.R
@@ -185,6 +187,15 @@ fun MoreScreen(
             text = stringResource(R.string.action_logout),
             onClick = onLogout,
             leadingIcon = Icons.AutoMirrored.Rounded.Logout,
+        )
+
+        // App version — helps support identify a shop's exact build.
+        Text(
+            stringResource(R.string.more_version, BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth().padding(top = Dimens.sm),
         )
     }
 

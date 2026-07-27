@@ -571,4 +571,9 @@
     <string name="notif_empty_title">No notifications yet</string>
     <string name="notif_empty_message">Updates and announcements will appear here.</string>
     <string name="notif_action">Open</string>
+    <!-- Login contact (for prospective customers) -->
+    <string name="login_interested">Interested in PlantBill? Get in touch:</string>
+    <!-- App version in More. %1$s = versionName, %2$d = versionCode. Brand + number,
+         so it is language-neutral and lives only in the default resources. -->
+    <string name="more_version">PlantBill v%1$s (%2$d)</string>
 </resources>
