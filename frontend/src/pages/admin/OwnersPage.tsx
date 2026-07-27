@@ -15,7 +15,7 @@ import { X, Store, KeyRound, Trash2 } from "lucide-react";
 import { friendlyError } from "@/api/client";
 import { Spinner } from "@/components/Spinner";
 import { Button } from "@/components/Button";
-import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { Modal } from "@/components/admin/Modal";
 import { TypeToConfirmDialog } from "@/components/TypeToConfirmDialog";
 
 function ymd(d: Date): string {
@@ -45,6 +45,7 @@ export function OwnersPage() {
 
   // Reset-password + delete flows for existing owner accounts.
   const [resetTarget, setResetTarget] = useState<OwnerAccount | null>(null);
+  const [resetPassword, setResetPassword] = useState("");
   const [resetting, setResetting] = useState(false);
   const [resetResult, setResetResult] = useState<{ email: string; password: string } | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<OwnerAccount | null>(null);
@@ -142,9 +143,9 @@ export function OwnersPage() {
   };
 
   const doReset = async () => {
-    if (!resetTarget) return;
+    if (!resetTarget || resetPassword.length < 8) return;
     setResetting(true);
-    const pwd = genPassword();
+    const pwd = resetPassword;
     try {
       await resetOwnerAccountPassword(resetTarget.id, pwd);
       setResetResult({ email: resetTarget.email, password: pwd });
@@ -278,7 +279,7 @@ export function OwnersPage() {
                       <div className="mt-3 flex gap-2 border-t border-border pt-3">
                         <button
                           type="button"
-                          onClick={() => setResetTarget(o)}
+                          onClick={() => { setResetPassword(genPassword()); setResetTarget(o); }}
                           className="inline-flex items-center gap-1.5 rounded-control px-2.5 py-1.5 text-sm font-semibold text-ink-soft hover:bg-surface-muted hover:text-ink"
                         >
                           <KeyRound className="h-4 w-4" /> Reset password
@@ -355,20 +356,58 @@ export function OwnersPage() {
         </>
       )}
 
-      <ConfirmDialog
+      <Modal
         open={resetTarget !== null}
-        title="Reset password?"
-        body={
-          <>
-            A new password will be generated for <b>{resetTarget?.email}</b>. Their current
-            password stops working immediately, and the new one is shown once.
-          </>
+        onClose={() => !resetting && setResetTarget(null)}
+        title="Reset owner password"
+        footer={
+          <div className="flex gap-3">
+            <Button variant="ghost" size="action" onClick={() => setResetTarget(null)} disabled={resetting}>
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              size="action"
+              onClick={doReset}
+              loading={resetting}
+              loadingLabel="Resetting…"
+              disabled={resetPassword.length < 8}
+            >
+              Reset password
+            </Button>
+          </div>
         }
-        confirmLabel={resetting ? "Resetting…" : "Reset password"}
-        cancelLabel="Cancel"
-        onConfirm={doReset}
-        onCancel={() => !resetting && setResetTarget(null)}
-      />
+      >
+        <div className="space-y-3">
+          <p className="text-sm text-ink-soft">
+            Set a new password for <b className="text-ink">{resetTarget?.email}</b>. Their current
+            password stops working immediately — you'll see the new one once to share.
+          </p>
+          <label className="block text-sm font-bold text-ink-soft" htmlFor="reset-pwd">
+            New password
+          </label>
+          <div className="flex gap-2">
+            <input
+              id="reset-pwd"
+              value={resetPassword}
+              onChange={(e) => setResetPassword(e.target.value)}
+              autoComplete="new-password"
+              className="h-11 flex-1 rounded-control border-2 border-border bg-white px-3 font-mono text-base focus:border-primary-600 focus:outline-none"
+            />
+            <button
+              type="button"
+              onClick={() => setResetPassword(genPassword())}
+              aria-label="Generate a password"
+              className="rounded-control border border-border px-3 text-sm font-semibold text-ink-soft hover:bg-surface-muted"
+            >
+              ↻
+            </button>
+          </div>
+          {resetPassword.length > 0 && resetPassword.length < 8 && (
+            <p className="text-sm font-semibold text-danger">Use at least 8 characters.</p>
+          )}
+        </div>
+      </Modal>
 
       <TypeToConfirmDialog
         open={deleteTarget !== null}
