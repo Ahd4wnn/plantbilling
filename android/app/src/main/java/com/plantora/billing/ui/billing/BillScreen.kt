@@ -62,12 +62,13 @@ fun BillScreen(viewModel: BillingViewModel = hiltViewModel()) {
     val heldBills by viewModel.heldBills.collectAsStateWithLifecycle()
     var showHeld by remember { mutableStateOf(false) }
     val heldSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    // Swipe-to-dismiss is disabled: the review closes only via the ✕ or "Add item"
-    // (confirmValueChange rejects the Hidden state the drag gesture targets).
-    val sheetState = rememberModalBottomSheetState(
-        skipPartiallyExpanded = true,
-        confirmValueChange = { it != androidx.compose.material3.SheetValue.Hidden },
-    )
+    // The review dismisses normally (scrim tap / back / swipe-down) via
+    // onDismissRequest → dismissReview, which only HIDES it — the cart is kept, so
+    // the Cart bar reopens a fresh sheet. The old design rejected the Hidden state
+    // here AND used a no-op onDismissRequest; that desynced the sheet's internal
+    // anchor state from showReview and hard-froze the app (ANR) when the review was
+    // dismissed via back/swipe-down and then reopened. Let it settle to Hidden.
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val quickAddSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val snackbar = remember { SnackbarHostState() }
     val ctx = androidx.compose.ui.platform.LocalContext.current
@@ -198,9 +199,10 @@ fun BillScreen(viewModel: BillingViewModel = hiltViewModel()) {
 
     if (state.showReview) {
         ModalBottomSheet(
-            // No-op: tapping the scrim or the back gesture must NOT close the review.
-            // It closes only through the ✕, "Add item", "Clear cart", or a saved bill.
-            onDismissRequest = { },
+            // Dismiss (scrim / back / swipe-down) just hides the review; the cart is
+            // preserved, so the Cart bar reopens it. Syncing showReview is what keeps
+            // the sheet from desyncing with sheetState and freezing on reopen.
+            onDismissRequest = viewModel::dismissReview,
             sheetState = sheetState,
         ) {
             CartSheetContent(
