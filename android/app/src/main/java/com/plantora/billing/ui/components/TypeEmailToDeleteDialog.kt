@@ -15,9 +15,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import com.plantora.billing.R
 import com.plantora.billing.ui.theme.Dimens
 
 /**
@@ -31,8 +33,8 @@ fun TypeEmailToDeleteDialog(
     body: String,
     onConfirm: () -> Unit,
     onDismiss: () -> Unit,
-    title: String = "Delete account?",
-    confirmLabel: String = "Delete account",
+    title: String = stringResource(R.string.del_title),
+    confirmLabel: String = stringResource(R.string.del_confirm),
 ) {
     var typed by remember(email) { mutableStateOf("") }
     val matches = email.isNotBlank() && typed.trim().equals(email.trim(), ignoreCase = true)
@@ -45,7 +47,7 @@ fun TypeEmailToDeleteDialog(
                 Text(body)
                 Spacer(Modifier.height(Dimens.md))
                 Text(
-                    "Type the email to confirm:",
+                    stringResource(R.string.del_type_confirm),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -56,7 +58,7 @@ fun TypeEmailToDeleteDialog(
                     onValueChange = { typed = it },
                     singleLine = true,
                     isError = typed.isNotBlank() && !matches,
-                    label = { Text("Enter email") },
+                    label = { Text(stringResource(R.string.del_enter_email)) },
                     shape = MaterialTheme.shapes.medium,
                     keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = KeyboardType.Email),
                     modifier = Modifier.fillMaxWidth(),
@@ -68,6 +70,6 @@ fun TypeEmailToDeleteDialog(
                 Text(confirmLabel, color = if (matches) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant)
             }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } },
     )
 }

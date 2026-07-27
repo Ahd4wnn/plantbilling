@@ -3,9 +3,10 @@ package com.plantora.billing.ui.sales
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.plantora.billing.R
 import com.plantora.billing.data.BillRepository
-import com.plantora.billing.data.remote.friendlyError
 import com.plantora.billing.domain.BillDetail
+import com.plantora.billing.i18n.UiText
 import com.plantora.billing.print.PrinterController
 import com.plantora.billing.ui.billing.PrintPhase
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -19,9 +20,9 @@ import javax.inject.Inject
 data class BillDetailUiState(
     val loading: Boolean = true,
     val detail: BillDetail? = null,
-    val error: String? = null,
+    val error: UiText? = null,
     val printPhase: PrintPhase = PrintPhase.IDLE,
-    val printMessage: String? = null,
+    val printMessage: UiText? = null,
     val deleted: Boolean = false,
 )
 
@@ -44,21 +45,21 @@ class BillDetailViewModel @Inject constructor(
         viewModelScope.launch {
             runCatching { billRepo.detail(billId) }
                 .onSuccess { d -> _ui.update { it.copy(loading = false, detail = d) } }
-                .onFailure { e -> _ui.update { it.copy(loading = false, error = friendlyError(e)) } }
+                .onFailure { e -> _ui.update { it.copy(loading = false, error = UiText.err(e, R.string.err_generic)) } }
         }
     }
 
     fun print() {
         val detail = _ui.value.detail ?: return
-        _ui.update { it.copy(printPhase = PrintPhase.CONNECTING, printMessage = "Connecting to printer…") }
+        _ui.update { it.copy(printPhase = PrintPhase.CONNECTING, printMessage = UiText.res(R.string.vm_print_connecting)) }
         viewModelScope.launch {
             val statusJob = launch {
                 printer.status.collect { st ->
                     when (st) {
                         is com.plantora.billing.print.PrinterStatus.Connecting ->
-                            _ui.update { it.copy(printPhase = PrintPhase.CONNECTING, printMessage = "Connecting to printer…") }
+                            _ui.update { it.copy(printPhase = PrintPhase.CONNECTING, printMessage = UiText.res(R.string.vm_print_connecting)) }
                         is com.plantora.billing.print.PrinterStatus.Connected ->
-                            _ui.update { it.copy(printPhase = PrintPhase.PRINTING, printMessage = "Printing…") }
+                            _ui.update { it.copy(printPhase = PrintPhase.PRINTING, printMessage = UiText.res(R.string.vm_print_printing)) }
                         else -> {}
                     }
                 }
@@ -66,8 +67,8 @@ class BillDetailViewModel @Inject constructor(
             val result = printer.printBill(detail)
             statusJob.cancel()
             result
-                .onSuccess { _ui.update { it.copy(printPhase = PrintPhase.DONE, printMessage = "Printed.") } }
-                .onFailure { e -> _ui.update { it.copy(printPhase = PrintPhase.FAILED, printMessage = e.message ?: "Printing failed.") } }
+                .onSuccess { _ui.update { it.copy(printPhase = PrintPhase.DONE, printMessage = UiText.res(R.string.vm_print_printed)) } }
+                .onFailure { e -> _ui.update { it.copy(printPhase = PrintPhase.FAILED, printMessage = e.message?.let(UiText::of) ?: UiText.res(R.string.vm_print_failed)) } }
         }
     }
 
@@ -75,7 +76,7 @@ class BillDetailViewModel @Inject constructor(
         viewModelScope.launch {
             runCatching { billRepo.delete(billId) }
                 .onSuccess { _ui.update { it.copy(deleted = true) } }
-                .onFailure { e -> _ui.update { it.copy(printMessage = friendlyError(e)) } }
+                .onFailure { e -> _ui.update { it.copy(printMessage = UiText.err(e, R.string.err_generic)) } }
         }
     }
 }

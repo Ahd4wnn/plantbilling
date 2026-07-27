@@ -42,9 +42,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.plantora.billing.R
+import com.plantora.billing.i18n.asString
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.plantora.billing.domain.BillListEntry
 import com.plantora.billing.domain.daysSince
@@ -69,27 +73,28 @@ fun DuesScreen(
     val snackbar = remember { SnackbarHostState() }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
-    LaunchedEffect(ui.message) { ui.message?.let { snackbar.showSnackbar(it); viewModel.dismissMessage() } }
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    LaunchedEffect(ui.message) { ui.message?.let { snackbar.showSnackbar(it.resolve(ctx)); viewModel.dismissMessage() } }
 
     Scaffold(
         contentWindowInsets = androidx.compose.foundation.layout.WindowInsets(0, 0, 0, 0),
         snackbarHost = { SnackbarHost(snackbar) },
         topBar = {
             androidx.compose.material3.TopAppBar(
-                title = { Text("Dues") },
+                title = { Text(stringResource(R.string.sales_dues)) },
                 navigationIcon = {
-                    IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Back") }
+                    IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = stringResource(R.string.cd_back)) }
                 },
             )
         },
     ) { padding ->
         when {
             ui.loading -> LoadingState(Modifier.padding(padding))
-            ui.error != null -> ErrorState(ui.error!!, onRetry = viewModel::load, icon = Icons.Rounded.AccountBalanceWallet, modifier = Modifier.padding(padding))
+            ui.error != null -> ErrorState(ui.error!!.resolve(ctx), onRetry = viewModel::load, icon = Icons.Rounded.AccountBalanceWallet, modifier = Modifier.padding(padding))
             ui.dues.isEmpty() -> EmptyState(
                 icon = Icons.Rounded.AccountBalanceWallet,
-                title = "No dues",
-                message = "Everyone has paid up. Bills with money owed will appear here.",
+                title = stringResource(R.string.dues_empty_title),
+                message = stringResource(R.string.dues_empty_msg),
                 modifier = Modifier.padding(padding),
             )
             else -> LazyColumn(
@@ -99,10 +104,10 @@ fun DuesScreen(
             ) {
                 item {
                     PlantoraCard {
-                        Text("Total outstanding", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(stringResource(R.string.dues_total_outstanding), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         MoneyText(ui.totalOwed, style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.error)
                         Text(
-                            "${ui.dues.size} customer(s) yet to pay — shared across all staff.",
+                            pluralStringResource(R.plurals.dues_customers_count, ui.dues.size, ui.dues.size),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -112,7 +117,7 @@ fun DuesScreen(
                     OutlinedTextField(
                         value = ui.query,
                         onValueChange = viewModel::setQuery,
-                        placeholder = { Text("Search by name or phone") },
+                        placeholder = { Text(stringResource(R.string.dues_search)) },
                         leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null) },
                         singleLine = true,
                         shape = MaterialTheme.shapes.medium,
@@ -123,7 +128,7 @@ fun DuesScreen(
                 if (!ui.hasResults) {
                     item {
                         Text(
-                            "No dues match \"${ui.query}\".",
+                            stringResource(R.string.dues_no_match, ui.query),
                             style = MaterialTheme.typography.bodyLarge,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(top = Dimens.md),
@@ -137,7 +142,7 @@ fun DuesScreen(
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(Icons.Rounded.PriorityHigh, contentDescription = null, tint = MaterialTheme.colorScheme.error)
                             Text(
-                                "  Priority — overdue 30+ days",
+                                "  " + stringResource(R.string.dues_priority),
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.SemiBold,
                                 color = MaterialTheme.colorScheme.error,
@@ -153,7 +158,7 @@ fun DuesScreen(
                     if (ui.priorityDues.isNotEmpty()) {
                         item {
                             Text(
-                                "Other dues",
+                                stringResource(R.string.dues_other),
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.SemiBold,
                             )
@@ -199,63 +204,63 @@ private fun SettleSheet(
             .padding(horizontal = Dimens.lg)
             .padding(bottom = Dimens.xl),
     ) {
-        Text("Collect due", style = MaterialTheme.typography.headlineMedium)
+        Text(stringResource(R.string.settle_title), style = MaterialTheme.typography.headlineMedium)
         Spacer(Modifier.height(Dimens.xs))
         Text(
-            target.entry.customerName ?: target.entry.customerPhone ?: "Walk-in",
+            target.entry.customerName ?: target.entry.customerPhone ?: stringResource(R.string.bill_walkin),
             style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Spacer(Modifier.height(Dimens.md))
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("Amount owed", style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+            Text(stringResource(R.string.settle_amount_owed), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
             MoneyText(target.entry.dueAmount, style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.error)
         }
 
         Spacer(Modifier.height(Dimens.md))
-        PlantoraTextField(target.amount, onAmount, label = "Collecting now (₹)", keyboardType = KeyboardType.Decimal)
+        PlantoraTextField(target.amount, onAmount, label = stringResource(R.string.settle_collecting_now), keyboardType = KeyboardType.Decimal)
         if (target.total > target.entry.dueAmount) {
             Spacer(Modifier.height(Dimens.xs))
-            Text("Can't be more than the ${target.entry.dueAmount.format()} owed.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.error)
+            Text(stringResource(R.string.settle_too_much, target.entry.dueAmount.format()), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.error)
         }
 
         Spacer(Modifier.height(Dimens.lg))
-        Text("How was it paid?", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(stringResource(R.string.settle_how_paid), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Spacer(Modifier.height(Dimens.xs))
         SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
             SegmentedButton(
                 selected = target.mode == SettleMode.CASH,
                 onClick = { onMode(SettleMode.CASH) },
                 shape = SegmentedButtonDefaults.itemShape(index = 0, count = 3),
-            ) { Text("Cash") }
+            ) { Text(stringResource(R.string.pay_cash)) }
             SegmentedButton(
                 selected = target.mode == SettleMode.UPI,
                 onClick = { onMode(SettleMode.UPI) },
                 shape = SegmentedButtonDefaults.itemShape(index = 1, count = 3),
-            ) { Text("UPI") }
+            ) { Text(stringResource(R.string.pay_upi)) }
             SegmentedButton(
                 selected = target.mode == SettleMode.SPLIT,
                 onClick = { onMode(SettleMode.SPLIT) },
                 shape = SegmentedButtonDefaults.itemShape(index = 2, count = 3),
-            ) { Text("Split") }
+            ) { Text(stringResource(R.string.pay_split)) }
         }
 
         if (target.mode == SettleMode.SPLIT) {
             Spacer(Modifier.height(Dimens.md))
-            PlantoraTextField(target.splitCash, onSplitCash, label = "Cash part (₹)", keyboardType = KeyboardType.Decimal)
+            PlantoraTextField(target.splitCash, onSplitCash, label = stringResource(R.string.settle_cash_part), keyboardType = KeyboardType.Decimal)
             Spacer(Modifier.height(Dimens.xs))
-            Text("UPI part: ${target.upiAmount.format()}", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(stringResource(R.string.settle_upi_part, target.upiAmount.format()), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
 
         target.error?.let {
             Spacer(Modifier.height(Dimens.md))
-            Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium)
+            Text(it.asString(), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium)
         }
 
         if (!isManager) {
             Spacer(Modifier.height(Dimens.md))
             Text(
-                "This will be sent to your manager to approve before the due is closed.",
+                stringResource(R.string.settle_needs_approval),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -263,7 +268,7 @@ private fun SettleSheet(
 
         Spacer(Modifier.height(Dimens.xl))
         PrimaryButton(
-            text = if (isManager) "Collect ${target.total.format()}" else "Send for approval",
+            text = if (isManager) stringResource(R.string.settle_collect, target.total.format()) else stringResource(R.string.settle_send_approval),
             onClick = onConfirm,
             enabled = target.valid,
             loading = target.submitting,
@@ -286,18 +291,18 @@ private fun DueRow(
                 // Show the phone number when no name was recorded — a due bill always
                 // has a phone (required at checkout), so this identifies the customer.
                 Text(
-                    entry.customerName ?: entry.customerPhone ?: "Walk-in",
+                    entry.customerName ?: entry.customerPhone ?: stringResource(R.string.bill_walkin),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
                 )
                 Text(
-                    "${formatBillTime(entry.createdAt)} • bill ${entry.total.format()}",
+                    stringResource(R.string.due_time_bill, formatBillTime(entry.createdAt), entry.total.format()),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 if (overdue && days != null) {
                     Text(
-                        "Overdue $days days",
+                        pluralStringResource(R.plurals.due_overdue_days, days.toInt(), days.toInt()),
                         style = MaterialTheme.typography.labelLarge,
                         fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.error,
@@ -305,14 +310,14 @@ private fun DueRow(
                 }
             }
             Column(horizontalAlignment = Alignment.End) {
-                Text("Owes", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(stringResource(R.string.due_owes), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 MoneyText(entry.dueAmount, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.error)
             }
         }
         // Explicit, discoverable way to open the underlying bill.
         androidx.compose.material3.TextButton(onClick = onOpen, modifier = Modifier.padding(top = Dimens.xs)) {
             Icon(Icons.Rounded.ReceiptLong, contentDescription = null, modifier = Modifier.padding(end = Dimens.xs))
-            Text("View bill")
+            Text(stringResource(R.string.due_view_bill))
         }
         if (entry.pendingSettlement) {
             // A collection is already awaiting manager approval — don't offer to
@@ -323,7 +328,7 @@ private fun DueRow(
             ) {
                 Icon(Icons.Rounded.HourglassTop, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                 Text(
-                    "  Waiting for manager approval",
+                    "  " + stringResource(R.string.due_waiting_approval),
                     style = MaterialTheme.typography.labelLarge,
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.primary,
@@ -331,7 +336,7 @@ private fun DueRow(
             }
         } else {
             PrimaryButton(
-                text = "Collect ${entry.dueAmount.format()}",
+                text = stringResource(R.string.settle_collect, entry.dueAmount.format()),
                 onClick = onCollect,
                 modifier = Modifier.fillMaxWidth().padding(top = Dimens.sm),
             )

@@ -48,10 +48,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.plantora.billing.R
+import com.plantora.billing.ui.components.paymentLabel
 import com.plantora.billing.domain.Attendance
 import com.plantora.billing.domain.Labourer
 import com.plantora.billing.domain.LabourPayment
@@ -69,6 +72,13 @@ import com.plantora.billing.ui.theme.Dimens
 /** Absolute value, for showing a negative balance ("paid ahead") as a positive amount. */
 private fun Money.abs(): Money = Money(amount.abs())
 
+/** Localized gender label; the stored value stays "male"/"female". */
+@Composable
+private fun genderLabel(gender: String): String = when (gender) {
+    "female" -> stringResource(R.string.lab_gender_female)
+    else -> stringResource(R.string.lab_gender_male)
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LabourScreen(
@@ -79,15 +89,16 @@ fun LabourScreen(
     val snackbar = remember { SnackbarHostState() }
     val sheet = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
-    LaunchedEffect(ui.message) { ui.message?.let { snackbar.showSnackbar(it); viewModel.dismissMessage() } }
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    LaunchedEffect(ui.message) { ui.message?.let { snackbar.showSnackbar(it.resolve(ctx)); viewModel.dismissMessage() } }
 
     Scaffold(
         contentWindowInsets = androidx.compose.foundation.layout.WindowInsets(0, 0, 0, 0),
         snackbarHost = { SnackbarHost(snackbar) },
         topBar = {
             TopAppBar(
-                title = { Text("Labour") },
-                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Back") } },
+                title = { Text(stringResource(R.string.more_labour)) },
+                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = stringResource(R.string.cd_back)) } },
             )
         },
     ) { padding ->
@@ -101,34 +112,34 @@ fun LabourScreen(
             ) {
                 item {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Dimens.sm)) {
-                        PrimaryButton(text = "Record payment", onClick = { viewModel.openRecordPayment() }, modifier = Modifier.weight(1f))
-                        SecondaryButton(text = "Attendance", onClick = viewModel::openAttendance, leadingIcon = Icons.Rounded.CalendarMonth, modifier = Modifier.weight(1f))
+                        PrimaryButton(text = stringResource(R.string.lab_record_payment), onClick = { viewModel.openRecordPayment() }, modifier = Modifier.weight(1f))
+                        SecondaryButton(text = stringResource(R.string.lab_attendance), onClick = viewModel::openAttendance, leadingIcon = Icons.Rounded.CalendarMonth, modifier = Modifier.weight(1f))
                     }
                 }
                 item {
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        Text("Workers", style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
-                        SecondaryButton(text = "Add", onClick = viewModel::openAddWorker, leadingIcon = Icons.Rounded.Add)
+                        Text(stringResource(R.string.lab_workers), style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+                        SecondaryButton(text = stringResource(R.string.action_add), onClick = viewModel::openAddWorker, leadingIcon = Icons.Rounded.Add)
                     }
                 }
                 item {
                     OutlinedTextField(
                         value = ui.query, onValueChange = viewModel::setQuery,
-                        placeholder = { Text("Search workers") },
+                        placeholder = { Text(stringResource(R.string.lab_search)) },
                         leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null) },
                         singleLine = true, shape = MaterialTheme.shapes.medium, modifier = Modifier.fillMaxWidth(),
                     )
                 }
                 if (ui.labourers.isEmpty()) {
-                    item { Text("No workers yet. Tap Add to set up your first worker.", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                    item { Text(stringResource(R.string.lab_no_workers), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                 }
                 items(ui.filteredLabourers, key = { it.id }) { l ->
                     WorkerRow(l, canManage = ui.isManager, onOpen = { viewModel.openDetail(l) }, onEdit = { viewModel.openEditWorker(l) }, onDelete = { viewModel.deleteWorker(l.id) })
                 }
 
-                item { Text("Recent payments", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = Dimens.sm)) }
+                item { Text(stringResource(R.string.lab_recent_payments), style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = Dimens.sm)) }
                 if (ui.payments.isEmpty()) {
-                    item { Text("No payments recorded yet.", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                    item { Text(stringResource(R.string.lab_no_payments), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                 }
                 items(ui.payments, key = { it.id }) { p ->
                     PaymentRow(p, canManage = ui.isManager, onEdit = { viewModel.openEditPayment(p) }, onDelete = { viewModel.deletePayment(p.id) })
@@ -170,17 +181,17 @@ private fun WorkerRow(l: Labourer, canManage: Boolean, onOpen: () -> Unit, onEdi
             Column(Modifier.weight(1f)) {
                 Text(l.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                 Text(
-                    "${l.gender.replaceFirstChar { it.uppercase() }} • ${l.defaultWage.format()}/day" + (l.phone?.let { " • $it" } ?: ""),
+                    genderLabel(l.gender) + " • " + stringResource(R.string.lab_per_day, l.defaultWage.format()) + (l.phone?.let { " • $it" } ?: ""),
                     style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 when {
-                    l.balanceToPay.isPositive() -> Text("Balance to pay ${l.balanceToPay.format()}", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.error)
-                    l.balanceToPay.isNegative() -> Text("Paid ahead ${l.balanceToPay.abs().format()}", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary)
+                    l.balanceToPay.isPositive() -> Text(stringResource(R.string.lab_balance_to_pay_amt, l.balanceToPay.format()), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.error)
+                    l.balanceToPay.isNegative() -> Text(stringResource(R.string.lab_paid_ahead_amt, l.balanceToPay.abs().format()), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary)
                 }
             }
             if (canManage) {
-                IconButton(onClick = onEdit) { Icon(Icons.Rounded.Edit, contentDescription = "Edit worker") }
-                IconButton(onClick = onDelete) { Icon(Icons.Rounded.DeleteOutline, contentDescription = "Remove worker") }
+                IconButton(onClick = onEdit) { Icon(Icons.Rounded.Edit, contentDescription = stringResource(R.string.cd_edit_worker)) }
+                IconButton(onClick = onDelete) { Icon(Icons.Rounded.DeleteOutline, contentDescription = stringResource(R.string.cd_remove_worker)) }
             }
         }
     }
@@ -191,16 +202,20 @@ private fun PaymentRow(p: LabourPayment, canManage: Boolean, onEdit: () -> Unit,
     PlantoraCard {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
-                val tag = when (p.kind) { "advance" -> " • advance"; "due_clear" -> " • due cleared"; else -> "" }
+                val tag = when (p.kind) {
+                    "advance" -> " • " + stringResource(R.string.lab_tag_advance)
+                    "due_clear" -> " • " + stringResource(R.string.lab_tag_due_cleared)
+                    else -> ""
+                }
                 Text(p.labourerName + tag, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                val daysPart = if (p.kind == "wage" && p.days != null) " • ${p.days} day(s)" else ""
-                Text("${formatBillTime(p.createdAt)} • ${p.paymentMethod.label}$daysPart", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                val daysPart = if (p.kind == "wage" && p.days != null) " • " + stringResource(R.string.lab_days_count, p.days) else ""
+                Text("${formatBillTime(p.createdAt)} • ${paymentLabel(p.paymentMethod)}$daysPart", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             Column(horizontalAlignment = Alignment.End) {
                 MoneyText(p.totalAmount, style = MaterialTheme.typography.titleMedium)
                 if (canManage) Row {
-                    IconButton(onClick = onEdit) { Icon(Icons.Rounded.Edit, contentDescription = "Edit payment") }
-                    IconButton(onClick = onDelete) { Icon(Icons.Rounded.DeleteOutline, contentDescription = "Delete payment") }
+                    IconButton(onClick = onEdit) { Icon(Icons.Rounded.Edit, contentDescription = stringResource(R.string.cd_edit_payment)) }
+                    IconButton(onClick = onDelete) { Icon(Icons.Rounded.DeleteOutline, contentDescription = stringResource(R.string.cd_delete_payment)) }
                 }
             }
         }
@@ -210,31 +225,31 @@ private fun PaymentRow(p: LabourPayment, canManage: Boolean, onEdit: () -> Unit,
 @Composable
 private fun WorkerEditorSheet(editor: WorkerEditor, onName: (String) -> Unit, onPhone: (String) -> Unit, onAadhaar: (String) -> Unit, onGender: (String) -> Unit, onWage: (String) -> Unit, onSave: () -> Unit) {
     Column(Modifier.fillMaxWidth().imePadding().verticalScroll(rememberScrollState()).padding(horizontal = Dimens.lg).padding(bottom = Dimens.xl)) {
-        Text(if (editor.id != null) "Edit worker" else "Add worker", style = MaterialTheme.typography.headlineMedium)
+        Text(if (editor.id != null) stringResource(R.string.cd_edit_worker) else stringResource(R.string.lab_add_worker), style = MaterialTheme.typography.headlineMedium)
         Spacer(Modifier.height(Dimens.lg))
-        PlantoraTextField(editor.name, onName, label = "Name")
+        PlantoraTextField(editor.name, onName, label = stringResource(R.string.label_name))
         Spacer(Modifier.height(Dimens.md))
-        PlantoraTextField(editor.phone, onPhone, label = "Phone number", keyboardType = KeyboardType.Phone)
+        PlantoraTextField(editor.phone, onPhone, label = stringResource(R.string.lab_phone), keyboardType = KeyboardType.Phone)
         Spacer(Modifier.height(Dimens.md))
-        PlantoraTextField(editor.aadhaar, onAadhaar, label = "Aadhaar number (optional)", keyboardType = KeyboardType.Number)
+        PlantoraTextField(editor.aadhaar, onAadhaar, label = stringResource(R.string.lab_aadhaar), keyboardType = KeyboardType.Number)
         Spacer(Modifier.height(Dimens.md))
         GenderToggle(editor.gender, onGender)
         Spacer(Modifier.height(Dimens.md))
-        PlantoraTextField(editor.wage, onWage, label = "Wage per day (₹)", keyboardType = KeyboardType.Decimal)
+        PlantoraTextField(editor.wage, onWage, label = stringResource(R.string.lab_wage_per_day), keyboardType = KeyboardType.Decimal)
         editor.error?.let { Spacer(Modifier.height(Dimens.md)); Text(it, color = MaterialTheme.colorScheme.error) }
         Spacer(Modifier.height(Dimens.xl))
-        PrimaryButton(text = if (editor.id != null) "Save changes" else "Add worker", onClick = onSave, enabled = editor.canSave, loading = editor.saving, modifier = Modifier.fillMaxWidth())
+        PrimaryButton(text = if (editor.id != null) stringResource(R.string.action_save_changes) else stringResource(R.string.lab_add_worker), onClick = onSave, enabled = editor.canSave, loading = editor.saving, modifier = Modifier.fillMaxWidth())
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun GenderToggle(gender: String, onGender: (String) -> Unit) {
-    Text("Gender", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    Text(stringResource(R.string.lab_gender), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
     Spacer(Modifier.height(Dimens.xs))
     SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
-        SegmentedButton(selected = gender == "male", onClick = { onGender("male") }, shape = SegmentedButtonDefaults.itemShape(0, 2)) { Text("Male") }
-        SegmentedButton(selected = gender == "female", onClick = { onGender("female") }, shape = SegmentedButtonDefaults.itemShape(1, 2)) { Text("Female") }
+        SegmentedButton(selected = gender == "male", onClick = { onGender("male") }, shape = SegmentedButtonDefaults.itemShape(0, 2)) { Text(stringResource(R.string.lab_gender_male)) }
+        SegmentedButton(selected = gender == "female", onClick = { onGender("female") }, shape = SegmentedButtonDefaults.itemShape(1, 2)) { Text(stringResource(R.string.lab_gender_female)) }
     }
 }
 
@@ -246,12 +261,12 @@ private fun PaymentSheet(
     onMode: (LabourPayMode) -> Unit, onSplitCash: (String) -> Unit, onNote: (String) -> Unit, onSave: () -> Unit,
 ) {
     Column(Modifier.fillMaxWidth().imePadding().verticalScroll(rememberScrollState()).padding(horizontal = Dimens.lg).padding(bottom = Dimens.xl)) {
-        Text(if (editor.id != null) "Edit payment" else if (editor.isAdvance) "Give advance" else "Record payment", style = MaterialTheme.typography.headlineMedium)
+        Text(if (editor.id != null) stringResource(R.string.cd_edit_payment) else if (editor.isAdvance) stringResource(R.string.lab_give_advance) else stringResource(R.string.lab_record_payment), style = MaterialTheme.typography.headlineMedium)
         Spacer(Modifier.height(Dimens.md))
         if (editor.id != null) {
             Text(editor.labourerName, style = MaterialTheme.typography.titleMedium)
         } else {
-            Text("Worker", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(stringResource(R.string.lab_worker), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(Modifier.height(Dimens.xs))
             FlowRow(horizontalArrangement = Arrangement.spacedBy(Dimens.sm)) {
                 labourers.forEach { l -> FilterChip(selected = editor.labourerId == l.id, onClick = { onSelect(l) }, label = { Text(l.name) }) }
@@ -262,48 +277,48 @@ private fun PaymentSheet(
         if (editor.id == null) {
             Spacer(Modifier.height(Dimens.md))
             SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
-                SegmentedButton(selected = !editor.isAdvance, onClick = { onAdvance(false) }, shape = SegmentedButtonDefaults.itemShape(0, 2)) { Text("Wage payment") }
-                SegmentedButton(selected = editor.isAdvance, onClick = { onAdvance(true) }, shape = SegmentedButtonDefaults.itemShape(1, 2)) { Text("Advance") }
+                SegmentedButton(selected = !editor.isAdvance, onClick = { onAdvance(false) }, shape = SegmentedButtonDefaults.itemShape(0, 2)) { Text(stringResource(R.string.lab_wage_payment)) }
+                SegmentedButton(selected = editor.isAdvance, onClick = { onAdvance(true) }, shape = SegmentedButtonDefaults.itemShape(1, 2)) { Text(stringResource(R.string.lab_advance)) }
             }
         }
 
         if (!editor.isAdvance) {
             Spacer(Modifier.height(Dimens.md))
-            Text("Wage per day: ${editor.wagePerDay.format()}", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(stringResource(R.string.lab_wage_per_day_label, editor.wagePerDay.format()), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(Modifier.height(Dimens.xs))
-            PlantoraTextField(editor.days, onDays, label = "Number of days", keyboardType = KeyboardType.Decimal)
+            PlantoraTextField(editor.days, onDays, label = stringResource(R.string.lab_num_days), keyboardType = KeyboardType.Decimal)
         }
         Spacer(Modifier.height(Dimens.md))
-        PlantoraTextField(editor.amount, onAmount, label = if (editor.isAdvance) "Advance amount (₹)" else "Amount (₹)", keyboardType = KeyboardType.Decimal)
+        PlantoraTextField(editor.amount, onAmount, label = if (editor.isAdvance) stringResource(R.string.lab_advance_amount) else stringResource(R.string.label_amount_rupees), keyboardType = KeyboardType.Decimal)
 
         Spacer(Modifier.height(Dimens.md))
-        Text("Payment method", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(stringResource(R.string.lab_payment_method), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Spacer(Modifier.height(Dimens.xs))
         SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
             val modes = LabourPayMode.entries
             modes.forEachIndexed { i, m ->
                 SegmentedButton(selected = editor.mode == m, onClick = { onMode(m) }, shape = SegmentedButtonDefaults.itemShape(i, modes.size)) {
-                    Text(when (m) { LabourPayMode.CASH -> "Cash"; LabourPayMode.UPI -> "UPI"; LabourPayMode.SPLIT -> "Split" })
+                    Text(when (m) { LabourPayMode.CASH -> stringResource(R.string.pay_cash); LabourPayMode.UPI -> stringResource(R.string.pay_upi); LabourPayMode.SPLIT -> stringResource(R.string.pay_split) })
                 }
             }
         }
         if (editor.mode == LabourPayMode.SPLIT) {
             Spacer(Modifier.height(Dimens.md))
-            PlantoraTextField(editor.splitCash, onSplitCash, label = "Cash part (₹)", keyboardType = KeyboardType.Decimal)
+            PlantoraTextField(editor.splitCash, onSplitCash, label = stringResource(R.string.settle_cash_part), keyboardType = KeyboardType.Decimal)
             Spacer(Modifier.height(Dimens.xs))
-            Text("UPI part: ${editor.upi.format()}", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(stringResource(R.string.settle_upi_part, editor.upi.format()), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
 
         Spacer(Modifier.height(Dimens.md))
-        PlantoraTextField(editor.note, onNote, label = "Note (optional)")
+        PlantoraTextField(editor.note, onNote, label = stringResource(R.string.lab_note))
         Spacer(Modifier.height(Dimens.md))
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Text("Total", style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+            Text(stringResource(R.string.label_total), style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
             MoneyText(editor.total, style = MaterialTheme.typography.headlineSmall)
         }
         editor.error?.let { Spacer(Modifier.height(Dimens.md)); Text(it, color = MaterialTheme.colorScheme.error) }
         Spacer(Modifier.height(Dimens.xl))
-        PrimaryButton(text = if (editor.id != null) "Save changes" else if (editor.isAdvance) "Give advance" else "Record payment", onClick = onSave, enabled = editor.canSave, loading = editor.saving, modifier = Modifier.fillMaxWidth())
+        PrimaryButton(text = if (editor.id != null) stringResource(R.string.action_save_changes) else if (editor.isAdvance) stringResource(R.string.lab_give_advance) else stringResource(R.string.lab_record_payment), onClick = onSave, enabled = editor.canSave, loading = editor.saving, modifier = Modifier.fillMaxWidth())
     }
 }
 
@@ -312,18 +327,18 @@ private fun WorkerDetailSheet(detail: WorkerDetail, onRecord: () -> Unit, onAdva
     val l = detail.labourer
     Column(Modifier.fillMaxWidth().imePadding().verticalScroll(rememberScrollState()).padding(horizontal = Dimens.lg).padding(bottom = Dimens.xl)) {
         Text(l.name, style = MaterialTheme.typography.headlineMedium)
-        Text("${l.gender.replaceFirstChar { it.uppercase() }}" + (l.phone?.let { " • $it" } ?: "") + (l.aadhaar?.let { " • Aadhaar $it" } ?: ""), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(genderLabel(l.gender) + (l.phone?.let { " • $it" } ?: "") + (l.aadhaar?.let { " • " + stringResource(R.string.lab_aadhaar_val, it) } ?: ""), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Spacer(Modifier.height(Dimens.md))
 
         // Statement of pay
-        StatementRow("Days worked", "${l.daysWorked} day(s)")
+        StatementRow(stringResource(R.string.lab_days_worked), stringResource(R.string.lab_days_count, l.daysWorked))
         HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
-        StatementRow("Earned (${l.defaultWage.format()}/day)", l.earned.format())
+        StatementRow(stringResource(R.string.lab_earned, l.defaultWage.format()), l.earned.format())
         HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
-        StatementRow("Total paid", l.totalPaid.format())
+        StatementRow(stringResource(R.string.lab_total_paid), l.totalPaid.format())
         HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
         Row(Modifier.fillMaxWidth().padding(vertical = Dimens.sm), verticalAlignment = Alignment.CenterVertically) {
-            Text(if (l.balanceToPay.isNegative()) "Paid ahead" else "Balance to pay", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+            Text(if (l.balanceToPay.isNegative()) stringResource(R.string.lab_paid_ahead_label) else stringResource(R.string.lab_balance_to_pay_label), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
             MoneyText(
                 l.balanceToPay.abs(),
                 style = MaterialTheme.typography.titleLarge,
@@ -337,21 +352,25 @@ private fun WorkerDetailSheet(detail: WorkerDetail, onRecord: () -> Unit, onAdva
 
         Spacer(Modifier.height(Dimens.md))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Dimens.sm)) {
-            SecondaryButton(text = "Give advance", onClick = onAdvance, modifier = Modifier.weight(1f))
-            PrimaryButton(text = "Record payment", onClick = onRecord, modifier = Modifier.weight(1f))
+            SecondaryButton(text = stringResource(R.string.lab_give_advance), onClick = onAdvance, modifier = Modifier.weight(1f))
+            PrimaryButton(text = stringResource(R.string.lab_record_payment), onClick = onRecord, modifier = Modifier.weight(1f))
         }
         Spacer(Modifier.height(Dimens.md))
-        Text("Payment history", style = MaterialTheme.typography.titleMedium)
+        Text(stringResource(R.string.lab_payment_history), style = MaterialTheme.typography.titleMedium)
         Spacer(Modifier.height(Dimens.sm))
         if (detail.loading) {
-            Text("Loading…", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(stringResource(R.string.action_loading), color = MaterialTheme.colorScheme.onSurfaceVariant)
         } else if (detail.payments.isEmpty()) {
-            Text("No payments yet.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(stringResource(R.string.lab_no_payments_yet), color = MaterialTheme.colorScheme.onSurfaceVariant)
         } else {
             detail.payments.take(50).forEach { p ->
                 Row(Modifier.fillMaxWidth().padding(vertical = Dimens.xs), verticalAlignment = Alignment.CenterVertically) {
-                    val tag = when (p.kind) { "advance" -> " • advance"; "due_clear" -> " • due cleared"; else -> if (p.days != null) " • ${p.days} day(s)" else "" }
-                    Text(formatBillTime(p.createdAt) + " • " + p.paymentMethod.label + tag, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+                    val tag = when (p.kind) {
+                        "advance" -> " • " + stringResource(R.string.lab_tag_advance)
+                        "due_clear" -> " • " + stringResource(R.string.lab_tag_due_cleared)
+                        else -> if (p.days != null) " • " + stringResource(R.string.lab_days_count, p.days) else ""
+                    }
+                    Text(formatBillTime(p.createdAt) + " • " + paymentLabel(p.paymentMethod) + tag, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
                     MoneyText(p.totalAmount, style = MaterialTheme.typography.titleMedium)
                 }
             }
@@ -370,23 +389,23 @@ private fun StatementRow(label: String, value: String) {
 @Composable
 private fun AttendanceSheet(labourers: List<Labourer>, attendance: Map<String, Attendance>, busyId: String?, onMark: (String, String) -> Unit) {
     Column(Modifier.fillMaxWidth().imePadding().verticalScroll(rememberScrollState()).padding(horizontal = Dimens.lg).padding(bottom = Dimens.xl)) {
-        Text("Today's attendance", style = MaterialTheme.typography.headlineMedium)
+        Text(stringResource(R.string.lab_today_attendance), style = MaterialTheme.typography.headlineMedium)
         Spacer(Modifier.height(Dimens.md))
         if (labourers.isEmpty()) {
-            Text("Add a worker first.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(stringResource(R.string.lab_add_worker_first), color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         labourers.forEach { l ->
             val rec = attendance[l.id]
             Column(Modifier.fillMaxWidth().padding(vertical = Dimens.sm)) {
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Text(l.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
-                    Text("${l.daysWorked} day(s) worked", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(stringResource(R.string.lab_days_worked_count, l.daysWorked), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 Spacer(Modifier.height(Dimens.xs))
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Dimens.xs)) {
-                    AttChip("Present", rec?.status == "present", busyId == l.id) { onMark(l.id, "present") }
-                    AttChip("Half-day", rec?.status == "half_day", busyId == l.id) { onMark(l.id, "half_day") }
-                    AttChip("Absent", rec?.status == "absent", busyId == l.id) { onMark(l.id, "absent") }
+                    AttChip(stringResource(R.string.att_present), rec?.status == "present", busyId == l.id) { onMark(l.id, "present") }
+                    AttChip(stringResource(R.string.att_half_day), rec?.status == "half_day", busyId == l.id) { onMark(l.id, "half_day") }
+                    AttChip(stringResource(R.string.att_absent), rec?.status == "absent", busyId == l.id) { onMark(l.id, "absent") }
                 }
             }
         }

@@ -8,7 +8,9 @@ import com.plantora.billing.data.ExpenseRepository
 import com.plantora.billing.data.SalespersonRepository
 import com.plantora.billing.data.SessionRepository
 import com.plantora.billing.data.local.AppPreferences
+import com.plantora.billing.R
 import com.plantora.billing.data.remote.friendlyError
+import com.plantora.billing.i18n.UiText
 import com.plantora.billing.domain.BillListEntry
 import com.plantora.billing.domain.DaySummary
 import com.plantora.billing.domain.Money
@@ -59,11 +61,12 @@ data class SalesUiState(
     val loadingMore: Boolean = false,
     val hasMore: Boolean = false,
     val expenseEditor: ExpenseEditor? = null,
-    val message: String? = null,
+    val message: UiText? = null,
 ) {
     val isToday: Boolean get() = date == todayInShopZone()
-    val selectedStaffLabel: String
-        get() = staff.find { it.id == selectedStaffId }?.email ?: "All staff"
+    /** Selected salesperson's email, or null for "all staff" (localized in the UI). */
+    val selectedStaffEmail: String?
+        get() = staff.find { it.id == selectedStaffId }?.email
 }
 
 @HiltViewModel
@@ -142,7 +145,7 @@ class SalesViewModel @Inject constructor(
         viewModelScope.launch {
             runCatching { billRepo.list(date = state.date.toApiDate(), createdBy = state.selectedStaffId, limit = PAGE, offset = state.bills.size) }
                 .onSuccess { p -> _ui.update { it.copy(loadingMore = false, bills = it.bills + p.items, hasMore = p.hasMore) } }
-                .onFailure { e -> _ui.update { it.copy(loadingMore = false, message = friendlyError(e)) } }
+                .onFailure { e -> _ui.update { it.copy(loadingMore = false, message = UiText.err(e, R.string.err_generic)) } }
         }
     }
 
@@ -183,15 +186,15 @@ class SalesViewModel @Inject constructor(
     fun deleteExpense(id: String) {
         viewModelScope.launch {
             runCatching { expenseRepo.delete(id) }.onSuccess { load() }
-                .onFailure { e -> _ui.update { it.copy(message = friendlyError(e)) } }
+                .onFailure { e -> _ui.update { it.copy(message = UiText.err(e, R.string.err_generic)) } }
         }
     }
 
     fun deleteBill(id: String) {
         viewModelScope.launch {
             runCatching { billRepo.delete(id) }
-                .onSuccess { _ui.update { it.copy(message = "Bill deleted.") }; load() }
-                .onFailure { e -> _ui.update { it.copy(message = friendlyError(e)) } }
+                .onSuccess { _ui.update { it.copy(message = UiText.res(R.string.vm_bill_deleted)) }; load() }
+                .onFailure { e -> _ui.update { it.copy(message = UiText.err(e, R.string.err_generic)) } }
         }
     }
 

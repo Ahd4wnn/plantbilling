@@ -45,11 +45,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
+import com.plantora.billing.R
 import com.plantora.billing.domain.Product
 import com.plantora.billing.ui.components.EmptyState
 import com.plantora.billing.ui.components.ErrorState
@@ -68,8 +70,9 @@ fun ProductsScreen(
     val snackbar = remember { SnackbarHostState() }
     var pendingDelete by remember { mutableStateOf<Product?>(null) }
 
+    val ctx = androidx.compose.ui.platform.LocalContext.current
     LaunchedEffect(ui.message) {
-        ui.message?.let { snackbar.showSnackbar(it); viewModel.dismissMessage() }
+        ui.message?.let { snackbar.showSnackbar(it.resolve(ctx)); viewModel.dismissMessage() }
     }
 
     Scaffold(
@@ -85,7 +88,7 @@ fun ProductsScreen(
                         horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(Dimens.md),
                     ) {
                         com.plantora.billing.ui.components.SecondaryButton(
-                            text = "Bulk import",
+                            text = stringResource(R.string.products_bulk_import),
                             onClick = viewModel::openBulk,
                             leadingIcon = Icons.Rounded.UploadFile,
                             modifier = Modifier
@@ -93,7 +96,7 @@ fun ProductsScreen(
                                 .height(Dimens.primaryButtonHeight),
                         )
                         com.plantora.billing.ui.components.PrimaryButton(
-                            text = "Add product",
+                            text = stringResource(R.string.products_add),
                             onClick = viewModel::openCreate,
                             leadingIcon = Icons.Rounded.Add,
                             modifier = Modifier.weight(1f),
@@ -107,7 +110,7 @@ fun ProductsScreen(
             OutlinedTextField(
                 value = ui.query,
                 onValueChange = viewModel::onQueryChange,
-                placeholder = { Text("Search products") },
+                placeholder = { Text(stringResource(R.string.bill_search)) },
                 leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null) },
                 singleLine = true,
                 shape = MaterialTheme.shapes.medium,
@@ -122,7 +125,7 @@ fun ProductsScreen(
                     FilterChip(
                         selected = ui.categoryFilter == null,
                         onClick = { viewModel.setCategoryFilter(null) },
-                        label = { Text("All") },
+                        label = { Text(stringResource(R.string.filter_all)) },
                     )
                 }
                 items(ui.categories) { cat ->
@@ -136,7 +139,7 @@ fun ProductsScreen(
                     FilterChip(
                         selected = ui.showInactive,
                         onClick = { viewModel.toggleShowInactive() },
-                        label = { Text("Include inactive") },
+                        label = { Text(stringResource(R.string.products_include_inactive)) },
                     )
                 }
             }
@@ -146,8 +149,8 @@ fun ProductsScreen(
                 ui.error != null -> ErrorState(ui.error!!, onRetry = viewModel::load, icon = Icons.Rounded.LocalFlorist)
                 ui.visibleProducts.isEmpty() -> EmptyState(
                     icon = Icons.Rounded.LocalFlorist,
-                    title = "No products yet",
-                    message = "Tap “Add product” to create your first one.",
+                    title = stringResource(R.string.products_empty_title),
+                    message = stringResource(R.string.products_empty_msg),
                 )
                 else -> LazyColumn(
                     contentPadding = PaddingValues(Dimens.screenPadding),
@@ -182,12 +185,12 @@ fun ProductsScreen(
     pendingDelete?.let { product ->
         AlertDialog(
             onDismissRequest = { pendingDelete = null },
-            title = { Text("Delete product?") },
-            text = { Text("Remove “${product.name}” from your catalog? Past bills are unaffected.") },
+            title = { Text(stringResource(R.string.products_delete_title)) },
+            text = { Text(stringResource(R.string.products_delete_msg, product.name)) },
             confirmButton = {
-                TextButton(onClick = { viewModel.delete(product); pendingDelete = null }) { Text("Delete") }
+                TextButton(onClick = { viewModel.delete(product); pendingDelete = null }) { Text(stringResource(R.string.action_delete)) }
             },
-            dismissButton = { TextButton(onClick = { pendingDelete = null }) { Text("Cancel") } },
+            dismissButton = { TextButton(onClick = { pendingDelete = null }) { Text(stringResource(R.string.action_cancel)) } },
         )
     }
 
@@ -234,20 +237,20 @@ private fun BulkImportSheet(
         Modifier.fillMaxWidth().padding(horizontal = Dimens.lg).padding(bottom = Dimens.xl),
         verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(Dimens.md),
     ) {
-        Text("Bulk import", style = MaterialTheme.typography.headlineMedium)
+        Text(stringResource(R.string.products_bulk_import), style = MaterialTheme.typography.headlineMedium)
         Text(
-            "Add many products at once from a spreadsheet, then attach photos by file name.",
+            stringResource(R.string.bulk_desc),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        com.plantora.billing.ui.components.SecondaryButton("Download Excel template", onClick = onDownloadSample, leadingIcon = Icons.Rounded.Download, modifier = Modifier.fillMaxWidth())
+        com.plantora.billing.ui.components.SecondaryButton(stringResource(R.string.bulk_download), onClick = onDownloadSample, leadingIcon = Icons.Rounded.Download, modifier = Modifier.fillMaxWidth())
         com.plantora.billing.ui.components.PrimaryButton(
-            text = if (busy) "Working…" else "Upload spreadsheet (.xlsx/.csv)",
+            text = if (busy) stringResource(R.string.action_working) else stringResource(R.string.bulk_upload_sheet),
             onClick = { sheetPicker.launch("*/*") },
             loading = busy,
             leadingIcon = Icons.Rounded.UploadFile,
         )
-        com.plantora.billing.ui.components.SecondaryButton("Upload photos (.zip)", onClick = { zipPicker.launch("application/zip") }, leadingIcon = Icons.Rounded.Image, modifier = Modifier.fillMaxWidth())
+        com.plantora.billing.ui.components.SecondaryButton(stringResource(R.string.bulk_upload_photos), onClick = { zipPicker.launch("application/zip") }, leadingIcon = Icons.Rounded.Image, modifier = Modifier.fillMaxWidth())
     }
 }
 
@@ -290,8 +293,8 @@ private fun ProductRow(product: Product, canManage: Boolean, onClick: () -> Unit
                 )
                 Text(
                     buildString {
-                        append(product.category ?: "Uncategorised")
-                        if (!product.isActive) append(" • Inactive")
+                        append(product.category ?: stringResource(R.string.cat_uncategorised))
+                        if (!product.isActive) append(" • " + stringResource(R.string.label_inactive))
                     },
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -300,7 +303,7 @@ private fun ProductRow(product: Product, canManage: Boolean, onClick: () -> Unit
             MoneyText(product.retailPrice, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
             if (canManage) {
                 IconButton(onClick = onDelete) {
-                    Icon(Icons.Rounded.DeleteOutline, contentDescription = "Delete ${product.name}")
+                    Icon(Icons.Rounded.DeleteOutline, contentDescription = stringResource(R.string.product_delete_cd, product.name))
                 }
             }
         }

@@ -10,6 +10,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import com.plantora.billing.R
 import com.plantora.billing.ui.components.EmptyState
 import com.plantora.billing.ui.components.SecondaryButton
 import com.plantora.billing.ui.theme.Dimens
@@ -20,10 +22,9 @@ fun UnsupportedRoleScreen(onLogout: () -> Unit) {
     Box(Modifier.fillMaxSize().padding(Dimens.lg), contentAlignment = Alignment.Center) {
         EmptyState(
             icon = Icons.Rounded.Computer,
-            title = "Use the web app",
-            message = "This app is for shop owners and salespeople. " +
-                "Admin tools are available on the PlantBill web dashboard.",
-            action = { SecondaryButton(text = "Log out", onClick = onLogout) },
+            title = stringResource(R.string.unsupported_title),
+            message = stringResource(R.string.unsupported_msg),
+            action = { SecondaryButton(text = stringResource(R.string.action_logout), onClick = onLogout) },
         )
     }
 }

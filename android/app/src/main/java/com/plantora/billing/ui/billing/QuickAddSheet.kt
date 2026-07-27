@@ -15,7 +15,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
+import com.plantora.billing.R
 import com.plantora.billing.ui.components.PlantoraTextField
 import com.plantora.billing.ui.components.PrimaryButton
 import com.plantora.billing.ui.components.QuantityStepper
@@ -37,19 +39,19 @@ fun QuickAddSheet(
             .padding(horizontal = Dimens.lg)
             .padding(bottom = Dimens.xl),
     ) {
-        Text("Quick add custom item", style = MaterialTheme.typography.headlineMedium)
+        Text(stringResource(R.string.quickadd_title), style = MaterialTheme.typography.headlineMedium)
         Text(
-            "Adds a one-off item to this bill (saved under “Quick Add”).",
+            stringResource(R.string.quickadd_desc),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Spacer(Modifier.height(Dimens.lg))
-        PlantoraTextField(state.name, onName, label = "Item name", placeholder = "e.g. Ad-hoc plant, pot, soil")
+        PlantoraTextField(state.name, onName, label = stringResource(R.string.quickadd_name_label), placeholder = stringResource(R.string.quickadd_name_hint))
         Spacer(Modifier.height(Dimens.md))
-        PlantoraTextField(state.price, onPrice, label = "Price (₹)", keyboardType = KeyboardType.Decimal)
+        PlantoraTextField(state.price, onPrice, label = stringResource(R.string.price_label), keyboardType = KeyboardType.Decimal)
         Spacer(Modifier.height(Dimens.md))
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("Quantity", style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+            Text(stringResource(R.string.quantity_label), style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
             QuantityStepper(
                 quantity = state.quantity,
                 onDecrement = { onQuantity(state.quantity - 1) },
@@ -62,6 +64,6 @@ fun QuickAddSheet(
             Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium)
         }
         Spacer(Modifier.height(Dimens.xl))
-        PrimaryButton(text = "Add to bill", onClick = onSave, enabled = state.canSave, loading = state.saving)
+        PrimaryButton(text = stringResource(R.string.quickadd_add), onClick = onSave, enabled = state.canSave, loading = state.saving)
     }
 }

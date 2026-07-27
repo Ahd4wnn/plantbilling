@@ -25,9 +25,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.plantora.billing.R
 import com.plantora.billing.domain.BillListEntry
 import com.plantora.billing.domain.formatBillTime
 import com.plantora.billing.ui.components.ErrorState
@@ -49,10 +52,10 @@ fun CustomerDetailScreen(
         contentWindowInsets = androidx.compose.foundation.layout.WindowInsets(0, 0, 0, 0),
         topBar = {
             TopAppBar(
-                title = { Text(ui.name) },
+                title = { Text(ui.name ?: stringResource(R.string.vm_customer_default)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = stringResource(R.string.cd_back))
                     }
                 },
             )
@@ -69,9 +72,9 @@ fun CustomerDetailScreen(
                 item {
                     PlantoraCard {
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                            LedgerStat("Total spent") { MoneyText(ui.totalSpent, style = MaterialTheme.typography.titleLarge) }
-                            LedgerStat("Bills") { Text("${ui.bills.size}", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold) }
-                            LedgerStat("On credit") {
+                            LedgerStat(stringResource(R.string.cust_total_spent)) { MoneyText(ui.totalSpent, style = MaterialTheme.typography.titleLarge) }
+                            LedgerStat(stringResource(R.string.report_bills)) { Text("${ui.bills.size}", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold) }
+                            LedgerStat(stringResource(R.string.cust_on_credit)) {
                                 Text(
                                     "${ui.creditBillCount}",
                                     style = MaterialTheme.typography.titleLarge,
@@ -83,10 +86,10 @@ fun CustomerDetailScreen(
                     }
                 }
                 item {
-                    Text("Purchase history", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = Dimens.sm))
+                    Text(stringResource(R.string.cust_purchase_history), style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = Dimens.sm))
                 }
                 if (ui.bills.isEmpty()) {
-                    item { Text("No bills yet.", color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                    item { Text(stringResource(R.string.cust_no_bills), color = MaterialTheme.colorScheme.onSurfaceVariant) }
                 }
                 items(ui.bills, key = { it.id }) { bill ->
                     LedgerBillRow(bill, onClick = { onOpenBill(bill.id) })
@@ -112,7 +115,11 @@ private fun LedgerBillRow(bill: BillListEntry, onClick: () -> Unit) {
             Column(Modifier.weight(1f).padding(horizontal = Dimens.md)) {
                 Text(formatBillTime(bill.createdAt), style = MaterialTheme.typography.bodyLarge)
                 Text(
-                    "${bill.itemCount} item(s) • ${bill.paymentMethod.label}",
+                    stringResource(
+                        R.string.cust_bill_line,
+                        pluralStringResource(R.plurals.item_count, bill.itemCount, bill.itemCount),
+                        com.plantora.billing.ui.components.paymentLabel(bill.paymentMethod),
+                    ),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

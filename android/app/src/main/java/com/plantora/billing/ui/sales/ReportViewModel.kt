@@ -6,7 +6,9 @@ import com.plantora.billing.data.AuthState
 import com.plantora.billing.data.ReportRepository
 import com.plantora.billing.data.SalespersonRepository
 import com.plantora.billing.data.SessionRepository
+import com.plantora.billing.R
 import com.plantora.billing.data.remote.friendlyError
+import com.plantora.billing.i18n.UiText
 import com.plantora.billing.domain.DetailedReport
 import com.plantora.billing.domain.ReportPeriod
 import com.plantora.billing.domain.Role
@@ -33,10 +35,10 @@ data class ReportUiState(
     val staff: List<Salesperson> = emptyList(),
     val staffId: String? = null,
     val loading: Boolean = false,
-    val error: String? = null,
+    val error: UiText? = null,
     val report: DetailedReport? = null,
     val downloading: Boolean = false,
-    val message: String? = null,
+    val message: UiText? = null,
 ) {
     /** Resolved [from,to] for the current period selection. */
     fun bounds(): Pair<LocalDate, LocalDate> = when (period) {
@@ -77,7 +79,7 @@ class ReportViewModel @Inject constructor(
         viewModelScope.launch {
             runCatching { reportRepo.generate(from.toApiDate(), to.toApiDate(), _ui.value.staffId) }
                 .onSuccess { r -> _ui.update { it.copy(loading = false, report = r) } }
-                .onFailure { e -> _ui.update { it.copy(loading = false, error = friendlyError(e, "Couldn't generate the report.")) } }
+                .onFailure { e -> _ui.update { it.copy(loading = false, error = UiText.err(e, R.string.err_report_generate)) } }
         }
     }
 
@@ -86,8 +88,8 @@ class ReportViewModel @Inject constructor(
         _ui.update { it.copy(downloading = true) }
         viewModelScope.launch {
             runCatching { reportRepo.downloadCsv(from.toApiDate(), to.toApiDate(), _ui.value.staffId) }
-                .onSuccess { name -> _ui.update { it.copy(downloading = false, message = "Saved to Downloads: $name") } }
-                .onFailure { e -> _ui.update { it.copy(downloading = false, message = friendlyError(e, "Couldn't download the report.")) } }
+                .onSuccess { name -> _ui.update { it.copy(downloading = false, message = UiText.res(R.string.vm_saved_downloads, name)) } }
+                .onFailure { e -> _ui.update { it.copy(downloading = false, message = UiText.err(e, R.string.err_report_download)) } }
         }
     }
 

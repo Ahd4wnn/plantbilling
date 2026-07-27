@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { LayoutDashboard, Store, Users, UserCog, Contact, Bug, Wallet, Search, CornerDownLeft } from "lucide-react";
+import { LayoutDashboard, Store, Users, UserCog, Contact, Bug, Wallet, Bell, Search, CornerDownLeft } from "lucide-react";
 import { listShops, type ShopRow } from "@/api/admin";
 
 interface Cmd {
@@ -19,6 +19,7 @@ const NAV_CMDS: Cmd[] = [
   { id: "nav-owners", label: "Owners", to: "/admin/owners", icon: <Users className="h-4.5 w-4.5" /> },
   { id: "nav-staff", label: "Staff", to: "/admin/staff", icon: <UserCog className="h-4.5 w-4.5" /> },
   { id: "nav-customers", label: "Customers", to: "/admin/customers", icon: <Contact className="h-4.5 w-4.5" /> },
+  { id: "nav-notifications", label: "Notifications", sub: "Send announcements to shops", to: "/admin/notifications", icon: <Bell className="h-4.5 w-4.5" />, keywords: "notification announcement message broadcast alert" },
   { id: "nav-crashes", label: "Crashes", to: "/admin/crashes", icon: <Bug className="h-4.5 w-4.5" /> },
 ];
 

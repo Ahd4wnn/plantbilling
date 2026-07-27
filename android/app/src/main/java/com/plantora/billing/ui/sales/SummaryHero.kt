@@ -23,9 +23,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.plantora.billing.R
 import com.plantora.billing.domain.DaySummary
 import com.plantora.billing.domain.Expense
 import com.plantora.billing.domain.Money
@@ -67,14 +70,14 @@ fun SummaryHero(
                 .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f), MaterialTheme.shapes.medium)
                 .padding(Dimens.lg),
         ) {
-            Text("TOTAL SALES", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(stringResource(R.string.summary_total_sales), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Text(summary.totalSales.format(), style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
-            Text("${summary.billCount} bills", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(pluralStringResource(R.plurals.bills_count, summary.billCount, summary.billCount), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         Spacer(Modifier.height(Dimens.sm))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Dimens.sm)) {
-            MetricCard("Expenses", "− " + summary.totalExpenses.format(), MaterialTheme.colorScheme.error, Modifier.weight(1f), "spending")
-            MetricCard("Net profit", netStr, netColor, Modifier.weight(1f), "sales − expenses")
+            MetricCard(stringResource(R.string.label_expenses), "− " + summary.totalExpenses.format(), MaterialTheme.colorScheme.error, Modifier.weight(1f), stringResource(R.string.summary_expenses_sub))
+            MetricCard(stringResource(R.string.summary_net_profit), netStr, netColor, Modifier.weight(1f), stringResource(R.string.summary_net_sub))
         }
 
         Spacer(Modifier.height(Dimens.lg))
@@ -85,20 +88,20 @@ fun SummaryHero(
                 .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f), MaterialTheme.shapes.medium)
                 .padding(horizontal = Dimens.md, vertical = Dimens.xs),
         ) {
-            PayStatRow("Cash", summary.cashTotal, CashGreen)
-            PayStatRow("UPI", summary.upiTotal, UpiBlue)
-            PayStatRow("Due", summary.dueTotal, DueAmber)
+            PayStatRow(stringResource(R.string.pay_cash), summary.cashTotal, CashGreen)
+            PayStatRow(stringResource(R.string.pay_upi), summary.upiTotal, UpiBlue)
+            PayStatRow(stringResource(R.string.pay_due), summary.dueTotal, DueAmber)
             if (summary.labourTotal.isPositive()) {
-                PayStatRow("Labour paid", summary.labourTotal, ExpenseColor)
+                PayStatRow(stringResource(R.string.summary_labour_paid), summary.labourTotal, ExpenseColor)
             }
             HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
             // Cash left in the drawer. Per-day = cash sales − cash expenses (UPI
             // expenses don't touch the drawer). When the device has the running-total
             // switch on, show the all-time carry-over figure from the server instead.
             if (cumulativeCashInHand) {
-                PayStatRow("Cash in hand (all time)", summary.cashInHandRunning, CashGreen)
+                PayStatRow(stringResource(R.string.summary_cash_all_time), summary.cashInHandRunning, CashGreen)
             } else {
-                PayStatRow("Cash in hand", summary.cashInHandToday, CashGreen)
+                PayStatRow(stringResource(R.string.summary_cash_today), summary.cashInHandToday, CashGreen)
             }
         }
 
@@ -116,7 +119,7 @@ fun SummaryHero(
                 diameter = 168.dp,
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("NET", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(stringResource(R.string.summary_net), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Text(
                         netStr,
                         style = MaterialTheme.typography.bodyLarge,
@@ -129,14 +132,14 @@ fun SummaryHero(
             }
             Spacer(Modifier.size(Dimens.lg))
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(Dimens.sm)) {
-                LegendRow(SalesColor, "Sales", summary.totalSales)
-                LegendRow(ExpenseColor, "Expenses", summary.totalExpenses)
+                LegendRow(SalesColor, stringResource(R.string.label_sales), summary.totalSales)
+                LegendRow(ExpenseColor, stringResource(R.string.label_expenses), summary.totalExpenses)
             }
         }
 
         if (sales > 0f) {
             Spacer(Modifier.height(Dimens.lg))
-            RatioBar(label = "Expense ratio", ratio = if (sales > 0f) expenses / sales else 0f)
+            RatioBar(label = stringResource(R.string.summary_expense_ratio), ratio = if (sales > 0f) expenses / sales else 0f)
         }
 
         Spacer(Modifier.height(Dimens.lg))
@@ -145,27 +148,27 @@ fun SummaryHero(
 
         // Expenses list
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Text("Expenses", style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
-            SecondaryButton(text = "+ Add", onClick = onAddExpense)
+            Text(stringResource(R.string.label_expenses), style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+            SecondaryButton(text = stringResource(R.string.summary_add), onClick = onAddExpense)
         }
         Spacer(Modifier.height(Dimens.sm))
         if (summary.expenses.isEmpty()) {
-            Text("No expenses recorded.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(stringResource(R.string.summary_no_expenses), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         } else {
             summary.expenses.forEach { e ->
                 Row(Modifier.fillMaxWidth().padding(vertical = Dimens.xs), verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
                         Text(e.reason, style = MaterialTheme.typography.bodyLarge)
                         Text(
-                            formatBillTime(e.createdAt) + " • " + if (e.paymentMethod == "upi") "UPI" else "Cash",
+                            formatBillTime(e.createdAt) + " • " + if (e.paymentMethod == "upi") stringResource(R.string.pay_upi) else stringResource(R.string.pay_cash),
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                     Text("− " + e.amount.format(), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.error)
                     if (isOwner) {
-                        IconButton(onClick = { onEditExpense(e) }) { Icon(Icons.Rounded.Edit, contentDescription = "Edit expense", modifier = Modifier.size(20.dp)) }
-                        IconButton(onClick = { onDeleteExpense(e.id) }) { Icon(Icons.Rounded.DeleteOutline, contentDescription = "Delete expense", modifier = Modifier.size(20.dp)) }
+                        IconButton(onClick = { onEditExpense(e) }) { Icon(Icons.Rounded.Edit, contentDescription = stringResource(R.string.summary_edit_expense_cd), modifier = Modifier.size(20.dp)) }
+                        IconButton(onClick = { onDeleteExpense(e.id) }) { Icon(Icons.Rounded.DeleteOutline, contentDescription = stringResource(R.string.summary_delete_expense_cd), modifier = Modifier.size(20.dp)) }
                     }
                 }
             }

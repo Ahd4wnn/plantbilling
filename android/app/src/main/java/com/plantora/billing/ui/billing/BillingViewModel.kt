@@ -2,6 +2,7 @@ package com.plantora.billing.ui.billing
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.plantora.billing.R
 import com.plantora.billing.data.BillRepository
 import com.plantora.billing.data.CheckoutItem
 import com.plantora.billing.data.CheckoutRequest
@@ -14,6 +15,7 @@ import com.plantora.billing.domain.Bill
 import com.plantora.billing.domain.DiscountType
 import com.plantora.billing.domain.Money
 import com.plantora.billing.domain.Product
+import com.plantora.billing.i18n.UiText
 import com.plantora.billing.print.PrinterController
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -33,7 +35,7 @@ enum class PrintPhase { IDLE, CONNECTING, PRINTING, DONE, FAILED }
 data class BillingUiState(
     val productsLoading: Boolean = true,
     val products: List<Product> = emptyList(),
-    val productsError: String? = null,
+    val productsError: UiText? = null,
     val query: String = "",
     val lines: List<CartLine> = emptyList(),
     val discountType: DiscountType = DiscountType.FLAT,
@@ -45,13 +47,13 @@ data class BillingUiState(
     val customerPhone: String = "",
     val remarks: String = "",
     val checkout: CheckoutPhase = CheckoutPhase.IDLE,
-    val checkoutError: String? = null,
+    val checkoutError: UiText? = null,
     val success: Bill? = null,
     val printPhase: PrintPhase = PrintPhase.IDLE,
-    val printMessage: String? = null,
+    val printMessage: UiText? = null,
     val categoryFilter: String? = null,
     val quickAdd: QuickAddState? = null,
-    val toast: String? = null,
+    val toast: UiText? = null,
     val businessUpi: String? = null,
     val businessName: String = "",
     // Whether the review sheet is open. Owned by the VM (not local screen state)
@@ -121,7 +123,7 @@ class BillingViewModel @Inject constructor(
         viewModelScope.launch {
             runCatching { productRepo.list() }
                 .onSuccess { list -> _ui.update { it.copy(productsLoading = false, products = list) } }
-                .onFailure { e -> _ui.update { it.copy(productsLoading = false, productsError = friendlyError(e)) } }
+                .onFailure { e -> _ui.update { it.copy(productsLoading = false, productsError = UiText.err(e, R.string.err_generic)) } }
         }
     }
 
@@ -129,7 +131,7 @@ class BillingViewModel @Inject constructor(
 
     fun setCategoryFilter(c: String?) = _ui.update { it.copy(categoryFilter = c) }
 
-    fun showToast(message: String) = _ui.update { it.copy(toast = message) }
+    fun showToast(message: String) = _ui.update { it.copy(toast = UiText.of(message)) }
 
     /**
      * Voice → the closest plant in THIS shop's catalog, always. The recognizer
@@ -141,7 +143,7 @@ class BillingViewModel @Inject constructor(
     fun onVoiceTranscript(alternatives: List<String>) {
         val products = _ui.value.products
         if (products.isEmpty()) {
-            _ui.update { it.copy(toast = "Add products first, then use voice.") }
+            _ui.update { it.copy(toast = UiText.res(R.string.vm_add_products_voice)) }
             return
         }
         val names = products.map { it.name }
@@ -153,7 +155,7 @@ class BillingViewModel @Inject constructor(
         val product = best?.let { mm -> products.find { it.name == mm.candidate } }
             ?: products.first()
         addProduct(product)
-        _ui.update { it.copy(query = "", toast = "Added ${product.name} to cart") }
+        _ui.update { it.copy(query = "", toast = UiText.res(R.string.vm_added_to_cart, product.name)) }
     }
 
     // ── Quick Add ──
@@ -175,7 +177,7 @@ class BillingViewModel @Inject constructor(
                         withProduct
                     }
                     addLine(product, form.quantity)
-                    _ui.update { it.copy(toast = "Added ${product.name}") }
+                    _ui.update { it.copy(toast = UiText.res(R.string.vm_added, product.name)) }
                 }
                 .onFailure { e -> _ui.update { it.copy(quickAdd = form.copy(saving = false, error = friendlyError(e, "Couldn't add the item."))) } }
         }
@@ -282,7 +284,7 @@ class BillingViewModel @Inject constructor(
         )
         viewModelScope.launch { heldStore.save(held) }
         clearCart()
-        _ui.update { it.copy(toast = "Bill held. Open “Held bills” to continue it later.") }
+        _ui.update { it.copy(toast = UiText.res(R.string.vm_bill_held)) }
     }
 
     /**
@@ -348,7 +350,7 @@ class BillingViewModel @Inject constructor(
         // A due means money owed later — we must be able to reach the customer, so
         // their phone number is compulsory whenever any amount is left unpaid.
         if (due.isPositive() && state.customerPhone.filter { it.isDigit() }.length < 10) {
-            _ui.update { it.copy(checkoutError = "Enter the customer's phone number — it's required when there's a due (money owed).") }
+            _ui.update { it.copy(checkoutError = UiText.res(R.string.vm_due_phone_required)) }
             return
         }
 
@@ -372,7 +374,7 @@ class BillingViewModel @Inject constructor(
                     _ui.update {
                         it.copy(
                             checkout = CheckoutPhase.IDLE,
-                            checkoutError = friendlyError(e, "Couldn't save the bill. Please try again."),
+                            checkoutError = UiText.err(e, R.string.err_save_bill),
                         )
                     }
                 }
@@ -382,7 +384,7 @@ class BillingViewModel @Inject constructor(
     /** Print the just-saved bill (fetches full detail for shop header). */
     fun printSuccessBill() {
         val billId = _ui.value.success?.id ?: return
-        _ui.update { it.copy(printPhase = PrintPhase.CONNECTING, printMessage = "Connecting to printer…") }
+        _ui.update { it.copy(printPhase = PrintPhase.CONNECTING, printMessage = UiText.res(R.string.vm_print_connecting)) }
         viewModelScope.launch {
             // Reflect the live connection state: "Connecting…" until the printer
             // links up, then "Printing…" while bytes are sent.
@@ -390,9 +392,9 @@ class BillingViewModel @Inject constructor(
                 printer.status.collect { st ->
                     when (st) {
                         is com.plantora.billing.print.PrinterStatus.Connecting ->
-                            _ui.update { it.copy(printPhase = PrintPhase.CONNECTING, printMessage = "Connecting to printer…") }
+                            _ui.update { it.copy(printPhase = PrintPhase.CONNECTING, printMessage = UiText.res(R.string.vm_print_connecting)) }
                         is com.plantora.billing.print.PrinterStatus.Connected ->
-                            _ui.update { it.copy(printPhase = PrintPhase.PRINTING, printMessage = "Printing…") }
+                            _ui.update { it.copy(printPhase = PrintPhase.PRINTING, printMessage = UiText.res(R.string.vm_print_printing)) }
                         else -> {}
                     }
                 }
@@ -401,10 +403,10 @@ class BillingViewModel @Inject constructor(
                 .mapCatching { detail -> printer.printBill(detail).getOrThrow() }
             statusJob.cancel()
             result
-                .onSuccess { _ui.update { it.copy(printPhase = PrintPhase.DONE, printMessage = "Printed.") } }
+                .onSuccess { _ui.update { it.copy(printPhase = PrintPhase.DONE, printMessage = UiText.res(R.string.vm_print_printed)) } }
                 .onFailure { e ->
                     _ui.update {
-                        it.copy(printPhase = PrintPhase.FAILED, printMessage = friendlyError(e, e.message ?: "Printing failed."))
+                        it.copy(printPhase = PrintPhase.FAILED, printMessage = e.message?.let(UiText::of) ?: UiText.err(e, R.string.vm_print_failed))
                     }
                 }
         }

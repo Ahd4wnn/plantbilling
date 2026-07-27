@@ -18,11 +18,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.input.VisualTransformation
+import com.plantora.billing.R
 
 /** Large, legible labeled text field with plain-language error support. */
 @Composable
@@ -61,7 +63,7 @@ fun PlantoraTextField(
                 IconButton(onClick = { revealed = !revealed }) {
                     Icon(
                         imageVector = if (revealed) Icons.Rounded.VisibilityOff else Icons.Rounded.Visibility,
-                        contentDescription = if (revealed) "Hide password" else "Show password",
+                        contentDescription = if (revealed) stringResource(R.string.cd_hide_password) else stringResource(R.string.cd_show_password),
                     )
                 }
             }

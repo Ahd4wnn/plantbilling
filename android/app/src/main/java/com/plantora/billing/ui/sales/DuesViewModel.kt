@@ -6,7 +6,9 @@ import com.plantora.billing.data.AuthState
 import com.plantora.billing.data.BillRepository
 import com.plantora.billing.data.SessionRepository
 import com.plantora.billing.data.SettlementRepository
+import com.plantora.billing.R
 import com.plantora.billing.data.remote.friendlyError
+import com.plantora.billing.i18n.UiText
 import com.plantora.billing.domain.BillListEntry
 import com.plantora.billing.domain.Money
 import com.plantora.billing.domain.Role
@@ -39,7 +41,7 @@ data class SettleTarget(
     val mode: SettleMode = SettleMode.CASH,
     val splitCash: String = "",
     val submitting: Boolean = false,
-    val error: String? = null,
+    val error: UiText? = null,
 ) {
     /** How much is being collected now. */
     val total: Money get() = Money.parse(amount)
@@ -68,12 +70,12 @@ data class SettleTarget(
 
 data class DuesUiState(
     val loading: Boolean = true,
-    val error: String? = null,
+    val error: UiText? = null,
     val dues: List<BillListEntry> = emptyList(),
     val query: String = "",
     val isManager: Boolean = false,
     val settle: SettleTarget? = null,
-    val message: String? = null,
+    val message: UiText? = null,
 ) {
     val totalOwed: Money get() = dues.fold(Money.ZERO) { acc, b -> acc + b.dueAmount }
 
@@ -121,7 +123,7 @@ class DuesViewModel @Inject constructor(
         viewModelScope.launch {
             runCatching { billRepo.listDues() }
                 .onSuccess { page -> _ui.update { it.copy(loading = false, dues = page.items) } }
-                .onFailure { e -> _ui.update { it.copy(loading = false, error = friendlyError(e)) } }
+                .onFailure { e -> _ui.update { it.copy(loading = false, error = UiText.err(e, R.string.err_generic)) } }
         }
     }
 
@@ -151,7 +153,7 @@ class DuesViewModel @Inject constructor(
         val t = _ui.value.settle ?: return
         if (t.submitting) return
         if (!t.valid) {
-            _ui.update { it.copy(settle = t.copy(error = "Enter an amount up to ${t.entry.dueAmount.format()}.")) }
+            _ui.update { it.copy(settle = t.copy(error = UiText.res(R.string.vm_dues_max, t.entry.dueAmount.format()))) }
             return
         }
         val remainingDue = (t.entry.dueAmount - t.total).let { if (it.isNegative()) Money.ZERO else it }
@@ -169,8 +171,8 @@ class DuesViewModel @Inject constructor(
                                     s.dues.map { if (it.id == t.entry.id) it.copy(dueAmount = remainingDue) else it }
                                 else s.dues.filterNot { it.id == t.entry.id },
                                 message = if (remainingDue.isPositive())
-                                    "Collected ${t.total.format()} — ${remainingDue.format()} still owed."
-                                else "Collected — ${t.total.format()}.",
+                                    UiText.res(R.string.vm_dues_partial, t.total.format(), remainingDue.format())
+                                else UiText.res(R.string.vm_dues_collected, t.total.format()),
                             )
                         }
                     } else {
@@ -180,13 +182,13 @@ class DuesViewModel @Inject constructor(
                             s.copy(
                                 settle = null,
                                 dues = s.dues.map { if (it.id == t.entry.id) it.copy(pendingSettlement = true) else it },
-                                message = "Sent to the manager for approval.",
+                                message = UiText.res(R.string.vm_dues_sent_approval),
                             )
                         }
                     }
                 }
                 .onFailure { e ->
-                    _ui.update { it.copy(settle = it.settle?.copy(submitting = false, error = friendlyError(e, "Couldn't record the collection."))) }
+                    _ui.update { it.copy(settle = it.settle?.copy(submitting = false, error = UiText.err(e, R.string.err_collection))) }
                 }
         }
     }

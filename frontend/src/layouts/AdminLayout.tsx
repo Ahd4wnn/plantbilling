@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
-import { LayoutDashboard, Store, Users, UserCog, Contact, Bug, Wallet, Search, LogOut } from "lucide-react";
+import { LayoutDashboard, Store, Users, UserCog, Contact, Bug, Wallet, Bell, Search, LogOut } from "lucide-react";
 import { useAuth } from "@/store/auth";
 import { Wordmark } from "@/components/LeafMark";
 import { CommandPalette } from "@/components/CommandPalette";
@@ -12,6 +12,7 @@ const NAV = [
   { to: "/admin/owners", label: "Owners", icon: Users },
   { to: "/admin/staff", label: "Staff", icon: UserCog },
   { to: "/admin/customers", label: "Customers", icon: Contact },
+  { to: "/admin/notifications", label: "Notifications", icon: Bell },
   { to: "/admin/crashes", label: "Crashes", icon: Bug },
 ];
 

@@ -29,9 +29,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.plantora.billing.R
 import com.plantora.billing.domain.BillDetail
 import com.plantora.billing.domain.Money
 import com.plantora.billing.domain.formatBillTime
@@ -53,6 +55,7 @@ fun BillDetailScreen(
     viewModel: BillDetailViewModel = hiltViewModel(),
 ) {
     val ui by viewModel.ui.collectAsStateWithLifecycle()
+    val ctx = androidx.compose.ui.platform.LocalContext.current
     var confirmDelete by remember { mutableStateOf(false) }
 
     // Refresh on return so an owner's edits show immediately.
@@ -69,15 +72,15 @@ fun BillDetailScreen(
     if (confirmDelete) {
         androidx.compose.material3.AlertDialog(
             onDismissRequest = { confirmDelete = false },
-            title = { Text("Delete this bill?") },
-            text = { Text("This permanently removes the bill and its items. This can't be undone.") },
+            title = { Text(stringResource(R.string.bd_delete_title)) },
+            text = { Text(stringResource(R.string.bd_delete_msg)) },
             confirmButton = {
                 androidx.compose.material3.TextButton(onClick = { confirmDelete = false; viewModel.delete() }) {
-                    Text("Delete", color = MaterialTheme.colorScheme.error)
+                    Text(stringResource(R.string.action_delete), color = MaterialTheme.colorScheme.error)
                 }
             },
             dismissButton = {
-                androidx.compose.material3.TextButton(onClick = { confirmDelete = false }) { Text("Cancel") }
+                androidx.compose.material3.TextButton(onClick = { confirmDelete = false }) { Text(stringResource(R.string.action_cancel)) }
             },
         )
     }
@@ -86,23 +89,23 @@ fun BillDetailScreen(
         contentWindowInsets = androidx.compose.foundation.layout.WindowInsets(0, 0, 0, 0),
         topBar = {
             TopAppBar(
-                title = { Text("Bill") },
+                title = { Text(stringResource(R.string.nav_bill)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = stringResource(R.string.cd_back))
                     }
                 },
                 actions = {
                     if (canEdit && ui.detail != null) {
                         IconButton(onClick = onEdit) {
-                            Icon(Icons.Rounded.Edit, contentDescription = "Edit bill")
+                            Icon(Icons.Rounded.Edit, contentDescription = stringResource(R.string.cd_edit_bill))
                         }
                     }
                     if (canDelete && ui.detail != null) {
                         IconButton(onClick = { confirmDelete = true }) {
                             Icon(
                                 Icons.Rounded.Delete,
-                                contentDescription = "Delete bill",
+                                contentDescription = stringResource(R.string.cd_delete_bill),
                                 tint = MaterialTheme.colorScheme.error,
                             )
                         }
@@ -113,11 +116,11 @@ fun BillDetailScreen(
     ) { padding ->
         when {
             ui.loading -> LoadingState(Modifier.padding(padding))
-            ui.error != null -> ErrorState(ui.error!!, onRetry = viewModel::load, icon = Icons.Rounded.Print, modifier = Modifier.padding(padding))
+            ui.error != null -> ErrorState(ui.error!!.resolve(ctx), onRetry = viewModel::load, icon = Icons.Rounded.Print, modifier = Modifier.padding(padding))
             ui.detail != null -> BillDetailBody(
                 detail = ui.detail!!,
                 printPhase = ui.printPhase,
-                printMessage = ui.printMessage,
+                printMessage = ui.printMessage?.resolve(ctx),
                 onPrint = viewModel::print,
                 canEdit = canEdit,
                 onEdit = onEdit,
@@ -146,19 +149,20 @@ private fun BillDetailBody(
     ) {
         PlantoraCard {
             Text(
-                detail.businessName ?: detail.shopName ?: "Receipt",
+                detail.businessName ?: detail.shopName ?: stringResource(R.string.bd_receipt),
                 style = MaterialTheme.typography.titleLarge,
             )
             Text(formatBillTime(detail.createdAt), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             detail.customerName?.let {
                 Text(
-                    "Customer: $it" + (detail.customerPhone?.let { p -> " ($p)" } ?: ""),
+                    detail.customerPhone?.let { p -> stringResource(R.string.bd_customer_phone, it, p) }
+                        ?: stringResource(R.string.bd_customer, it),
                     style = MaterialTheme.typography.bodyLarge,
                     modifier = Modifier.padding(top = Dimens.sm),
                 )
             }
             if (detail.isEdited) {
-                Text("Edited", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.error)
+                Text(stringResource(R.string.bd_edited), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.error)
             }
         }
 
@@ -168,7 +172,7 @@ private fun BillDetailBody(
                     Column(Modifier.weight(1f)) {
                         Text(item.productName, style = MaterialTheme.typography.bodyLarge)
                         Text(
-                            "${item.quantity} × ${item.unitPrice.format()}",
+                            stringResource(R.string.bd_qty_price, item.quantity.toString(), item.unitPrice.format()),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -179,36 +183,36 @@ private fun BillDetailBody(
             Spacer(Modifier.height(Dimens.sm))
             HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f))
             Spacer(Modifier.height(Dimens.sm))
-            DetailRow("Subtotal", detail.subtotal)
-            if (detail.discountAmount.isPositive()) DetailRow("Discount", Money.ZERO - detail.discountAmount)
+            DetailRow(stringResource(R.string.label_subtotal), detail.subtotal)
+            if (detail.discountAmount.isPositive()) DetailRow(stringResource(R.string.label_discount), Money.ZERO - detail.discountAmount)
             Row(Modifier.fillMaxWidth().padding(top = Dimens.xs), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text("Total", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                Text(stringResource(R.string.label_total), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                 MoneyText(detail.total, style = MaterialTheme.typography.titleLarge)
             }
         }
 
         PlantoraCard {
-            Text("Payment", style = MaterialTheme.typography.titleMedium)
+            Text(stringResource(R.string.bd_payment), style = MaterialTheme.typography.titleMedium)
             Spacer(Modifier.height(Dimens.sm))
-            if (detail.cashAmount.isPositive()) DetailRow("Cash", detail.cashAmount)
-            if (detail.upiAmount.isPositive()) DetailRow("UPI", detail.upiAmount)
-            if (detail.dueAmount.isPositive()) DetailRow("Due", detail.dueAmount)
+            if (detail.cashAmount.isPositive()) DetailRow(stringResource(R.string.pay_cash), detail.cashAmount)
+            if (detail.upiAmount.isPositive()) DetailRow(stringResource(R.string.pay_upi), detail.upiAmount)
+            if (detail.dueAmount.isPositive()) DetailRow(stringResource(R.string.pay_due), detail.dueAmount)
             detail.remarks?.takeIf { it.isNotBlank() }?.let {
                 Spacer(Modifier.height(Dimens.sm))
-                Text("Remarks: $it", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(stringResource(R.string.bd_remarks, it), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
 
         if (canEdit) {
             com.plantora.billing.ui.components.SecondaryButton(
-                text = "Edit bill",
+                text = stringResource(R.string.cd_edit_bill),
                 onClick = onEdit,
                 leadingIcon = Icons.Rounded.Edit,
                 modifier = Modifier.fillMaxWidth(),
             )
         }
         PrimaryButton(
-            text = if (printPhase == PrintPhase.DONE) "Print again" else "Print receipt",
+            text = if (printPhase == PrintPhase.DONE) stringResource(R.string.print_again) else stringResource(R.string.print_receipt),
             onClick = onPrint,
             loading = printPhase == PrintPhase.PRINTING || printPhase == PrintPhase.CONNECTING,
             leadingIcon = Icons.Rounded.Print,

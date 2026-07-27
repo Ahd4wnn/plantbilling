@@ -48,6 +48,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -55,6 +57,8 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavType
+import com.plantora.billing.R
+import com.plantora.billing.ui.components.paymentLabel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -99,6 +103,41 @@ fun OwnerShell(user: User, onLogout: () -> Unit) {
     }
 }
 
+/** Localized chip label for an [OwnerPeriod]; the enum's [OwnerPeriod.label] stays English. */
+@Composable
+private fun ownerPeriodLabel(p: OwnerPeriod): String = when (p) {
+    OwnerPeriod.TODAY -> stringResource(R.string.own_today)
+    OwnerPeriod.WEEK -> stringResource(R.string.own_week)
+    OwnerPeriod.MONTH -> stringResource(R.string.own_month)
+    OwnerPeriod.CUSTOM -> stringResource(R.string.period_custom)
+}
+
+/** Localized gender label; stored value stays "male"/"female". */
+@Composable
+private fun ownerGenderLabel(gender: String): String = when (gender) {
+    "female" -> stringResource(R.string.lab_gender_female)
+    else -> stringResource(R.string.lab_gender_male)
+}
+
+/** Localized role label for a stored role code. */
+@Composable
+private fun roleLabel(role: String): String = when (role.lowercase()) {
+    "manager" -> stringResource(R.string.own_role_manager)
+    "salesperson" -> stringResource(R.string.own_role_salesperson)
+    "shop_owner", "owner" -> stringResource(R.string.own_role_owner)
+    else -> role
+}
+
+/** Localized label for a stored payment-method code ("cash"/"upi"/"split"/"due"/"none"). */
+@Composable
+private fun ownerMethodLabel(method: String): String = when (method.lowercase()) {
+    "cash" -> stringResource(R.string.pay_cash)
+    "upi" -> stringResource(R.string.pay_upi)
+    "split" -> stringResource(R.string.pay_split)
+    "due" -> stringResource(R.string.pay_due)
+    else -> method
+}
+
 /**
  * Period selector: four equal-width chips (Today / Week / Month / Custom) — each
  * takes the same width via weight(1f). When Custom is chosen, two date steppers
@@ -121,7 +160,7 @@ private fun PeriodSelector(
                     onClick = { onPeriod(p) },
                     label = {
                         Text(
-                            p.label,
+                            ownerPeriodLabel(p),
                             maxLines = 1,
                             textAlign = TextAlign.Center,
                             modifier = Modifier.fillMaxWidth(),
@@ -132,8 +171,8 @@ private fun PeriodSelector(
             }
         }
         if (period == OwnerPeriod.CUSTOM) {
-            DateStepper("From", customFrom, onFrom)
-            DateStepper("To", customTo, onTo)
+            DateStepper(stringResource(R.string.report_from), customFrom, onFrom)
+            DateStepper(stringResource(R.string.report_to), customTo, onTo)
         }
     }
 }
@@ -161,7 +200,7 @@ private fun DateStepper(label: String, date: java.time.LocalDate, onChange: (jav
 @Composable
 private fun SalesByShopCard(shops: List<ShopOverviewRow>) {
     PlantoraCard {
-        Text("Sales by shop", style = MaterialTheme.typography.titleMedium)
+        Text(stringResource(R.string.own_sales_by_shop), style = MaterialTheme.typography.titleMedium)
         Spacer(Modifier.height(Dimens.md))
         com.plantora.billing.ui.components.charts.BarChart(
             data = shops.map {
@@ -169,7 +208,7 @@ private fun SalesByShopCard(shops: List<ShopOverviewRow>) {
                     label = it.shopName,
                     value = it.totalSales.amount.toFloat(),
                     valueLabel = it.totalSales.format(),
-                    sub = "${it.billCount} bills",
+                    sub = pluralStringResource(R.plurals.own_shop_bills, it.billCount, it.billCount),
                 )
             },
         )
@@ -181,13 +220,13 @@ private fun SalesByShopCard(shops: List<ShopOverviewRow>) {
 private fun PaymentMixCard(cash: Money, upi: Money, due: Money) {
     val total = (cash.amount + upi.amount + due.amount).toFloat().coerceAtLeast(0.0001f)
     PlantoraCard {
-        Text("Payment mix", style = MaterialTheme.typography.titleMedium)
+        Text(stringResource(R.string.own_payment_mix), style = MaterialTheme.typography.titleMedium)
         Spacer(Modifier.height(Dimens.md))
-        MixBar("Cash", cash, cash.amount.toFloat() / total, com.plantora.billing.ui.theme.CashGreen)
+        MixBar(stringResource(R.string.pay_cash), cash, cash.amount.toFloat() / total, com.plantora.billing.ui.theme.CashGreen)
         Spacer(Modifier.height(Dimens.sm))
-        MixBar("UPI", upi, upi.amount.toFloat() / total, com.plantora.billing.ui.theme.UpiBlue)
+        MixBar(stringResource(R.string.pay_upi), upi, upi.amount.toFloat() / total, com.plantora.billing.ui.theme.UpiBlue)
         Spacer(Modifier.height(Dimens.sm))
-        MixBar("Due", due, due.amount.toFloat() / total, MaterialTheme.colorScheme.error)
+        MixBar(stringResource(R.string.pay_due), due, due.amount.toFloat() / total, MaterialTheme.colorScheme.error)
     }
 }
 
@@ -238,9 +277,9 @@ private fun OwnerDashboardScreen(
         contentWindowInsets = androidx.compose.foundation.layout.WindowInsets(0, 0, 0, 0),
         topBar = {
             TopAppBar(
-                title = { Text("Your business") },
+                title = { Text(stringResource(R.string.own_your_business)) },
                 actions = {
-                    IconButton(onClick = onLogout) { Icon(Icons.AutoMirrored.Rounded.Logout, contentDescription = "Log out") }
+                    IconButton(onClick = onLogout) { Icon(Icons.AutoMirrored.Rounded.Logout, contentDescription = stringResource(R.string.action_logout)) }
                 },
             )
         },
@@ -268,14 +307,14 @@ private fun OwnerDashboardScreen(
                     if (o != null) {
                         item {
                             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Dimens.sm)) {
-                                KpiCard("Total sales", o.totalSales.format(), Modifier.weight(1f))
-                                KpiCard("Net income", o.netSales.format(), Modifier.weight(1f))
+                                KpiCard(stringResource(R.string.own_total_sales), o.totalSales.format(), Modifier.weight(1f))
+                                KpiCard(stringResource(R.string.report_net_income), o.netSales.format(), Modifier.weight(1f))
                             }
                         }
                         item {
                             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Dimens.sm)) {
-                                KpiCard("Expenses", o.totalExpenses.format(), Modifier.weight(1f))
-                                KpiCard("Bills", o.billCount.toString(), Modifier.weight(1f))
+                                KpiCard(stringResource(R.string.label_expenses), o.totalExpenses.format(), Modifier.weight(1f))
+                                KpiCard(stringResource(R.string.report_bills), o.billCount.toString(), Modifier.weight(1f))
                             }
                         }
                         // Graphs: per-shop comparison + payment split for the period.
@@ -285,15 +324,15 @@ private fun OwnerDashboardScreen(
                         if ((o.cashTotal.amount + o.upiTotal.amount + o.dueTotal.amount).signum() > 0) {
                             item { PaymentMixCard(o.cashTotal, o.upiTotal, o.dueTotal) }
                         }
-                        item { SectionHeader("Shops (${o.shopCount})") }
+                        item { SectionHeader(stringResource(R.string.own_shops_count, o.shopCount)) }
                         if (o.shops.isEmpty()) {
-                            item { Text("No shops linked yet. Ask the admin to assign your shops.", color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                            item { Text(stringResource(R.string.own_no_shops), color = MaterialTheme.colorScheme.onSurfaceVariant) }
                         }
                         items(o.shops, key = { it.shopId }) { s -> ShopRow(s, onClick = { onOpenShop(s.shopId) }) }
 
-                        item { SectionHeader("Top sellers") }
+                        item { SectionHeader(stringResource(R.string.own_top_sellers)) }
                         if (o.staff.isEmpty()) {
-                            item { Text("No sales in this period.", color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                            item { Text(stringResource(R.string.own_no_sales_period), color = MaterialTheme.colorScheme.onSurfaceVariant) }
                         }
                         itemsIndexedStaff(o.staff)
                     }
@@ -309,8 +348,17 @@ private fun androidx.compose.foundation.lazy.LazyListScope.itemsIndexedStaff(row
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Rounded.EmojiEvents, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                 Column(Modifier.weight(1f).padding(horizontal = Dimens.sm)) {
-                    Text(st.email ?: "—", style = MaterialTheme.typography.titleMedium)
-                    Text("${st.shopName} • ${st.role} • ${st.billCount} bills", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(st.email ?: stringResource(R.string.pay_none), style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        stringResource(
+                            R.string.own_staff_line,
+                            st.shopName,
+                            roleLabel(st.role),
+                            pluralStringResource(R.plurals.own_shop_bills, st.billCount, st.billCount),
+                        ),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
                 MoneyText(st.totalSales, style = MaterialTheme.typography.titleMedium)
             }
@@ -324,7 +372,16 @@ private fun ShopRow(s: ShopOverviewRow, onClick: () -> Unit) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text(s.shopName, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                Text("${s.billCount} bills • Net ${s.netSales.format()} • Due ${s.dueTotal.format()}", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(
+                    stringResource(
+                        R.string.own_shop_line,
+                        pluralStringResource(R.plurals.own_shop_bills, s.billCount, s.billCount),
+                        s.netSales.format(),
+                        s.dueTotal.format(),
+                    ),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
             MoneyText(s.totalSales, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
         }
@@ -340,15 +397,16 @@ private fun OwnerShopScreen(
     val ui by viewModel.ui.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
     var pendingStaffDelete by remember { mutableStateOf<OwnerStaff?>(null) }
-    LaunchedEffect(ui.message) { ui.message?.let { snackbar.showSnackbar(it); viewModel.dismissMessage() } }
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    LaunchedEffect(ui.message) { ui.message?.let { snackbar.showSnackbar(it.resolve(ctx)); viewModel.dismissMessage() } }
 
     Scaffold(
         contentWindowInsets = androidx.compose.foundation.layout.WindowInsets(0, 0, 0, 0),
         snackbarHost = { SnackbarHost(snackbar) },
         topBar = {
             TopAppBar(
-                title = { Text(ui.shop?.name ?: "Shop") },
-                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Back") } },
+                title = { Text(ui.shop?.name ?: stringResource(R.string.own_shop_fallback)) },
+                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = stringResource(R.string.cd_back)) } },
             )
         },
     ) { padding ->
@@ -370,16 +428,16 @@ private fun OwnerShopScreen(
             ui.report?.let { r ->
                 item {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Dimens.sm)) {
-                        KpiCard("Sales", r.totalSales.format(), Modifier.weight(1f))
-                        KpiCard("Expenses", r.totalExpenses.format(), Modifier.weight(1f))
-                        KpiCard("Net", r.netSales.format(), Modifier.weight(1f))
+                        KpiCard(stringResource(R.string.label_sales), r.totalSales.format(), Modifier.weight(1f))
+                        KpiCard(stringResource(R.string.label_expenses), r.totalExpenses.format(), Modifier.weight(1f))
+                        KpiCard(stringResource(R.string.own_net), r.netSales.format(), Modifier.weight(1f))
                     }
                 }
                 item {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Dimens.sm)) {
-                        KpiCard("Cash", r.cashTotal.format(), Modifier.weight(1f))
-                        KpiCard("UPI", r.upiTotal.format(), Modifier.weight(1f))
-                        KpiCard("Due", r.dueTotal.format(), Modifier.weight(1f))
+                        KpiCard(stringResource(R.string.pay_cash), r.cashTotal.format(), Modifier.weight(1f))
+                        KpiCard(stringResource(R.string.pay_upi), r.upiTotal.format(), Modifier.weight(1f))
+                        KpiCard(stringResource(R.string.pay_due), r.dueTotal.format(), Modifier.weight(1f))
                     }
                 }
                 item {
@@ -389,7 +447,7 @@ private fun OwnerShopScreen(
                 }
                 // Expense breakdown for the period so the owner can see where money went.
                 if (r.expenses.isNotEmpty()) {
-                    item { SectionHeader("Expenses") }
+                    item { SectionHeader(stringResource(R.string.label_expenses)) }
                     items(r.expenses, key = { it.id }) { e ->
                         Row(Modifier.fillMaxWidth().padding(vertical = Dimens.xs), verticalAlignment = Alignment.CenterVertically) {
                             Text(e.reason, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
@@ -398,10 +456,10 @@ private fun OwnerShopScreen(
                     }
                 }
                 if (r.topProducts.isNotEmpty()) {
-                    item { SectionHeader("Top products") }
+                    item { SectionHeader(stringResource(R.string.report_top_products)) }
                     items(r.topProducts.take(8), key = { it.productName }) { p ->
                         Row(Modifier.fillMaxWidth().padding(vertical = Dimens.xs), verticalAlignment = Alignment.CenterVertically) {
-                            Text("${p.productName} ×${p.quantity}", style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+                            Text(stringResource(R.string.own_product_qty, p.productName, p.quantity.toString()), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
                             MoneyText(p.totalSales, style = MaterialTheme.typography.bodyLarge)
                         }
                     }
@@ -409,24 +467,24 @@ private fun OwnerShopScreen(
             }
 
             // Saved bills for the period — who sold, when, to whom, how paid.
-            item { SectionHeader("Bills") }
+            item { SectionHeader(stringResource(R.string.sales_bills)) }
             if (ui.billsLoading && ui.bills.isEmpty()) {
-                item { Text("Loading bills…", color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                item { Text(stringResource(R.string.own_loading_bills), color = MaterialTheme.colorScheme.onSurfaceVariant) }
             } else if (ui.bills.isEmpty()) {
-                item { Text("No bills in this period.", color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                item { Text(stringResource(R.string.own_no_bills_period), color = MaterialTheme.colorScheme.onSurfaceVariant) }
             } else {
                 items(ui.bills, key = { it.id }) { b -> OwnerBillRow(b, onClick = { viewModel.openBill(b.id) }) }
             }
 
             // Labour roster (read-only) — workers, wage, days worked, balance.
-            item { SectionHeader("Labour") }
+            item { SectionHeader(stringResource(R.string.more_labour)) }
             if (ui.labourers.isEmpty()) {
-                item { Text("No workers yet.", color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                item { Text(stringResource(R.string.own_no_workers), color = MaterialTheme.colorScheme.onSurfaceVariant) }
             } else {
                 items(ui.labourers, key = { it.id }) { l -> OwnerLabourerRow(l, onOpen = { viewModel.openLabourer(l) }) }
             }
 
-            item { SectionHeader("Staff") }
+            item { SectionHeader(stringResource(R.string.own_staff)) }
             items(ui.staff, key = { it.id }) { s -> StaffRow(s, onRemove = { pendingStaffDelete = s }) }
             item { AddStaff(ui.newStaff, viewModel) }
         }
@@ -447,9 +505,9 @@ private fun OwnerShopScreen(
     pendingStaffDelete?.let { s ->
         com.plantora.billing.ui.components.TypeEmailToDeleteDialog(
             email = s.email,
-            title = "Remove staff account?",
-            body = "This permanently deletes ${s.email}. Their past bills are kept.",
-            confirmLabel = "Delete account",
+            title = stringResource(R.string.staff_remove_title),
+            body = stringResource(R.string.staff_remove_body, s.email),
+            confirmLabel = stringResource(R.string.del_confirm),
             onConfirm = { viewModel.deleteStaff(s); pendingStaffDelete = null },
             onDismiss = { pendingStaffDelete = null },
         )
@@ -461,14 +519,14 @@ private fun CashInHandCard(cih: OwnerCashInHand?, full: Boolean, onFull: (Boolea
     PlantoraCard {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text(
-                "Cash in hand" + if (full) " • all time" else " • this day",
+                if (full) stringResource(R.string.own_cih_all) else stringResource(R.string.own_cih_day),
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.weight(1f),
             )
-            FilterChip(selected = full, onClick = { onFull(true) }, label = { Text("Full") })
+            FilterChip(selected = full, onClick = { onFull(true) }, label = { Text(stringResource(R.string.own_full)) })
             Spacer(Modifier.width(Dimens.xs))
-            FilterChip(selected = !full, onClick = { onFull(false) }, label = { Text("Per day") })
+            FilterChip(selected = !full, onClick = { onFull(false) }, label = { Text(stringResource(R.string.own_per_day_chip)) })
         }
         Spacer(Modifier.height(Dimens.xs))
         MoneyText(
@@ -486,7 +544,8 @@ private fun OwnerLabourerRow(l: Labourer, onOpen: () -> Unit) {
             Column(Modifier.weight(1f)) {
                 Text(l.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                 Text(
-                    "${l.gender.replaceFirstChar { it.uppercase() }} • ${l.defaultWage.format()}/day • ${l.daysWorked} day(s)" + (l.phone?.let { " • $it" } ?: ""),
+                    ownerGenderLabel(l.gender) + " • " + stringResource(R.string.lab_per_day, l.defaultWage.format()) +
+                        " • " + stringResource(R.string.lab_days_count, l.daysWorked) + (l.phone?.let { " • $it" } ?: ""),
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -502,7 +561,7 @@ private fun OwnerLabourerRow(l: Labourer, onOpen: () -> Unit) {
                     },
                 )
                 Text(
-                    if (l.balanceToPay.isNegative()) "Paid ahead" else "To pay",
+                    if (l.balanceToPay.isNegative()) stringResource(R.string.lab_paid_ahead_label) else stringResource(R.string.borrow_filter_open),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -517,18 +576,18 @@ private fun OwnerLabourerDetailSheet(detail: LabourerDetail) {
     Column(Modifier.fillMaxWidth().padding(horizontal = Dimens.lg).padding(bottom = Dimens.xl)) {
         Text(l.name, style = MaterialTheme.typography.headlineMedium)
         Text(
-            "${l.gender.replaceFirstChar { it.uppercase() }}" + (l.phone?.let { " • $it" } ?: "") + (l.aadhaar?.let { " • Aadhaar $it" } ?: ""),
+            ownerGenderLabel(l.gender) + (l.phone?.let { " • $it" } ?: "") + (l.aadhaar?.let { " • " + stringResource(R.string.lab_aadhaar_val, it) } ?: ""),
             style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Spacer(Modifier.height(Dimens.md))
-        OwnerStatementRow("Days worked", "${l.daysWorked} day(s)")
+        OwnerStatementRow(stringResource(R.string.lab_days_worked), stringResource(R.string.lab_days_count, l.daysWorked))
         HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
-        OwnerStatementRow("Earned (${l.defaultWage.format()}/day)", l.earned.format())
+        OwnerStatementRow(stringResource(R.string.lab_earned, l.defaultWage.format()), l.earned.format())
         HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
-        OwnerStatementRow("Total paid", l.totalPaid.format())
+        OwnerStatementRow(stringResource(R.string.lab_total_paid), l.totalPaid.format())
         HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
         Row(Modifier.fillMaxWidth().padding(vertical = Dimens.sm), verticalAlignment = Alignment.CenterVertically) {
-            Text(if (l.balanceToPay.isNegative()) "Paid ahead" else "Balance to pay", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+            Text(if (l.balanceToPay.isNegative()) stringResource(R.string.lab_paid_ahead_label) else stringResource(R.string.lab_balance_to_pay_label), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
             MoneyText(
                 Money(l.balanceToPay.amount.abs()),
                 style = MaterialTheme.typography.titleLarge,
@@ -540,17 +599,21 @@ private fun OwnerLabourerDetailSheet(detail: LabourerDetail) {
             )
         }
         Spacer(Modifier.height(Dimens.md))
-        Text("Payment history", style = MaterialTheme.typography.titleMedium)
+        Text(stringResource(R.string.lab_payment_history), style = MaterialTheme.typography.titleMedium)
         Spacer(Modifier.height(Dimens.sm))
         if (detail.loading) {
-            Text("Loading…", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(stringResource(R.string.action_loading), color = MaterialTheme.colorScheme.onSurfaceVariant)
         } else if (detail.payments.isEmpty()) {
-            Text("No payments yet.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(stringResource(R.string.lab_no_payments_yet), color = MaterialTheme.colorScheme.onSurfaceVariant)
         } else {
             detail.payments.take(50).forEach { p ->
                 Row(Modifier.fillMaxWidth().padding(vertical = Dimens.xs), verticalAlignment = Alignment.CenterVertically) {
-                    val tag = when (p.kind) { "advance" -> " • advance"; "due_clear" -> " • due cleared"; else -> if (p.days != null) " • ${p.days} day(s)" else "" }
-                    Text(formatBillTime(p.createdAt) + " • " + p.paymentMethod.label + tag, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+                    val tag = when (p.kind) {
+                        "advance" -> " • " + stringResource(R.string.lab_tag_advance)
+                        "due_clear" -> " • " + stringResource(R.string.lab_tag_due_cleared)
+                        else -> if (p.days != null) " • " + stringResource(R.string.lab_days_count, p.days) else ""
+                    }
+                    Text(formatBillTime(p.createdAt) + " • " + paymentLabel(p.paymentMethod) + tag, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
                     MoneyText(p.totalAmount, style = MaterialTheme.typography.titleMedium)
                 }
             }
@@ -572,18 +635,18 @@ private fun OwnerBillRow(b: com.plantora.billing.domain.OwnerBill, onClick: () -
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text(
-                    b.customerName?.takeIf { it.isNotBlank() } ?: "Walk-in customer",
+                    b.customerName?.takeIf { it.isNotBlank() } ?: stringResource(R.string.own_walkin),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
                 )
                 Text(
-                    "${com.plantora.billing.domain.formatBillTime(b.createdAt)} • by ${salespersonName(b.salespersonEmail)}",
+                    stringResource(R.string.own_by, com.plantora.billing.domain.formatBillTime(b.createdAt), salespersonName(b.salespersonEmail)),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Text(
-                    "${b.itemCount} item${if (b.itemCount == 1) "" else "s"} • ${b.paymentMethod.uppercase()}" +
-                        if (b.dueAmount.isPositive()) " • Due ${b.dueAmount.format()}" else "",
+                    pluralStringResource(R.plurals.item_count, b.itemCount, b.itemCount) + " • " + ownerMethodLabel(b.paymentMethod) +
+                        if (b.dueAmount.isPositive()) " • " + stringResource(R.string.own_due, b.dueAmount.format()) else "",
                     style = MaterialTheme.typography.labelMedium,
                     color = if (b.dueAmount.isPositive()) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -599,32 +662,32 @@ private fun salespersonName(email: String?): String =
 @Composable
 private fun OwnerBillDetailSheet(detail: BillDetailState) {
     Column(Modifier.fillMaxWidth().imePadding().verticalScroll(rememberScrollState()).padding(horizontal = Dimens.lg).padding(bottom = Dimens.xl)) {
-        Text("Bill details", style = MaterialTheme.typography.headlineMedium)
+        Text(stringResource(R.string.own_bill_details), style = MaterialTheme.typography.headlineMedium)
         Spacer(Modifier.height(Dimens.md))
         val b = detail.bill
         if (detail.loading || b == null) {
-            Text("Loading…", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(stringResource(R.string.action_loading), color = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(Modifier.height(Dimens.lg))
             return@Column
         }
         Text(
-            "${com.plantora.billing.domain.formatBillTime(b.createdAt)} • by ${salespersonName(b.salespersonEmail)}" + if (b.isEdited) " • edited" else "",
+            stringResource(R.string.own_by, com.plantora.billing.domain.formatBillTime(b.createdAt), salespersonName(b.salespersonEmail)) + if (b.isEdited) " • " + stringResource(R.string.status_edited) else "",
             style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Spacer(Modifier.height(Dimens.xs))
-        Text(b.customerName?.takeIf { it.isNotBlank() } ?: "Walk-in customer", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+        Text(b.customerName?.takeIf { it.isNotBlank() } ?: stringResource(R.string.own_walkin), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
         b.customerPhone?.takeIf { it.isNotBlank() }?.let {
             Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         Spacer(Modifier.height(Dimens.md))
         if (b.items.isEmpty()) {
-            Text("No items.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(stringResource(R.string.own_no_items), color = MaterialTheme.colorScheme.onSurfaceVariant)
         } else {
             b.items.forEach { it2 ->
                 Row(Modifier.fillMaxWidth().padding(vertical = Dimens.xs), verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
                         Text(it2.productName, style = MaterialTheme.typography.bodyLarge)
-                        Text("${it2.unitPrice.format()} × ${it2.quantity}", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(stringResource(R.string.own_price_qty, it2.unitPrice.format(), it2.quantity.toString()), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     MoneyText(it2.lineTotal, style = MaterialTheme.typography.titleMedium)
                 }
@@ -633,12 +696,12 @@ private fun OwnerBillDetailSheet(detail: BillDetailState) {
         Spacer(Modifier.height(Dimens.sm))
         HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
         Spacer(Modifier.height(Dimens.sm))
-        OwnerStatementRow("Subtotal", b.subtotal.format())
-        if (b.discountAmount.isPositive()) OwnerStatementRow("Discount", "− ${b.discountAmount.format()}")
-        OwnerStatementRow("Total", b.total.format())
-        if (b.cashAmount.isPositive()) OwnerStatementRow("Cash", b.cashAmount.format())
-        if (b.upiAmount.isPositive()) OwnerStatementRow("UPI", b.upiAmount.format())
-        if (b.dueAmount.isPositive()) OwnerStatementRow("Due", b.dueAmount.format())
+        OwnerStatementRow(stringResource(R.string.label_subtotal), b.subtotal.format())
+        if (b.discountAmount.isPositive()) OwnerStatementRow(stringResource(R.string.label_discount), "− ${b.discountAmount.format()}")
+        OwnerStatementRow(stringResource(R.string.label_total), b.total.format())
+        if (b.cashAmount.isPositive()) OwnerStatementRow(stringResource(R.string.pay_cash), b.cashAmount.format())
+        if (b.upiAmount.isPositive()) OwnerStatementRow(stringResource(R.string.pay_upi), b.upiAmount.format())
+        if (b.dueAmount.isPositive()) OwnerStatementRow(stringResource(R.string.pay_due), b.dueAmount.format())
         b.remarks?.takeIf { it.isNotBlank() }?.let {
             Spacer(Modifier.height(Dimens.sm))
             Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -652,9 +715,9 @@ private fun StaffRow(s: OwnerStaff, onRemove: () -> Unit) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text(s.email, style = MaterialTheme.typography.titleMedium)
-                Text("${s.role} • ${if (s.isActive) "Active" else "Inactive"}", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(stringResource(R.string.own_staff_role_line, roleLabel(s.role), if (s.isActive) stringResource(R.string.staff_active) else stringResource(R.string.label_inactive)), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            androidx.compose.material3.TextButton(onClick = onRemove) { Text("Remove", color = MaterialTheme.colorScheme.error) }
+            androidx.compose.material3.TextButton(onClick = onRemove) { Text(stringResource(R.string.own_remove), color = MaterialTheme.colorScheme.error) }
         }
     }
 }
@@ -662,13 +725,13 @@ private fun StaffRow(s: OwnerStaff, onRemove: () -> Unit) {
 @Composable
 private fun AddStaff(form: NewStaffForm, viewModel: OwnerShopViewModel) {
     PlantoraCard {
-        Text("Add salesperson", style = MaterialTheme.typography.titleMedium)
+        Text(stringResource(R.string.staff_add_salesperson), style = MaterialTheme.typography.titleMedium)
         Spacer(Modifier.height(Dimens.sm))
-        PlantoraTextField(form.email, viewModel::setStaffEmail, label = "Login email")
+        PlantoraTextField(form.email, viewModel::setStaffEmail, label = stringResource(R.string.staff_login_email))
         Spacer(Modifier.height(Dimens.sm))
-        PlantoraTextField(form.password, viewModel::setStaffPassword, label = "Password (min 8)")
+        PlantoraTextField(form.password, viewModel::setStaffPassword, label = stringResource(R.string.own_password_min))
         form.error?.let { Spacer(Modifier.height(Dimens.sm)); Text(it, color = MaterialTheme.colorScheme.error) }
         Spacer(Modifier.height(Dimens.md))
-        PrimaryButton("Add salesperson", onClick = viewModel::addStaff, enabled = form.canSave, loading = form.saving)
+        PrimaryButton(stringResource(R.string.staff_add_salesperson), onClick = viewModel::addStaff, enabled = form.canSave, loading = form.saving)
     }
 }

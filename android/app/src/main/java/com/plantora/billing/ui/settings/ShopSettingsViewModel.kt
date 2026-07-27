@@ -3,7 +3,9 @@ package com.plantora.billing.ui.settings
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.plantora.billing.data.ShopRepository
+import com.plantora.billing.R
 import com.plantora.billing.data.remote.friendlyError
+import com.plantora.billing.i18n.UiText
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -22,7 +24,7 @@ data class ShopSettingsUiState(
     val businessEmail: String = "",
     val businessUpi: String = "",
     val saving: Boolean = false,
-    val message: String? = null,
+    val message: UiText? = null,
 )
 
 @HiltViewModel
@@ -76,8 +78,8 @@ class ShopSettingsViewModel @Inject constructor(
                     businessUpi = s.businessUpi,
                 )
             }
-                .onSuccess { _ui.update { it.copy(saving = false, message = "Saved. These appear on printed receipts.") } }
-                .onFailure { e -> _ui.update { it.copy(saving = false, message = friendlyError(e)) } }
+                .onSuccess { _ui.update { it.copy(saving = false, message = UiText.res(R.string.vm_shop_saved)) } }
+                .onFailure { e -> _ui.update { it.copy(saving = false, message = UiText.err(e, R.string.err_generic)) } }
         }
     }
 

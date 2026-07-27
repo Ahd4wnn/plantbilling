@@ -9,21 +9,23 @@ import androidx.compose.material.icons.rounded.MoreHoriz
 import androidx.compose.material.icons.rounded.PointOfSale
 import androidx.compose.material.icons.rounded.Receipt
 import androidx.compose.material.icons.rounded.Storefront
+import androidx.annotation.StringRes
 import androidx.compose.ui.graphics.vector.ImageVector
+import com.plantora.billing.R
 import com.plantora.billing.domain.Role
 
 /** Bottom-nav tabs (always labelled). Visibility is role-aware — see [tabsFor]. */
 enum class Tab(
     val route: String,
-    val label: String,
+    @StringRes val labelRes: Int,
     val selectedIcon: ImageVector,
     val unselectedIcon: ImageVector,
 ) {
-    BILL("bill", "Bill", Icons.Rounded.PointOfSale, Icons.Rounded.PointOfSale),
-    PRODUCTS("products", "Products", Icons.Rounded.Storefront, Icons.Outlined.Storefront),
-    SALES("sales", "Sales", Icons.Rounded.Receipt, Icons.Outlined.Receipt),
-    CUSTOMERS("customers", "Customers", Icons.Rounded.Group, Icons.Outlined.Group),
-    MORE("more", "More", Icons.Rounded.MoreHoriz, Icons.Rounded.MoreHoriz),
+    BILL("bill", R.string.nav_bill, Icons.Rounded.PointOfSale, Icons.Rounded.PointOfSale),
+    PRODUCTS("products", R.string.nav_products, Icons.Rounded.Storefront, Icons.Outlined.Storefront),
+    SALES("sales", R.string.nav_sales, Icons.Rounded.Receipt, Icons.Outlined.Receipt),
+    CUSTOMERS("customers", R.string.nav_customers, Icons.Rounded.Group, Icons.Outlined.Group),
+    MORE("more", R.string.nav_more, Icons.Rounded.MoreHoriz, Icons.Rounded.MoreHoriz),
 }
 
 /**
@@ -54,6 +56,7 @@ object Routes {
     const val SHOP_SETTINGS = "shop_settings"
     const val STAFF_MANAGEMENT = "staff_management"
     const val WHATSAPP_SETTINGS = "whatsapp_settings"
+    const val NOTIFICATIONS = "notifications"
 
     fun billSuccess(billId: String) = "bill_success/$billId"
     fun billDetail(billId: String) = "bill_detail/$billId"

@@ -22,9 +22,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import com.plantora.billing.R
 import com.plantora.billing.domain.Product
 import com.plantora.billing.ui.components.MoneyText
 import com.plantora.billing.ui.theme.Dimens
@@ -85,7 +87,7 @@ private fun ProductCell(product: Product, onAdd: () -> Unit) {
                 }
                 Icon(
                     Icons.Rounded.AddCircle,
-                    contentDescription = "Add ${product.name}",
+                    contentDescription = stringResource(R.string.product_add_cd, product.name),
                     tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier
                         .align(Alignment.BottomEnd)

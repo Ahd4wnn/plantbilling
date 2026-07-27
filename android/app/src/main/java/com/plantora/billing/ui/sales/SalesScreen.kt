@@ -39,10 +39,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.plantora.billing.R
 import com.plantora.billing.domain.BillListEntry
 import com.plantora.billing.domain.formatBillTime
 import com.plantora.billing.domain.toDisplay
@@ -73,8 +76,9 @@ fun SalesScreen(
         onPauseOrDispose { }
     }
 
+    val ctx = androidx.compose.ui.platform.LocalContext.current
     LaunchedEffect(ui.message) {
-        ui.message?.let { snackbar.showSnackbar(it); viewModel.dismissMessage() }
+        ui.message?.let { snackbar.showSnackbar(it.resolve(ctx)); viewModel.dismissMessage() }
     }
 
     Scaffold(
@@ -87,18 +91,18 @@ fun SalesScreen(
             verticalArrangement = Arrangement.spacedBy(Dimens.md),
         ) {
             item {
-                Text("Sales", style = MaterialTheme.typography.headlineLarge)
+                Text(stringResource(R.string.nav_sales), style = MaterialTheme.typography.headlineLarge)
             }
             item {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Dimens.sm)) {
                     SecondaryButton(
-                        text = "Dues",
+                        text = stringResource(R.string.sales_dues),
                         onClick = onOpenDues,
                         leadingIcon = Icons.Rounded.AccountBalanceWallet,
                         modifier = Modifier.weight(1f),
                     )
                     SecondaryButton(
-                        text = "Reports",
+                        text = stringResource(R.string.sales_reports),
                         onClick = onOpenReport,
                         leadingIcon = Icons.Rounded.BarChart,
                         modifier = Modifier.weight(1f),
@@ -110,7 +114,7 @@ fun SalesScreen(
             if (canApprove) {
                 item {
                     SecondaryButton(
-                        text = "Approve due collections",
+                        text = stringResource(R.string.sales_approve),
                         onClick = onOpenApprovals,
                         leadingIcon = Icons.Rounded.TaskAlt,
                         modifier = Modifier.fillMaxWidth(),
@@ -150,10 +154,10 @@ fun SalesScreen(
                 }
             }
 
-            item { Text("Bills", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = Dimens.sm)) }
+            item { Text(stringResource(R.string.sales_bills), style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = Dimens.sm)) }
 
             if (ui.bills.isEmpty() && !ui.billsLoading) {
-                item { Text("No bills on this day.", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                item { Text(stringResource(R.string.sales_no_bills), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant) }
             }
 
             items(ui.bills, key = { it.id }) { bill ->
@@ -163,7 +167,7 @@ fun SalesScreen(
             if (ui.hasMore) {
                 item {
                     SecondaryButton(
-                        text = if (ui.loadingMore) "Loading…" else "Load more",
+                        text = if (ui.loadingMore) stringResource(R.string.action_loading) else stringResource(R.string.sales_load_more),
                         onClick = viewModel::loadMore,
                         modifier = Modifier.fillMaxWidth(),
                     )
@@ -192,13 +196,13 @@ private fun StaffFilter(ui: SalesUiState, onSelect: (String?) -> Unit) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(Icons.Rounded.Group, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
             Column(Modifier.weight(1f).padding(horizontal = Dimens.md)) {
-                Text("View by staff", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text(ui.selectedStaffLabel, style = MaterialTheme.typography.titleMedium)
+                Text(stringResource(R.string.sales_view_by_staff), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(ui.selectedStaffEmail ?: stringResource(R.string.vm_all_staff), style = MaterialTheme.typography.titleMedium)
             }
             Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, contentDescription = null, tint = MaterialTheme.colorScheme.outline)
         }
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            DropdownMenuItem(text = { Text("All staff") }, onClick = { onSelect(null); expanded = false })
+            DropdownMenuItem(text = { Text(stringResource(R.string.sales_all_staff)) }, onClick = { onSelect(null); expanded = false })
             ui.staff.forEach { sp ->
                 DropdownMenuItem(text = { Text(sp.email) }, onClick = { onSelect(sp.id); expanded = false })
             }
@@ -212,7 +216,7 @@ private fun StaffLeaderboard(rows: List<StaffSales>) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(Icons.Rounded.EmojiEvents, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
             Text(
-                "Top sellers today",
+                stringResource(R.string.sales_top_sellers),
                 style = MaterialTheme.typography.titleMedium,
                 modifier = Modifier.padding(start = Dimens.sm),
             )
@@ -244,7 +248,7 @@ private fun DateSelector(
     onPick: (java.time.LocalDate) -> Unit,
 ) {
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        IconButton(onClick = onPrev) { Icon(Icons.AutoMirrored.Rounded.KeyboardArrowLeft, contentDescription = "Previous day") }
+        IconButton(onClick = onPrev) { Icon(Icons.AutoMirrored.Rounded.KeyboardArrowLeft, contentDescription = stringResource(R.string.date_prev)) }
         // Tap the pill to jump to any past date from a calendar.
         com.plantora.billing.ui.components.DatePickerField(
             date = date,
@@ -252,7 +256,7 @@ private fun DateSelector(
             maxDate = com.plantora.billing.domain.todayInShopZone(),
             modifier = Modifier.weight(1f),
         )
-        IconButton(onClick = onNext, enabled = canGoNext) { Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, contentDescription = "Next day") }
+        IconButton(onClick = onNext, enabled = canGoNext) { Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, contentDescription = stringResource(R.string.date_next)) }
     }
 }
 
@@ -262,9 +266,10 @@ private fun BillRow(bill: BillListEntry, onClick: () -> Unit) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(Icons.Rounded.ReceiptLong, contentDescription = null, tint = MaterialTheme.colorScheme.outline)
             Column(Modifier.weight(1f).padding(horizontal = Dimens.md)) {
-                Text(bill.customerName ?: "Walk-in", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                Text(bill.customerName ?: stringResource(R.string.bill_walkin), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                 Text(
-                    "${formatBillTime(bill.createdAt)} • ${bill.itemCount} item(s) • ${bill.paymentMethod.label}" + if (bill.isEdited) " • edited" else "",
+                    "${formatBillTime(bill.createdAt)} • ${pluralStringResource(R.plurals.item_count, bill.itemCount, bill.itemCount)} • ${com.plantora.billing.ui.components.paymentLabel(bill.paymentMethod)}" +
+                        if (bill.isEdited) " • " + stringResource(R.string.status_edited) else "",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

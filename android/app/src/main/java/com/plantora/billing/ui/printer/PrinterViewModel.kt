@@ -2,7 +2,9 @@ package com.plantora.billing.ui.printer
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.plantora.billing.R
 import com.plantora.billing.data.local.AppPreferences
+import com.plantora.billing.i18n.UiText
 import com.plantora.billing.print.PrinterController
 import com.plantora.billing.print.PrinterDevice
 import com.plantora.billing.print.PrinterStatus
@@ -26,7 +28,7 @@ data class PrinterScreenState(
     val selectedMac: String? = null, // remembered default printer
     val paperWidthChars: Int = 32,
     val autoCut: Boolean = true,
-    val message: String? = null,
+    val message: UiText? = null,
     val busy: Boolean = false,
 ) {
     val selectedDevice: PrinterDevice? get() = devices.firstOrNull { it.mac == selectedMac }
@@ -71,7 +73,7 @@ class PrinterViewModel @Inject constructor(
     fun onPermissionResult(granted: Boolean) {
         _ui.update { it.copy(needsPermission = !granted) }
         if (granted) refresh()
-        else _ui.update { it.copy(message = "Bluetooth permission is needed to use a printer.") }
+        else _ui.update { it.copy(message = UiText.res(R.string.vm_bt_permission)) }
     }
 
     /** Choose this printer as the phone's default (verifies, then releases it). */
@@ -79,8 +81,8 @@ class PrinterViewModel @Inject constructor(
         _ui.update { it.copy(selecting = device.mac, message = null) }
         viewModelScope.launch {
             controller.selectPrinter(device)
-                .onSuccess { _ui.update { it.copy(selecting = null, message = "Ready to print on ${device.name}.") } }
-                .onFailure { e -> _ui.update { it.copy(selecting = null, message = e.message) } }
+                .onSuccess { _ui.update { it.copy(selecting = null, message = UiText.res(R.string.vm_printer_ready, device.name)) } }
+                .onFailure { e -> _ui.update { it.copy(selecting = null, message = e.message?.let(UiText::of) ?: UiText.res(R.string.vm_print_failed)) } }
         }
     }
 
@@ -88,8 +90,8 @@ class PrinterViewModel @Inject constructor(
         _ui.update { it.copy(busy = true, message = null) }
         viewModelScope.launch {
             controller.printTest()
-                .onSuccess { _ui.update { it.copy(busy = false, message = "Test page printed.") } }
-                .onFailure { e -> _ui.update { it.copy(busy = false, message = e.message) } }
+                .onSuccess { _ui.update { it.copy(busy = false, message = UiText.res(R.string.vm_test_printed)) } }
+                .onFailure { e -> _ui.update { it.copy(busy = false, message = e.message?.let(UiText::of) ?: UiText.res(R.string.vm_print_failed)) } }
         }
     }
 

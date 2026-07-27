@@ -35,11 +35,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.plantora.billing.R
+import com.plantora.billing.i18n.asString
 import com.plantora.billing.domain.DetailedReport
 import com.plantora.billing.domain.Money
 import com.plantora.billing.domain.ReportPeriod
@@ -66,16 +70,17 @@ fun DetailedReportScreen(
 ) {
     val ui by viewModel.ui.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
-    LaunchedEffect(ui.message) { ui.message?.let { snackbar.showSnackbar(it); viewModel.dismissMessage() } }
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    LaunchedEffect(ui.message) { ui.message?.let { snackbar.showSnackbar(it.resolve(ctx)); viewModel.dismissMessage() } }
 
     Scaffold(
         contentWindowInsets = androidx.compose.foundation.layout.WindowInsets(0, 0, 0, 0),
         snackbarHost = { SnackbarHost(snackbar) },
         topBar = {
             TopAppBar(
-                title = { Text("Detailed report") },
+                title = { Text(stringResource(R.string.report_title)) },
                 navigationIcon = {
-                    IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Back") }
+                    IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = stringResource(R.string.cd_back)) }
                 },
             )
         },
@@ -87,9 +92,9 @@ fun DetailedReportScreen(
         ) {
             item { PeriodPicker(ui, viewModel) }
             item {
-                PrimaryButton(text = "Generate report", onClick = viewModel::generate, loading = ui.loading)
+                PrimaryButton(text = stringResource(R.string.report_generate), onClick = viewModel::generate, loading = ui.loading)
             }
-            ui.error?.let { item { Text(it, color = MaterialTheme.colorScheme.error) } }
+            ui.error?.let { item { Text(it.asString(), color = MaterialTheme.colorScheme.error) } }
 
             if (ui.loading) item { LoadingState(Modifier.fillMaxWidth().height(160.dp)) }
 
@@ -103,7 +108,7 @@ fun DetailedReportScreen(
                 if (report.expenses.isNotEmpty()) item { ExpensesLogCard(report) }
                 item {
                     SecondaryButton(
-                        text = if (ui.downloading) "Saving…" else "Download Excel report",
+                        text = if (ui.downloading) stringResource(R.string.action_saving) else stringResource(R.string.report_download),
                         onClick = viewModel::downloadCsv,
                         leadingIcon = Icons.Rounded.Download,
                         modifier = Modifier.fillMaxWidth(),
@@ -118,7 +123,7 @@ fun DetailedReportScreen(
 @Composable
 private fun PeriodPicker(ui: ReportUiState, vm: ReportViewModel) {
     PlantoraCard {
-        Text("Report period", style = MaterialTheme.typography.titleMedium)
+        Text(stringResource(R.string.report_period), style = MaterialTheme.typography.titleMedium)
         Spacer(Modifier.height(Dimens.sm))
         // FlowRow so all four chips (Daily/Weekly/Monthly/Custom) wrap onto a second
         // line on narrow screens instead of the last "Custom" chip overflowing.
@@ -130,7 +135,7 @@ private fun PeriodPicker(ui: ReportUiState, vm: ReportViewModel) {
                 FilterChip(
                     selected = ui.period == p,
                     onClick = { vm.setPeriod(p) },
-                    label = { Text(p.name.lowercase().replaceFirstChar { it.uppercase() }) },
+                    label = { Text(periodLabel(p)) },
                 )
             }
         }
@@ -151,7 +156,7 @@ private fun PeriodPicker(ui: ReportUiState, vm: ReportViewModel) {
                 Stepper(ui.anchorDate.format(monthFmt), { vm.setAnchorDate(ui.anchorDate.minusMonths(1)) }, { vm.setAnchorDate(ui.anchorDate.plusMonths(1)) })
             }
             ReportPeriod.CUSTOM -> {
-                Text("From", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(stringResource(R.string.report_from), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 com.plantora.billing.ui.components.DatePickerField(
                     date = ui.customFrom,
                     onDate = { vm.setCustomFrom(it) },
@@ -159,7 +164,7 @@ private fun PeriodPicker(ui: ReportUiState, vm: ReportViewModel) {
                     modifier = Modifier.fillMaxWidth(),
                 )
                 Spacer(Modifier.height(Dimens.sm))
-                Text("To", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(stringResource(R.string.report_to), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 com.plantora.billing.ui.components.DatePickerField(
                     date = ui.customTo,
                     onDate = { vm.setCustomTo(it) },
@@ -172,11 +177,19 @@ private fun PeriodPicker(ui: ReportUiState, vm: ReportViewModel) {
 }
 
 @Composable
+private fun periodLabel(p: ReportPeriod): String = when (p) {
+    ReportPeriod.DAILY -> stringResource(R.string.period_daily)
+    ReportPeriod.WEEKLY -> stringResource(R.string.period_weekly)
+    ReportPeriod.MONTHLY -> stringResource(R.string.period_monthly)
+    ReportPeriod.CUSTOM -> stringResource(R.string.period_custom)
+}
+
+@Composable
 private fun Stepper(label: String, onPrev: () -> Unit, onNext: () -> Unit) {
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        IconButton(onClick = onPrev) { Icon(Icons.AutoMirrored.Rounded.KeyboardArrowLeft, contentDescription = "Earlier") }
+        IconButton(onClick = onPrev) { Icon(Icons.AutoMirrored.Rounded.KeyboardArrowLeft, contentDescription = stringResource(R.string.cd_earlier)) }
         Text(label, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
-        IconButton(onClick = onNext) { Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, contentDescription = "Later") }
+        IconButton(onClick = onNext) { Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, contentDescription = stringResource(R.string.cd_later)) }
     }
 }
 
@@ -192,12 +205,12 @@ private fun TotalHero(report: DetailedReport) {
             .padding(Dimens.xl),
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
-            Text("Total sales revenue", color = Color.White.copy(alpha = 0.85f), style = MaterialTheme.typography.labelLarge)
+            Text(stringResource(R.string.report_total_revenue), color = Color.White.copy(alpha = 0.85f), style = MaterialTheme.typography.labelLarge)
             Text(report.totalSales.format(), color = Color.White, style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(Dimens.md))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                HeroStat("Bills", "${report.billCount}")
-                HeroStat("Avg bill", report.averageBillValue.format())
+                HeroStat(stringResource(R.string.report_bills), "${report.billCount}")
+                HeroStat(stringResource(R.string.report_avg_bill), report.averageBillValue.format())
             }
         }
     }
@@ -215,9 +228,9 @@ private fun HeroStat(label: String, value: String) {
 private fun ExpensesNetRow(report: DetailedReport) {
     val netNeg = report.netSales.amount.signum() < 0
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Dimens.md)) {
-        StatBox("Total expenses", "− " + report.totalExpenses.format(), MaterialTheme.colorScheme.error, Modifier.weight(1f))
+        StatBox(stringResource(R.string.report_total_expenses), "− " + report.totalExpenses.format(), MaterialTheme.colorScheme.error, Modifier.weight(1f))
         StatBox(
-            "Net income",
+            stringResource(R.string.report_net_income),
             (if (netNeg) "− " else "") + Money(report.netSales.amount.abs()).format(),
             if (netNeg) MaterialTheme.colorScheme.error else CashGreen,
             Modifier.weight(1f),
@@ -228,9 +241,9 @@ private fun ExpensesNetRow(report: DetailedReport) {
 @Composable
 private fun PaymentRow(report: DetailedReport) {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Dimens.sm)) {
-        StatBox("Cash", report.cashTotal.format(), CashGreen, Modifier.weight(1f))
-        StatBox("UPI", report.upiTotal.format(), UpiBlue, Modifier.weight(1f))
-        StatBox("Due", report.dueTotal.format(), MaterialTheme.colorScheme.error, Modifier.weight(1f))
+        StatBox(stringResource(R.string.pay_cash), report.cashTotal.format(), CashGreen, Modifier.weight(1f))
+        StatBox(stringResource(R.string.pay_upi), report.upiTotal.format(), UpiBlue, Modifier.weight(1f))
+        StatBox(stringResource(R.string.pay_due), report.dueTotal.format(), MaterialTheme.colorScheme.error, Modifier.weight(1f))
     }
 }
 
@@ -245,7 +258,7 @@ private fun StatBox(label: String, value: String, color: Color, modifier: Modifi
 @Composable
 private fun TrendCard(report: DetailedReport) {
     PlantoraCard {
-        Text("Sales trend", style = MaterialTheme.typography.titleMedium)
+        Text(stringResource(R.string.report_sales_trend), style = MaterialTheme.typography.titleMedium)
         Spacer(Modifier.height(Dimens.md))
         TrendLineChart(values = report.trend.map { it.sales.amount.toFloat() })
         Spacer(Modifier.height(Dimens.sm))
@@ -259,11 +272,11 @@ private fun TrendCard(report: DetailedReport) {
 @Composable
 private fun CategoryCard(report: DetailedReport) {
     PlantoraCard {
-        Text("Sales by category", style = MaterialTheme.typography.titleMedium)
+        Text(stringResource(R.string.report_by_category), style = MaterialTheme.typography.titleMedium)
         Spacer(Modifier.height(Dimens.md))
         BarChart(
             data = report.categories.map {
-                BarDatum(it.category, it.totalSales.amount.toFloat(), it.totalSales.format(), "${it.quantity} sold")
+                BarDatum(it.category, it.totalSales.amount.toFloat(), it.totalSales.format(), pluralStringResource(R.plurals.report_qty_sold, it.quantity, it.quantity))
             },
         )
     }
@@ -272,11 +285,11 @@ private fun CategoryCard(report: DetailedReport) {
 @Composable
 private fun TopProductsCard(report: DetailedReport) {
     PlantoraCard {
-        Text("Top products", style = MaterialTheme.typography.titleMedium)
+        Text(stringResource(R.string.report_top_products), style = MaterialTheme.typography.titleMedium)
         Spacer(Modifier.height(Dimens.md))
         BarChart(
             data = report.topProducts.take(10).map {
-                BarDatum(it.productName, it.totalSales.amount.toFloat(), it.totalSales.format(), "${it.quantity} sold")
+                BarDatum(it.productName, it.totalSales.amount.toFloat(), it.totalSales.format(), pluralStringResource(R.plurals.report_qty_sold, it.quantity, it.quantity))
             },
             barColor = UpiBlue,
         )
@@ -286,7 +299,7 @@ private fun TopProductsCard(report: DetailedReport) {
 @Composable
 private fun ExpensesLogCard(report: DetailedReport) {
     PlantoraCard {
-        Text("Expenses log", style = MaterialTheme.typography.titleMedium)
+        Text(stringResource(R.string.report_expenses_log), style = MaterialTheme.typography.titleMedium)
         Spacer(Modifier.height(Dimens.sm))
         report.expenses.forEach { e ->
             Row(Modifier.fillMaxWidth().padding(vertical = Dimens.xs)) {

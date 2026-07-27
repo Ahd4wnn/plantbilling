@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -42,8 +43,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.plantora.billing.R
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.plantora.billing.ui.billing.voice.VoiceSearchButton
 import com.plantora.billing.ui.components.EmptyState
@@ -66,18 +70,19 @@ fun BillScreen(viewModel: BillingViewModel = hiltViewModel()) {
     )
     val quickAddSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val snackbar = remember { SnackbarHostState() }
+    val ctx = androidx.compose.ui.platform.LocalContext.current
 
     // The review's open/closed state lives in the ViewModel (state.showReview): it
     // opens on every add and closes only via ✕ / Add item / Clear cart / save, and
     // can't desync from the cart across tab switches or process death.
-    LaunchedEffect(state.toast) { state.toast?.let { snackbar.showSnackbar(it); viewModel.dismissToast() } }
+    LaunchedEffect(state.toast) { state.toast?.let { snackbar.showSnackbar(it.resolve(ctx)); viewModel.dismissToast() } }
 
     // Success replaces the whole screen, mirroring the web SuccessView.
     state.success?.let { bill ->
         SuccessView(
             bill = bill,
             printPhase = state.printPhase,
-            printMessage = state.printMessage,
+            printMessage = state.printMessage?.resolve(ctx),
             onPrint = viewModel::printSuccessBill,
             onNewBill = viewModel::startNewBill,
         )
@@ -88,7 +93,11 @@ fun BillScreen(viewModel: BillingViewModel = hiltViewModel()) {
         snackbarHost = { SnackbarHost(snackbar) },
         contentWindowInsets = androidx.compose.foundation.layout.WindowInsets(0, 0, 0, 0),
         bottomBar = {
-            Surface(tonalElevation = 2.dp, shadowElevation = 8.dp) {
+            // imePadding lifts the whole action bar (Cart, Held bills, Quick add)
+            // above the keyboard when the product search field is focused. The app
+            // is edge-to-edge, so the window doesn't resize for the IME — the inset
+            // must be consumed here, mirroring every other screen. Zero when closed.
+            Surface(tonalElevation = 2.dp, shadowElevation = 8.dp, modifier = Modifier.imePadding()) {
                 Column(Modifier.fillMaxWidth().padding(horizontal = Dimens.screenPadding, vertical = Dimens.md)) {
                     AnimatedVisibility(
                         visible = !state.isCartEmpty,
@@ -106,7 +115,7 @@ fun BillScreen(viewModel: BillingViewModel = hiltViewModel()) {
                     }
                     if (heldBills.isNotEmpty()) {
                         com.plantora.billing.ui.components.SecondaryButton(
-                            text = "Held bills (${heldBills.size})",
+                            text = stringResource(R.string.bill_held_count, heldBills.size),
                             onClick = { showHeld = true },
                             leadingIcon = Icons.Rounded.Pause,
                             modifier = Modifier.fillMaxWidth(),
@@ -114,7 +123,7 @@ fun BillScreen(viewModel: BillingViewModel = hiltViewModel()) {
                         Spacer(Modifier.height(Dimens.sm))
                     }
                     com.plantora.billing.ui.components.SecondaryButton(
-                        text = "Quick add item",
+                        text = stringResource(R.string.bill_quick_add),
                         onClick = viewModel::openQuickAdd,
                         leadingIcon = Icons.Rounded.Add,
                         modifier = Modifier.fillMaxWidth(),
@@ -127,12 +136,13 @@ fun BillScreen(viewModel: BillingViewModel = hiltViewModel()) {
             OutlinedTextField(
                 value = state.query,
                 onValueChange = viewModel::onQueryChange,
-                placeholder = { Text("Search products") },
+                placeholder = { Text(stringResource(R.string.bill_search)) },
                 leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null) },
                 trailingIcon = {
+                    val voiceUnavailable = stringResource(R.string.bill_voice_unavailable)
                     VoiceSearchButton(
                         onResults = viewModel::onVoiceTranscript,
-                        onUnavailable = { viewModel.showToast("Voice search isn't available on this device.") },
+                        onUnavailable = { viewModel.showToast(voiceUnavailable) },
                     )
                 },
                 singleLine = true,
@@ -151,7 +161,7 @@ fun BillScreen(viewModel: BillingViewModel = hiltViewModel()) {
                     FilterChip(
                         selected = state.categoryFilter == null,
                         onClick = { viewModel.setCategoryFilter(null) },
-                        label = { Text("All") },
+                        label = { Text(stringResource(R.string.filter_all)) },
                     )
                 }
                 items(state.categories) { cat ->
@@ -166,16 +176,16 @@ fun BillScreen(viewModel: BillingViewModel = hiltViewModel()) {
             when {
                 state.productsLoading -> LoadingState()
                 state.productsError != null -> ErrorState(
-                    message = state.productsError!!,
+                    message = state.productsError!!.resolve(ctx),
                     onRetry = viewModel::loadProducts,
                     icon = Icons.Rounded.LocalFlorist,
                 )
                 state.filteredProducts.isEmpty() -> EmptyState(
                     icon = Icons.Rounded.LocalFlorist,
-                    title = "No products",
+                    title = stringResource(R.string.bill_no_products_title),
                     message = if (state.query.isBlank())
-                        "Add products in the Products tab, or use Quick add."
-                    else "No products match \"${state.query}\".",
+                        stringResource(R.string.bill_no_products_hint)
+                    else stringResource(R.string.bill_no_products_search, state.query),
                 )
                 else -> ProductGrid(
                     products = state.filteredProducts,
@@ -254,10 +264,10 @@ private fun HeldBillsSheet(
             .padding(horizontal = Dimens.lg)
             .padding(bottom = Dimens.xl),
     ) {
-        Text("Held bills", style = MaterialTheme.typography.headlineMedium)
+        Text(stringResource(R.string.held_title), style = MaterialTheme.typography.headlineMedium)
         Spacer(Modifier.height(Dimens.xs))
         Text(
-            "Bills you parked to serve another customer. Tap Resume to continue one.",
+            stringResource(R.string.held_desc),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -272,7 +282,7 @@ private fun HeldBillsSheet(
                             fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
                         )
                         Text(
-                            "${bill.itemCount} item${if (bill.itemCount == 1) "" else "s"} • " +
+                            pluralStringResource(R.plurals.item_count, bill.itemCount, bill.itemCount) + " • " +
                                 com.plantora.billing.domain.Money.parse(bill.total).format() +
                                 " • ${timeFmt.format(java.util.Date(bill.savedAt))}",
                             style = MaterialTheme.typography.bodyMedium,
@@ -280,12 +290,12 @@ private fun HeldBillsSheet(
                         )
                     }
                     androidx.compose.material3.TextButton(onClick = { onDiscard(bill.id) }) {
-                        Text("Discard", color = MaterialTheme.colorScheme.error)
+                        Text(stringResource(R.string.action_discard), color = MaterialTheme.colorScheme.error)
                     }
                 }
                 Spacer(Modifier.height(Dimens.sm))
                 com.plantora.billing.ui.components.PrimaryButton(
-                    text = "Resume this bill",
+                    text = stringResource(R.string.held_resume),
                     onClick = { onResume(bill) },
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -315,7 +325,7 @@ private fun CartBar(itemCount: Int, totalLabel: String, onClick: () -> Unit) {
                 Icon(Icons.Rounded.ShoppingCart, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimary)
             }
             Text(
-                "  Review & pay",
+                stringResource(R.string.bill_review_pay),
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onPrimary,
                 modifier = Modifier.weight(1f).padding(start = Dimens.sm),

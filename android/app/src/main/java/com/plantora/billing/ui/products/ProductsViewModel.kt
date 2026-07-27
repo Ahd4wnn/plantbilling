@@ -2,10 +2,12 @@ package com.plantora.billing.ui.products
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.plantora.billing.R
 import com.plantora.billing.data.ProductRepository
 import com.plantora.billing.data.remote.friendlyError
 import com.plantora.billing.domain.Money
 import com.plantora.billing.domain.Product
+import com.plantora.billing.i18n.UiText
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -39,7 +41,7 @@ data class ProductsUiState(
     val categoryFilter: String? = null,
     val showInactive: Boolean = false,
     val form: ProductFormState? = null,
-    val message: String? = null,
+    val message: UiText? = null,
     val bulkSheet: Boolean = false,
     val bulkBusy: Boolean = false,
 ) {
@@ -113,7 +115,7 @@ class ProductsViewModel @Inject constructor(
                 }
             }
             result
-                .onSuccess { _ui.update { it.copy(form = null, message = if (form.isEdit) "Saved." else "Product added.") }; load() }
+                .onSuccess { _ui.update { it.copy(form = null, message = UiText.res(if (form.isEdit) R.string.vm_saved else R.string.vm_product_added)) }; load() }
                 .onFailure { e -> updateForm { it.copy(saving = false, error = friendlyError(e)) } }
         }
     }
@@ -121,8 +123,8 @@ class ProductsViewModel @Inject constructor(
     fun delete(product: Product) {
         viewModelScope.launch {
             runCatching { repo.delete(product.id) }
-                .onSuccess { _ui.update { it.copy(message = "Deleted ${product.name}.") }; load() }
-                .onFailure { e -> _ui.update { it.copy(message = friendlyError(e)) } }
+                .onSuccess { _ui.update { it.copy(message = UiText.res(R.string.vm_product_deleted, product.name)) }; load() }
+                .onFailure { e -> _ui.update { it.copy(message = UiText.err(e, R.string.err_generic)) } }
         }
     }
 
@@ -148,8 +150,8 @@ class ProductsViewModel @Inject constructor(
         _ui.update { it.copy(bulkBusy = true) }
         viewModelScope.launch {
             runCatching { repo.downloadSample() }
-                .onSuccess { name -> _ui.update { it.copy(bulkBusy = false, message = "Saved to Downloads: $name") } }
-                .onFailure { e -> _ui.update { it.copy(bulkBusy = false, message = friendlyError(e)) } }
+                .onSuccess { name -> _ui.update { it.copy(bulkBusy = false, message = UiText.res(R.string.vm_saved_downloads, name)) } }
+                .onFailure { e -> _ui.update { it.copy(bulkBusy = false, message = UiText.err(e, R.string.err_generic)) } }
         }
     }
 
@@ -157,8 +159,8 @@ class ProductsViewModel @Inject constructor(
         _ui.update { it.copy(bulkBusy = true) }
         viewModelScope.launch {
             runCatching { repo.bulkUpload(bytes, fileName, mime) }
-                .onSuccess { r -> _ui.update { it.copy(bulkBusy = false, bulkSheet = false, message = r.detail) }; load() }
-                .onFailure { e -> _ui.update { it.copy(bulkBusy = false, message = friendlyError(e)) } }
+                .onSuccess { r -> _ui.update { it.copy(bulkBusy = false, bulkSheet = false, message = UiText.of(r.detail)) }; load() }
+                .onFailure { e -> _ui.update { it.copy(bulkBusy = false, message = UiText.err(e, R.string.err_generic)) } }
         }
     }
 
@@ -166,8 +168,8 @@ class ProductsViewModel @Inject constructor(
         _ui.update { it.copy(bulkBusy = true) }
         viewModelScope.launch {
             runCatching { repo.bulkPhotos(bytes, fileName, mime) }
-                .onSuccess { r -> _ui.update { it.copy(bulkBusy = false, bulkSheet = false, message = r.detail) }; load() }
-                .onFailure { e -> _ui.update { it.copy(bulkBusy = false, message = friendlyError(e)) } }
+                .onSuccess { r -> _ui.update { it.copy(bulkBusy = false, bulkSheet = false, message = UiText.of(r.detail)) }; load() }
+                .onFailure { e -> _ui.update { it.copy(bulkBusy = false, message = UiText.err(e, R.string.err_generic)) } }
         }
     }
 }

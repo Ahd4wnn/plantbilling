@@ -3,7 +3,9 @@ package com.plantora.billing.ui.settings.staff
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.plantora.billing.data.SalespersonRepository
+import com.plantora.billing.R
 import com.plantora.billing.data.remote.friendlyError
+import com.plantora.billing.i18n.UiText
 import com.plantora.billing.domain.Salesperson
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -43,7 +45,7 @@ data class StaffUiState(
     val createForm: CreateForm? = null,
     val resetForm: ResetForm? = null,
     val credentials: CredentialResult? = null,
-    val message: String? = null,
+    val message: UiText? = null,
 )
 
 @HiltViewModel
@@ -90,8 +92,8 @@ class StaffViewModel @Inject constructor(
     fun toggleActive(sp: Salesperson) {
         viewModelScope.launch {
             runCatching { repo.setActive(sp.id, !sp.isActive) }
-                .onSuccess { _ui.update { it.copy(message = if (sp.isActive) "Deactivated ${sp.email}" else "Activated ${sp.email}") }; load() }
-                .onFailure { e -> _ui.update { it.copy(message = friendlyError(e)) } }
+                .onSuccess { _ui.update { it.copy(message = if (sp.isActive) UiText.res(R.string.vm_deactivated, sp.email) else UiText.res(R.string.vm_activated, sp.email)) }; load() }
+                .onFailure { e -> _ui.update { it.copy(message = UiText.err(e, R.string.err_generic)) } }
         }
     }
 
@@ -116,8 +118,8 @@ class StaffViewModel @Inject constructor(
     fun deleteStaff(sp: Salesperson) {
         viewModelScope.launch {
             runCatching { repo.delete(sp.id) }
-                .onSuccess { _ui.update { it.copy(message = "Removed ${sp.email}") }; load() }
-                .onFailure { e -> _ui.update { it.copy(message = friendlyError(e)) } }
+                .onSuccess { _ui.update { it.copy(message = UiText.res(R.string.vm_removed, sp.email)) }; load() }
+                .onFailure { e -> _ui.update { it.copy(message = UiText.err(e, R.string.err_generic)) } }
         }
     }
 }

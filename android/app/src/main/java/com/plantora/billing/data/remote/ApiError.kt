@@ -1,6 +1,9 @@
 package com.plantora.billing.data.remote
 
+import android.content.Context
+import androidx.annotation.StringRes
 import com.plantora.billing.BuildConfig
+import com.plantora.billing.R
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
@@ -28,6 +31,27 @@ fun friendlyError(
     }
     is HttpException -> parseDetail(error) ?: fallback
     else -> fallback
+}
+
+/**
+ * Locale-aware [friendlyError]. Resolves the network-failure and generic
+ * fallback text from resources using [context], so error messages surfaced this
+ * way follow the app's chosen language. Used by `UiText.Err`, which hands in the
+ * locale-scoped activity context from the composition. The pure [String] overload
+ * above stays for callers without a Context (their fallbacks remain English).
+ */
+fun friendlyError(
+    context: Context,
+    error: Throwable,
+    @StringRes fallback: Int = R.string.err_generic,
+): String = when (error) {
+    is IOException -> if (BuildConfig.DEBUG) {
+        "Can't reach the server. [${error.javaClass.simpleName}: ${error.message}]"
+    } else {
+        context.getString(R.string.err_network)
+    }
+    is HttpException -> parseDetail(error) ?: context.getString(fallback)
+    else -> context.getString(fallback)
 }
 
 private fun parseDetail(error: HttpException): String? {

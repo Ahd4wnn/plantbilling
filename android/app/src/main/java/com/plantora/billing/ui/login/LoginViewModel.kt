@@ -2,8 +2,9 @@ package com.plantora.billing.ui.login
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.plantora.billing.R
 import com.plantora.billing.data.SessionRepository
-import com.plantora.billing.data.remote.friendlyError
+import com.plantora.billing.i18n.UiText
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -16,7 +17,7 @@ data class LoginUiState(
     val email: String = "",
     val password: String = "",
     val submitting: Boolean = false,
-    val error: String? = null,
+    val error: UiText? = null,
 ) {
     val canSubmit: Boolean get() = email.isNotBlank() && password.isNotBlank() && !submitting
 }
@@ -55,7 +56,7 @@ class LoginViewModel @Inject constructor(
                     _ui.update {
                         it.copy(
                             submitting = false,
-                            error = friendlyError(e, "Couldn't sign in. Please try again."),
+                            error = UiText.err(e, R.string.err_signin),
                         )
                     }
                 }

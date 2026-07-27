@@ -39,11 +39,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.plantora.billing.R
+import com.plantora.billing.i18n.asString
 import com.plantora.billing.domain.DiscountType
 import com.plantora.billing.domain.Money
 import com.plantora.billing.domain.Product
@@ -74,9 +77,9 @@ fun BillEditScreen(
         contentWindowInsets = androidx.compose.foundation.layout.WindowInsets(0, 0, 0, 0),
         topBar = {
             TopAppBar(
-                title = { Text("Edit bill") },
+                title = { Text(stringResource(R.string.cd_edit_bill)) },
                 navigationIcon = {
-                    IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Back") }
+                    IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = stringResource(R.string.cd_back)) }
                 },
             )
         },
@@ -108,21 +111,21 @@ private fun EditBody(ui: BillEditUiState, viewModel: BillEditViewModel, modifier
             .padding(bottom = Dimens.xl),
     ) {
         Spacer(Modifier.height(Dimens.md))
-        SectionHeader("Items")
+        SectionHeader(stringResource(R.string.be_items))
         ui.lines.forEach { line ->
             Column(Modifier.padding(vertical = Dimens.sm)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(line.product.name, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
                     MoneyText(line.lineTotal, style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(start = Dimens.sm))
                     IconButton(onClick = { viewModel.removeLine(line.id) }) {
-                        Icon(Icons.Rounded.Close, contentDescription = "Remove ${line.product.name}")
+                        Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.cart_remove_cd, line.product.name))
                     }
                 }
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Dimens.md)) {
                     com.plantora.billing.ui.components.NumberField(
                         value = line.unitPrice.toInput(),
                         onValueChange = { viewModel.setUnitPrice(line.id, it) },
-                        label = "Price",
+                        label = stringResource(R.string.cart_price),
                         modifier = Modifier.weight(1f),
                     )
                     QuantityStepper(
@@ -137,22 +140,22 @@ private fun EditBody(ui: BillEditUiState, viewModel: BillEditViewModel, modifier
         }
         Spacer(Modifier.height(Dimens.md))
         SecondaryButton(
-            text = "Add plant",
+            text = stringResource(R.string.be_add_plant),
             onClick = viewModel::openAddPicker,
             leadingIcon = Icons.Rounded.Add,
             modifier = Modifier.fillMaxWidth(),
         )
 
         Spacer(Modifier.height(Dimens.lg))
-        SectionHeader("Discount")
+        SectionHeader(stringResource(R.string.cart_discount))
         Row(horizontalArrangement = Arrangement.spacedBy(Dimens.sm), verticalAlignment = Alignment.CenterVertically) {
-            FilterChip(selected = ui.discountType == DiscountType.FLAT, onClick = { viewModel.setDiscountType(DiscountType.FLAT) }, label = { Text("₹ Flat") })
-            FilterChip(selected = ui.discountType == DiscountType.PERCENT, onClick = { viewModel.setDiscountType(DiscountType.PERCENT) }, label = { Text("% Percent") })
+            FilterChip(selected = ui.discountType == DiscountType.FLAT, onClick = { viewModel.setDiscountType(DiscountType.FLAT) }, label = { Text(stringResource(R.string.discount_flat)) })
+            FilterChip(selected = ui.discountType == DiscountType.PERCENT, onClick = { viewModel.setDiscountType(DiscountType.PERCENT) }, label = { Text(stringResource(R.string.discount_percent)) })
             Spacer(Modifier.width(Dimens.sm))
             PlantoraTextField(
                 value = ui.discountInput,
                 onValueChange = viewModel::setDiscountInput,
-                label = if (ui.discountType == DiscountType.FLAT) "Amount" else "Percent",
+                label = if (ui.discountType == DiscountType.FLAT) stringResource(R.string.cart_amount) else stringResource(R.string.cart_percent),
                 keyboardType = KeyboardType.Decimal,
                 modifier = Modifier.width(130.dp),
             )
@@ -160,40 +163,40 @@ private fun EditBody(ui: BillEditUiState, viewModel: BillEditViewModel, modifier
 
         Spacer(Modifier.height(Dimens.lg))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text("Total", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            Text(stringResource(R.string.label_total), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
             MoneyText(totals.total, style = MaterialTheme.typography.titleLarge)
         }
 
         Spacer(Modifier.height(Dimens.lg))
-        SectionHeader("Payment")
+        SectionHeader(stringResource(R.string.cart_payment))
         Row(horizontalArrangement = Arrangement.spacedBy(Dimens.sm)) {
-            FilterChip(selected = ui.paymentMode == PaymentMode.CASH, onClick = { viewModel.setPaymentMode(PaymentMode.CASH) }, label = { Text("Cash") })
-            FilterChip(selected = ui.paymentMode == PaymentMode.UPI, onClick = { viewModel.setPaymentMode(PaymentMode.UPI) }, label = { Text("UPI") })
-            FilterChip(selected = ui.paymentMode == PaymentMode.SPLIT, onClick = { viewModel.setPaymentMode(PaymentMode.SPLIT) }, label = { Text("Split") })
+            FilterChip(selected = ui.paymentMode == PaymentMode.CASH, onClick = { viewModel.setPaymentMode(PaymentMode.CASH) }, label = { Text(stringResource(R.string.pay_cash)) })
+            FilterChip(selected = ui.paymentMode == PaymentMode.UPI, onClick = { viewModel.setPaymentMode(PaymentMode.UPI) }, label = { Text(stringResource(R.string.pay_upi)) })
+            FilterChip(selected = ui.paymentMode == PaymentMode.SPLIT, onClick = { viewModel.setPaymentMode(PaymentMode.SPLIT) }, label = { Text(stringResource(R.string.pay_split)) })
         }
         if (ui.paymentMode == PaymentMode.SPLIT) {
             Spacer(Modifier.height(Dimens.sm))
-            PlantoraTextField(ui.cashInput, viewModel::setCashInput, label = "Cash part", keyboardType = KeyboardType.Decimal)
+            PlantoraTextField(ui.cashInput, viewModel::setCashInput, label = stringResource(R.string.cart_cash_part), keyboardType = KeyboardType.Decimal)
         }
         Spacer(Modifier.height(Dimens.sm))
-        PlantoraTextField(ui.dueInput, viewModel::setDueInput, label = "Due (owed later, optional)", keyboardType = KeyboardType.Decimal)
+        PlantoraTextField(ui.dueInput, viewModel::setDueInput, label = stringResource(R.string.cart_due), keyboardType = KeyboardType.Decimal)
         Spacer(Modifier.height(Dimens.sm))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Dimens.lg)) {
-            PayPill("Cash", cash, Modifier.weight(1f))
-            PayPill("UPI", upi, Modifier.weight(1f))
+            PayPill(stringResource(R.string.pay_cash), cash, Modifier.weight(1f))
+            PayPill(stringResource(R.string.pay_upi), upi, Modifier.weight(1f))
         }
 
         Spacer(Modifier.height(Dimens.md))
-        PlantoraTextField(ui.remarks, viewModel::setRemarks, label = "Remarks (optional)", singleLine = false)
+        PlantoraTextField(ui.remarks, viewModel::setRemarks, label = stringResource(R.string.cart_remarks), singleLine = false)
 
         ui.saveError?.let {
             Spacer(Modifier.height(Dimens.md))
-            Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium)
+            Text(it.asString(), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium)
         }
 
         Spacer(Modifier.height(Dimens.xl))
         PrimaryButton(
-            text = "Save changes • ${totals.total.format()}",
+            text = stringResource(R.string.be_save_changes, totals.total.format()),
             onClick = viewModel::save,
             enabled = !ui.isEmpty,
             loading = ui.saving,
@@ -215,12 +218,12 @@ private fun ProductPicker(products: List<Product>, onPick: (Product) -> Unit) {
     var query by remember { mutableStateOf("") }
     val filtered = products.filter { it.isActive && (query.isBlank() || it.name.contains(query.trim(), ignoreCase = true)) }
     Column(Modifier.fillMaxWidth().padding(horizontal = Dimens.lg).padding(bottom = Dimens.xl)) {
-        Text("Add a plant", style = MaterialTheme.typography.headlineMedium)
+        Text(stringResource(R.string.be_add_plant_title), style = MaterialTheme.typography.headlineMedium)
         Spacer(Modifier.height(Dimens.md))
         OutlinedTextField(
             value = query,
             onValueChange = { query = it },
-            placeholder = { Text("Search products") },
+            placeholder = { Text(stringResource(R.string.bill_search)) },
             singleLine = true,
             shape = MaterialTheme.shapes.medium,
             modifier = Modifier.fillMaxWidth(),

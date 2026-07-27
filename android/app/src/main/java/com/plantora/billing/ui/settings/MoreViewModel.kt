@@ -2,10 +2,11 @@ package com.plantora.billing.ui.settings
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.plantora.billing.R
 import com.plantora.billing.data.ShopRepository
 import com.plantora.billing.data.local.AppPreferences
-import com.plantora.billing.data.remote.friendlyError
 import com.plantora.billing.domain.Money
+import com.plantora.billing.i18n.UiText
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -21,8 +22,8 @@ data class CashSetUi(
     val open: Boolean = false,
     val amount: String = "",
     val saving: Boolean = false,
-    val error: String? = null,
-    val message: String? = null,
+    val error: UiText? = null,
+    val message: UiText? = null,
 ) {
     val canSave: Boolean get() = amount.isNotBlank() && !Money.parse(amount).isNegative() && !saving
 }
@@ -55,10 +56,10 @@ class MoreViewModel @Inject constructor(
         viewModelScope.launch {
             runCatching { shopRepo.setCashInHand(Money.parse(s.amount)) }
                 .onSuccess { running ->
-                    _cashSet.update { CashSetUi(open = false, message = "Cash in hand set to ${running.format()}.") }
+                    _cashSet.update { CashSetUi(open = false, message = UiText.res(R.string.vm_cash_set, running.format())) }
                 }
                 .onFailure { e ->
-                    _cashSet.update { it.copy(saving = false, error = friendlyError(e, "Couldn't set cash in hand.")) }
+                    _cashSet.update { it.copy(saving = false, error = UiText.err(e, R.string.err_cash_set)) }
                 }
         }
     }

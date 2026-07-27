@@ -22,8 +22,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.plantora.billing.R
 import com.plantora.billing.ui.theme.Dimens
 import java.time.Instant
 import java.time.LocalDate
@@ -72,9 +74,9 @@ fun DatePickerField(
                 TextButton(onClick = {
                     state.selectedDateMillis?.let { onDate(it.toLocalDate()) }
                     open = false
-                }) { Text("OK") }
+                }) { Text(stringResource(R.string.action_ok)) }
             },
-            dismissButton = { TextButton(onClick = { open = false }) { Text("Cancel") } },
+            dismissButton = { TextButton(onClick = { open = false }) { Text(stringResource(R.string.action_cancel)) } },
         ) {
             DatePicker(state = state)
         }

@@ -2,9 +2,11 @@ package com.plantora.billing.ui.borrowings
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.plantora.billing.R
 import com.plantora.billing.data.BorrowingRepository
 import com.plantora.billing.data.remote.friendlyError
 import com.plantora.billing.domain.Borrowing
+import com.plantora.billing.i18n.UiText
 import com.plantora.billing.domain.Money
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -65,7 +67,7 @@ data class BorrowingsUiState(
     val totalOutstanding: Money = Money.ZERO,
     val addEditor: AddEditor? = null,
     val payEditor: PayEditor? = null,
-    val message: String? = null,
+    val message: UiText? = null,
 )
 
 @HiltViewModel
@@ -110,7 +112,7 @@ class BorrowingsViewModel @Inject constructor(
         val (cash, upi) = split(e.total, e.mode, e.splitCash)
         viewModelScope.launch {
             runCatching { repo.create(e.name, e.phone, e.total, cash, upi, e.remarks) }
-                .onSuccess { _ui.update { it.copy(addEditor = null, message = "Borrowing added.") }; load() }
+                .onSuccess { _ui.update { it.copy(addEditor = null, message = UiText.res(R.string.vm_borrow_added)) }; load() }
                 .onFailure { err -> _ui.update { it.copy(addEditor = e.copy(saving = false, error = friendlyError(err))) } }
         }
     }
@@ -133,7 +135,7 @@ class BorrowingsViewModel @Inject constructor(
         val (cash, upi) = split(e.total, e.mode, e.splitCash)
         viewModelScope.launch {
             runCatching { repo.pay(e.borrowing.id, cash, upi) }
-                .onSuccess { _ui.update { it.copy(payEditor = null, message = "Repayment recorded.") }; load() }
+                .onSuccess { _ui.update { it.copy(payEditor = null, message = UiText.res(R.string.vm_borrow_repaid)) }; load() }
                 .onFailure { err -> _ui.update { it.copy(payEditor = e.copy(saving = false, error = friendlyError(err))) } }
         }
     }
@@ -141,8 +143,8 @@ class BorrowingsViewModel @Inject constructor(
     fun delete(id: String) {
         viewModelScope.launch {
             runCatching { repo.delete(id) }
-                .onSuccess { _ui.update { it.copy(message = "Deleted.") }; load() }
-                .onFailure { e -> _ui.update { it.copy(message = friendlyError(e)) } }
+                .onSuccess { _ui.update { it.copy(message = UiText.res(R.string.vm_deleted)) }; load() }
+                .onFailure { e -> _ui.update { it.copy(message = UiText.err(e, R.string.err_generic)) } }
         }
     }
 

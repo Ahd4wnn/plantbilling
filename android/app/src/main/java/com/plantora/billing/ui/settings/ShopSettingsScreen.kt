@@ -24,8 +24,10 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.plantora.billing.R
 import com.plantora.billing.ui.components.ErrorState
 import com.plantora.billing.ui.components.LoadingState
 import com.plantora.billing.ui.theme.Dimens
@@ -39,8 +41,9 @@ fun ShopSettingsScreen(
     val ui by viewModel.ui.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
 
+    val ctx = androidx.compose.ui.platform.LocalContext.current
     LaunchedEffect(ui.message) {
-        ui.message?.let { snackbar.showSnackbar(it); viewModel.dismissMessage() }
+        ui.message?.let { snackbar.showSnackbar(it.resolve(ctx)); viewModel.dismissMessage() }
     }
 
     Scaffold(
@@ -48,10 +51,10 @@ fun ShopSettingsScreen(
         snackbarHost = { SnackbarHost(snackbar) },
         topBar = {
             TopAppBar(
-                title = { Text("Shop details") },
+                title = { Text(stringResource(R.string.more_shop_details)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = stringResource(R.string.cd_back))
                     }
                 },
             )
@@ -69,17 +72,17 @@ fun ShopSettingsScreen(
                     .padding(Dimens.screenPadding),
             ) {
                 Text(
-                    "These appear at the top of printed receipts. To change them, contact your PlantBill admin.",
+                    stringResource(R.string.shop_receipts_note),
                     style = androidx.compose.material3.MaterialTheme.typography.bodyMedium,
                     color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Spacer(Modifier.height(Dimens.lg))
                 com.plantora.billing.ui.components.PlantoraCard {
-                    DetailField("Business name", ui.businessName)
-                    DetailField("Address", ui.businessAddress)
-                    DetailField("Phone", ui.businessPhone)
-                    DetailField("Email", ui.businessEmail)
-                    DetailField("UPI ID", ui.businessUpi)
+                    DetailField(stringResource(R.string.shop_business_name), ui.businessName)
+                    DetailField(stringResource(R.string.shop_address), ui.businessAddress)
+                    DetailField(stringResource(R.string.shop_phone), ui.businessPhone)
+                    DetailField(stringResource(R.string.login_email), ui.businessEmail)
+                    DetailField(stringResource(R.string.shop_upi), ui.businessUpi)
                 }
             }
         }
@@ -95,7 +98,7 @@ private fun DetailField(label: String, value: String) {
             color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Text(
-            value.ifBlank { "—" },
+            value.ifBlank { stringResource(R.string.pay_none) },
             style = androidx.compose.material3.MaterialTheme.typography.bodyLarge,
         )
     }

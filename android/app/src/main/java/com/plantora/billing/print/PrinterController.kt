@@ -89,16 +89,19 @@ class PrinterController @Inject constructor(
         }
 
     suspend fun printBill(bill: BillDetail): Result<Unit> = printSession {
-        val width = prefs.paperWidthChars.first()
+        val dots = dotsFor(prefs.paperWidthChars.first())
         val autoCut = prefs.autoCut.first()
-        EscPosBuilder(width).build(bill, autoCut)
+        ReceiptRenderer(dots).build(bill, autoCut)
     }
 
     suspend fun printTest(): Result<Unit> = printSession {
-        val width = prefs.paperWidthChars.first()
+        val dots = dotsFor(prefs.paperWidthChars.first())
         val autoCut = prefs.autoCut.first()
         val mac = prefs.lastPrinterMac.first()
         val label = pairedPrinters().firstOrNull { it.mac == mac }?.name ?: "Bluetooth"
-        EscPosBuilder(width).buildTest(label, autoCut)
+        ReceiptRenderer(dots).buildTest(label, autoCut)
     }
+
+    /** Printable width in dots for the receipt bitmap: 384 for 58mm, 576 for 80mm. */
+    private fun dotsFor(paperWidthChars: Int): Int = if (paperWidthChars >= 48) 576 else 384
 }

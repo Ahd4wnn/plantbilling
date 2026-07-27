@@ -6,7 +6,9 @@ import androidx.lifecycle.viewModelScope
 import com.plantora.billing.data.BillRepository
 import com.plantora.billing.data.CheckoutItem
 import com.plantora.billing.data.ProductRepository
+import com.plantora.billing.R
 import com.plantora.billing.data.remote.friendlyError
+import com.plantora.billing.i18n.UiText
 import com.plantora.billing.domain.BillDetail
 import com.plantora.billing.domain.DiscountType
 import com.plantora.billing.domain.Money
@@ -42,7 +44,7 @@ data class BillEditUiState(
     val customerPhone: String? = null,
     val showAddPicker: Boolean = false,
     val saving: Boolean = false,
-    val saveError: String? = null,
+    val saveError: UiText? = null,
     val saved: Boolean = false,
 ) {
     val discountValue: Money get() = Money.parse(discountInput.ifBlank { "0" })
@@ -148,7 +150,7 @@ class BillEditViewModel @Inject constructor(
         val (cash, upi) = state.payment
         val due = Money.parse(state.dueInput.ifBlank { "0" }).let { if (it > state.totals.total) state.totals.total else it }
         if (due.isPositive() && (state.customerPhone?.filter { it.isDigit() }?.length ?: 0) < 10) {
-            _ui.update { it.copy(saveError = "This bill has a due but no customer phone on record. Settle the due to 0 before saving.") }
+            _ui.update { it.copy(saveError = UiText.res(R.string.vm_due_no_phone)) }
             return
         }
         _ui.update { it.copy(saving = true, saveError = null) }
@@ -166,7 +168,7 @@ class BillEditViewModel @Inject constructor(
                 )
             }
                 .onSuccess { _ui.update { it.copy(saving = false, saved = true) } }
-                .onFailure { e -> _ui.update { it.copy(saving = false, saveError = friendlyError(e, "Couldn't save the changes.")) } }
+                .onFailure { e -> _ui.update { it.copy(saving = false, saveError = UiText.err(e, R.string.err_save_changes)) } }
         }
     }
 }

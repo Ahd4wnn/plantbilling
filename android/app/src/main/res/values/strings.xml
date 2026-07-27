@@ -1,4 +1,574 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">PlantBill</string>
+
+    <!-- Bottom navigation -->
+    <string name="nav_bill">Bill</string>
+    <string name="nav_products">Products</string>
+    <string name="nav_sales">Sales</string>
+    <string name="nav_customers">Customers</string>
+    <string name="nav_more">More</string>
+
+    <!-- Common actions -->
+    <string name="action_save">Save</string>
+    <string name="action_saving">Saving…</string>
+    <string name="action_cancel">Cancel</string>
+    <string name="action_logout">Log out</string>
+    <string name="action_try_again">Try again</string>
+
+    <!-- Login -->
+    <string name="login_subtitle">Sign in to your shop</string>
+    <string name="login_email">Email</string>
+    <string name="login_password">Password</string>
+    <string name="login_submit">Sign in</string>
+    <string name="login_footer">Accounts are created by your PlantBill admin.</string>
+
+    <!-- More / Settings -->
+    <string name="more_role">Role: %1$s</string>
+    <string name="more_shop_details">Shop details</string>
+    <string name="more_shop_details_sub">Name, address, UPI — shown on receipts</string>
+    <string name="more_salespeople">Salespeople</string>
+    <string name="more_salespeople_sub">Add and manage counter staff</string>
+    <string name="more_labour">Labour</string>
+    <string name="more_labour_sub_manager">Manage workers and record payments</string>
+    <string name="more_labour_sub_staff">Record payments to workers</string>
+    <string name="more_borrowings">Money borrowed</string>
+    <string name="more_borrowings_sub">Track money you borrowed and mark it paid</string>
+    <string name="more_running_cash">Running cash in hand</string>
+    <string name="more_running_cash_sub">Carry the drawer total over to the next day</string>
+    <string name="more_set_cash">Set cash in hand</string>
+    <string name="more_set_cash_sub">Correct the running total to the cash you counted</string>
+    <string name="more_printer">Printer</string>
+    <string name="more_printer_sub">Connect a Bluetooth thermal printer</string>
+    <string name="more_support">Contact support</string>
+    <string name="more_support_sub">Chat with us on WhatsApp · %1$s</string>
+    <string name="more_support_error">Couldn\'t open WhatsApp. Please message %1$s.</string>
+    <string name="more_language">Language</string>
+    <string name="more_set_cash_desc">Enter the cash you actually have on hand right now. The running total will start from this and keep adding each day.</string>
+    <string name="more_cash_label">Cash in hand (₹)</string>
+
+    <!-- Bill screen -->
+    <string name="filter_all">All</string>
+    <string name="bill_search">Search products</string>
+    <string name="bill_voice_unavailable">Voice search isn\'t available on this device.</string>
+    <string name="bill_quick_add">Quick add item</string>
+    <string name="bill_held_count">Held bills (%1$d)</string>
+    <string name="bill_no_products_title">No products</string>
+    <string name="bill_no_products_hint">Add products in the Products tab, or use Quick add.</string>
+    <string name="bill_no_products_search">No products match \"%1$s\".</string>
+    <string name="bill_review_pay">Review &amp; pay</string>
+    <string name="held_title">Held bills</string>
+    <string name="held_desc">Bills you parked to serve another customer. Tap Resume to continue one.</string>
+    <string name="held_resume">Resume this bill</string>
+    <string name="action_discard">Discard</string>
+    <plurals name="item_count">
+        <item quantity="one">%1$d item</item>
+        <item quantity="other">%1$d items</item>
+    </plurals>
+
+    <!-- Cart / review / payment sheet -->
+    <string name="cart_review_title">Review bill</string>
+    <string name="cart_clear">Clear cart</string>
+    <string name="cart_close_cd">Close review</string>
+    <string name="cart_remove_cd">Remove %1$s</string>
+    <string name="cart_price">Price</string>
+    <string name="cart_add_item">Add item</string>
+    <string name="cart_discount">Discount</string>
+    <string name="discount_flat">₹ Flat</string>
+    <string name="discount_percent">% Percent</string>
+    <string name="cart_amount">Amount</string>
+    <string name="cart_percent">Percent</string>
+    <string name="label_subtotal">Subtotal</string>
+    <string name="label_total">Total</string>
+    <string name="cart_customer_required">Customer (required for due)</string>
+    <string name="cart_customer_optional">Customer (optional)</string>
+    <string name="label_name">Name</string>
+    <string name="cart_phone_required">Phone (required — money owed)</string>
+    <string name="cart_phone_optional">Phone (for receipts)</string>
+    <string name="cart_payment">Payment</string>
+    <string name="pay_cash">Cash</string>
+    <string name="pay_upi">UPI</string>
+    <string name="pay_split">Split</string>
+    <string name="cart_cash_part">Cash part</string>
+    <string name="cart_due">Due (owed later, optional)</string>
+    <string name="cart_hold">Hold bill — serve another customer</string>
+    <string name="cart_save">Save bill • %1$s</string>
+    <string name="cart_remarks">Remarks (optional)</string>
+    <string name="upi_not_set">UPI not set up</string>
+    <string name="upi_not_set_desc">Ask your admin to add the shop\'s UPI ID so customers can scan to pay.</string>
+    <string name="upi_scan">SCAN TO PAY</string>
+
+    <!-- Product grid / quick add / bill success -->
+    <string name="product_add_cd">Add %1$s</string>
+    <string name="quickadd_title">Quick add custom item</string>
+    <string name="quickadd_desc">Adds a one-off item to this bill (saved under \"Quick Add\").</string>
+    <string name="quickadd_name_label">Item name</string>
+    <string name="quickadd_name_hint">e.g. Ad-hoc plant, pot, soil</string>
+    <string name="price_label">Price (₹)</string>
+    <string name="quantity_label">Quantity</string>
+    <string name="quickadd_add">Add to bill</string>
+    <string name="success_saved">Bill saved</string>
+    <string name="success_already_saved">Bill already saved</string>
+    <string name="print_receipt">Print receipt</string>
+    <string name="print_again">Print again</string>
+    <string name="success_new_bill">New bill</string>
+
+    <!-- Daily summary / cash book -->
+    <string name="summary_total_sales">TOTAL SALES</string>
+    <plurals name="bills_count">
+        <item quantity="one">%1$d bill</item>
+        <item quantity="other">%1$d bills</item>
+    </plurals>
+    <string name="label_expenses">Expenses</string>
+    <string name="summary_expenses_sub">spending</string>
+    <string name="summary_net_profit">Net profit</string>
+    <string name="summary_net_sub">sales − expenses</string>
+    <string name="summary_labour_paid">Labour paid</string>
+    <string name="summary_cash_all_time">Cash in hand (all time)</string>
+    <string name="summary_cash_today">Cash in hand</string>
+    <string name="summary_net">NET</string>
+    <string name="label_sales">Sales</string>
+    <string name="summary_expense_ratio">Expense ratio</string>
+    <string name="summary_add">+ Add</string>
+    <string name="summary_no_expenses">No expenses recorded.</string>
+    <string name="summary_edit_expense_cd">Edit expense</string>
+    <string name="summary_delete_expense_cd">Delete expense</string>
+
+    <!-- Sales screen -->
+    <string name="sales_dues">Dues</string>
+    <string name="sales_reports">Reports</string>
+    <string name="sales_approve">Approve due collections</string>
+    <string name="sales_bills">Bills</string>
+    <string name="sales_no_bills">No bills on this day.</string>
+    <string name="action_loading">Loading…</string>
+    <string name="sales_load_more">Load more</string>
+    <string name="sales_view_by_staff">View by staff</string>
+    <string name="sales_all_staff">All staff</string>
+    <string name="sales_top_sellers">Top sellers today</string>
+    <string name="date_prev">Previous day</string>
+    <string name="date_next">Next day</string>
+    <string name="bill_walkin">Walk-in</string>
+    <string name="status_edited">edited</string>
+    <string name="pay_due">Due</string>
+    <string name="pay_none">—</string>
+
+    <!-- Products screen + form -->
+    <string name="products_add">Add product</string>
+    <string name="products_bulk_import">Bulk import</string>
+    <string name="products_include_inactive">Include inactive</string>
+    <string name="products_empty_title">No products yet</string>
+    <string name="products_empty_msg">Tap \"Add product\" to create your first one.</string>
+    <string name="products_delete_title">Delete product?</string>
+    <string name="products_delete_msg">Remove \"%1$s\" from your catalog? Past bills are unaffected.</string>
+    <string name="action_delete">Delete</string>
+    <string name="product_delete_cd">Delete %1$s</string>
+    <string name="cat_uncategorised">Uncategorised</string>
+    <string name="label_inactive">Inactive</string>
+    <string name="bulk_desc">Add many products at once from a spreadsheet, then attach photos by file name.</string>
+    <string name="bulk_download">Download Excel template</string>
+    <string name="action_working">Working…</string>
+    <string name="bulk_upload_sheet">Upload spreadsheet (.xlsx/.csv)</string>
+    <string name="bulk_upload_photos">Upload photos (.zip)</string>
+    <string name="form_edit_product">Edit product</string>
+    <string name="form_new_product">New product</string>
+    <string name="form_category">Category (optional)</string>
+    <string name="form_active">Active (shown in billing)</string>
+    <string name="form_photo">Photo</string>
+    <string name="form_change_photo">Change photo</string>
+    <string name="form_add_photo">Add photo</string>
+    <string name="form_photo_hint">You can add a photo after saving the product.</string>
+    <string name="action_save_changes">Save changes</string>
+
+    <!-- Common -->
+    <string name="cd_back">Back</string>
+    <string name="label_amount_rupees">Amount (₹)</string>
+
+    <!-- Expense editor -->
+    <string name="expense_edit_title">Edit expense</string>
+    <string name="expense_record_title">Record expense</string>
+    <string name="label_reason">Reason</string>
+    <string name="expense_reason_tea">Tea &amp; Snacks</string>
+    <string name="expense_reason_soil">Soil &amp; Pots</string>
+    <string name="expense_reason_electricity">Electricity</string>
+    <string name="expense_reason_labor">Labor Wages</string>
+    <string name="expense_reason_transport">Transport</string>
+    <string name="expense_reason_others">Others</string>
+    <string name="expense_paid_from">Paid from</string>
+    <string name="expense_save">Save expense</string>
+
+    <!-- Dues + settle -->
+    <string name="dues_empty_title">No dues</string>
+    <string name="dues_empty_msg">Everyone has paid up. Bills with money owed will appear here.</string>
+    <string name="dues_total_outstanding">Total outstanding</string>
+    <plurals name="dues_customers_count">
+        <item quantity="one">%1$d customer yet to pay — shared across all staff.</item>
+        <item quantity="other">%1$d customers yet to pay — shared across all staff.</item>
+    </plurals>
+    <string name="dues_search">Search by name or phone</string>
+    <string name="dues_no_match">No dues match \"%1$s\".</string>
+    <string name="dues_priority">Priority — overdue 30+ days</string>
+    <string name="dues_other">Other dues</string>
+    <string name="settle_title">Collect due</string>
+    <string name="settle_amount_owed">Amount owed</string>
+    <string name="settle_collecting_now">Collecting now (₹)</string>
+    <string name="settle_too_much">Can\'t be more than the %1$s owed.</string>
+    <string name="settle_how_paid">How was it paid?</string>
+    <string name="settle_cash_part">Cash part (₹)</string>
+    <string name="settle_upi_part">UPI part: %1$s</string>
+    <string name="settle_needs_approval">This will be sent to your manager to approve before the due is closed.</string>
+    <string name="settle_collect">Collect %1$s</string>
+    <string name="settle_send_approval">Send for approval</string>
+    <plurals name="due_overdue_days">
+        <item quantity="one">Overdue %1$d day</item>
+        <item quantity="other">Overdue %1$d days</item>
+    </plurals>
+    <string name="due_time_bill">%1$s • bill %2$s</string>
+    <string name="due_owes">Owes</string>
+    <string name="due_view_bill">View bill</string>
+    <string name="due_waiting_approval">Waiting for manager approval</string>
+
+    <!-- Approvals -->
+    <string name="approvals_title">Approve collections</string>
+    <string name="approvals_empty_title">Nothing to approve</string>
+    <string name="approvals_empty_msg">When a salesperson collects a due, their request will appear here for you to accept.</string>
+    <plurals name="approvals_waiting">
+        <item quantity="one">%1$d collection waiting. Approve once you\'ve confirmed the money arrived.</item>
+        <item quantity="other">%1$d collections waiting. Approve once you\'ve confirmed the money arrived.</item>
+    </plurals>
+    <string name="approvals_collecting">Collecting</string>
+    <string name="approvals_cash_upi">Cash %1$s  •  UPI %2$s</string>
+    <string name="action_reject">Reject</string>
+    <string name="action_approve">Approve</string>
+
+    <!-- Bill detail -->
+    <string name="bd_delete_title">Delete this bill?</string>
+    <string name="bd_delete_msg">This permanently removes the bill and its items. This can\'t be undone.</string>
+    <string name="cd_edit_bill">Edit bill</string>
+    <string name="cd_delete_bill">Delete bill</string>
+    <string name="bd_receipt">Receipt</string>
+    <string name="bd_customer">Customer: %1$s</string>
+    <string name="bd_customer_phone">Customer: %1$s (%2$s)</string>
+    <string name="bd_edited">Edited</string>
+    <string name="bd_qty_price">%1$s × %2$s</string>
+    <string name="label_discount">Discount</string>
+    <string name="bd_payment">Payment</string>
+    <string name="bd_remarks">Remarks: %1$s</string>
+
+    <!-- Bill edit -->
+    <string name="be_items">Items</string>
+    <string name="be_add_plant">Add plant</string>
+    <string name="be_add_plant_title">Add a plant</string>
+    <string name="be_save_changes">Save changes • %1$s</string>
+
+    <!-- Detailed report -->
+    <string name="report_title">Detailed report</string>
+    <string name="report_generate">Generate report</string>
+    <string name="report_period">Report period</string>
+    <string name="period_daily">Daily</string>
+    <string name="period_weekly">Weekly</string>
+    <string name="period_monthly">Monthly</string>
+    <string name="period_custom">Custom</string>
+    <string name="report_from">From</string>
+    <string name="report_to">To</string>
+    <string name="cd_earlier">Earlier</string>
+    <string name="cd_later">Later</string>
+    <string name="report_total_revenue">Total sales revenue</string>
+    <string name="report_bills">Bills</string>
+    <string name="report_avg_bill">Avg bill</string>
+    <string name="report_total_expenses">Total expenses</string>
+    <string name="report_net_income">Net income</string>
+    <string name="report_sales_trend">Sales trend</string>
+    <string name="report_by_category">Sales by category</string>
+    <plurals name="report_qty_sold">
+        <item quantity="one">%1$d sold</item>
+        <item quantity="other">%1$d sold</item>
+    </plurals>
+    <string name="report_top_products">Top products</string>
+    <string name="report_expenses_log">Expenses log</string>
+    <string name="report_download">Download Excel report</string>
+
+    <!-- Customers -->
+    <string name="customers_search">Search name or phone</string>
+    <string name="customers_empty_title">No customers yet</string>
+    <string name="customers_empty_msg">Customers appear here after you add their name on a bill.</string>
+    <string name="customers_no_match">No customer matches \"%1$s\".</string>
+    <string name="customers_no_phone">No phone</string>
+    <string name="cust_total_spent">Total spent</string>
+    <string name="cust_on_credit">On credit</string>
+    <string name="cust_purchase_history">Purchase history</string>
+    <string name="cust_no_bills">No bills yet.</string>
+    <string name="cust_bill_line">%1$s • %2$s</string>
+
+    <!-- Shared components -->
+    <string name="action_ok">OK</string>
+    <string name="cd_decrease_qty">Decrease quantity</string>
+    <string name="cd_increase_qty">Increase quantity</string>
+    <string name="del_title">Delete account?</string>
+    <string name="del_confirm">Delete account</string>
+    <string name="del_type_confirm">Type the email to confirm:</string>
+    <string name="del_enter_email">Enter email</string>
+    <string name="cd_hide_password">Hide password</string>
+    <string name="cd_show_password">Show password</string>
+
+    <!-- Unsupported role (admin) -->
+    <string name="unsupported_title">Use the web app</string>
+    <string name="unsupported_msg">This app is for shop owners and salespeople. Admin tools are available on the PlantBill web dashboard.</string>
+
+    <!-- Labour -->
+    <string name="action_add">Add</string>
+    <string name="lab_record_payment">Record payment</string>
+    <string name="lab_attendance">Attendance</string>
+    <string name="lab_workers">Workers</string>
+    <string name="lab_search">Search workers</string>
+    <string name="lab_no_workers">No workers yet. Tap Add to set up your first worker.</string>
+    <string name="lab_recent_payments">Recent payments</string>
+    <string name="lab_no_payments">No payments recorded yet.</string>
+    <string name="lab_per_day">%1$s/day</string>
+    <string name="lab_balance_to_pay_amt">Balance to pay %1$s</string>
+    <string name="lab_paid_ahead_amt">Paid ahead %1$s</string>
+    <string name="cd_edit_worker">Edit worker</string>
+    <string name="cd_remove_worker">Remove worker</string>
+    <string name="lab_tag_advance">advance</string>
+    <string name="lab_tag_due_cleared">due cleared</string>
+    <string name="lab_days_count">%1$s day(s)</string>
+    <string name="cd_edit_payment">Edit payment</string>
+    <string name="cd_delete_payment">Delete payment</string>
+    <string name="lab_add_worker">Add worker</string>
+    <string name="lab_phone">Phone number</string>
+    <string name="lab_aadhaar">Aadhaar number (optional)</string>
+    <string name="lab_wage_per_day">Wage per day (₹)</string>
+    <string name="lab_gender">Gender</string>
+    <string name="lab_gender_male">Male</string>
+    <string name="lab_gender_female">Female</string>
+    <string name="lab_give_advance">Give advance</string>
+    <string name="lab_worker">Worker</string>
+    <string name="lab_wage_payment">Wage payment</string>
+    <string name="lab_advance">Advance</string>
+    <string name="lab_wage_per_day_label">Wage per day: %1$s</string>
+    <string name="lab_num_days">Number of days</string>
+    <string name="lab_advance_amount">Advance amount (₹)</string>
+    <string name="lab_payment_method">Payment method</string>
+    <string name="lab_note">Note (optional)</string>
+    <string name="lab_aadhaar_val">Aadhaar %1$s</string>
+    <string name="lab_days_worked">Days worked</string>
+    <string name="lab_earned">Earned (%1$s/day)</string>
+    <string name="lab_total_paid">Total paid</string>
+    <string name="lab_paid_ahead_label">Paid ahead</string>
+    <string name="lab_balance_to_pay_label">Balance to pay</string>
+    <string name="lab_payment_history">Payment history</string>
+    <string name="lab_no_payments_yet">No payments yet.</string>
+    <string name="lab_today_attendance">Today\'s attendance</string>
+    <string name="lab_add_worker_first">Add a worker first.</string>
+    <string name="lab_days_worked_count">%1$s day(s) worked</string>
+    <string name="att_present">Present</string>
+    <string name="att_half_day">Half-day</string>
+    <string name="att_absent">Absent</string>
+
+    <!-- Money borrowed -->
+    <string name="borrow_still_to_pay">Still to pay back</string>
+    <string name="borrow_filter_open">To pay</string>
+    <string name="borrow_filter_paid">Paid</string>
+    <string name="borrow_add">Add borrowing</string>
+    <string name="borrow_empty_paid">No paid-off borrowings yet.</string>
+    <string name="borrow_empty_open">Nothing borrowed. Tap Add to record a borrowing.</string>
+    <string name="borrow_delete_title">Delete this borrowing?</string>
+    <string name="borrow_delete_msg">Remove the %1$s borrowed from %2$s? This can\'t be undone.</string>
+    <string name="borrow_paid">Paid</string>
+    <string name="borrow_partly_paid">Partly paid</string>
+    <string name="borrow_received_by">received by %1$s</string>
+    <string name="borrow_paid_by">paid by %1$s</string>
+    <string name="borrow_left">%1$s left</string>
+    <string name="borrow_pay_back">Pay back</string>
+    <string name="cd_delete_borrowing">Delete borrowing</string>
+    <string name="borrow_from_name">Borrowed from (name)</string>
+    <string name="borrow_phone">Phone number (optional)</string>
+    <string name="borrow_save">Save borrowing</string>
+    <string name="borrow_pay_title">Pay back — %1$s</string>
+    <string name="borrow_still_owed">Still owed</string>
+    <string name="borrow_paying_now">Paying back now (₹)</string>
+    <string name="borrow_how_paid">How did you pay it back?</string>
+    <string name="borrow_pay_amount_btn">Pay back %1$s</string>
+    <string name="borrow_method">Method</string>
+
+    <!-- Printer -->
+    <string name="prn_default">Default printer: %1$s</string>
+    <string name="prn_set_not_paired">Printer set (not paired on this phone)</string>
+    <string name="prn_none_chosen">No printer chosen</string>
+    <string name="prn_shared_desc">The printer connects only while a receipt prints, then frees up — so several salespeople can share one printer.</string>
+    <string name="prn_printing">Printing…</string>
+    <string name="prn_test_print">Test print</string>
+    <string name="prn_no_bluetooth">This device has no Bluetooth.</string>
+    <string name="prn_allow_bluetooth">Allow Bluetooth</string>
+    <string name="prn_turn_on_bluetooth">Please turn on Bluetooth, then tap Refresh.</string>
+    <string name="prn_paired">Paired printers</string>
+    <string name="prn_no_paired">No paired printers found. Pair your thermal printer in Android Bluetooth settings, then tap Refresh.</string>
+    <string name="prn_refresh">Refresh</string>
+    <string name="prn_paper">Paper</string>
+    <string name="prn_58mm">58 mm</string>
+    <string name="prn_80mm">80 mm</string>
+    <string name="prn_auto_cut">Auto-cut paper</string>
+    <string name="cd_connected">Connected</string>
+
+    <!-- Shop settings -->
+    <string name="shop_receipts_note">These appear at the top of printed receipts. To change them, contact your PlantBill admin.</string>
+    <string name="shop_business_name">Business name</string>
+    <string name="shop_address">Address</string>
+    <string name="shop_phone">Phone</string>
+    <string name="shop_upi">UPI ID</string>
+
+    <!-- Staff management -->
+    <string name="staff_add">Add staff</string>
+    <string name="staff_empty_title">No staff yet</string>
+    <string name="staff_empty_msg">Add a salesperson so they can bill at the counter.</string>
+    <string name="staff_add_salesperson">Add salesperson</string>
+    <string name="staff_login_email">Login email</string>
+    <string name="staff_password">Password (at least 8 characters)</string>
+    <string name="staff_set_own_or">Set your own, or</string>
+    <string name="staff_generate_pw">Generate strong password</string>
+    <string name="staff_create_account">Create account</string>
+    <string name="staff_reset_password">Reset password</string>
+    <string name="staff_new_password">New password (at least 8 characters)</string>
+    <string name="staff_password_reset_title">Password reset</string>
+    <string name="staff_account_created">Account created</string>
+    <string name="staff_share_note">Share these credentials with your staff now — the password is shown only once.</string>
+    <string name="staff_email_line">Email: %1$s</string>
+    <string name="staff_password_line">Password: %1$s</string>
+    <string name="staff_copy_close">Copy &amp; close</string>
+    <string name="staff_close">Close</string>
+    <string name="staff_remove_title">Remove salesperson?</string>
+    <string name="staff_remove_body">This permanently deletes %1$s. Their past bills are kept.</string>
+    <string name="staff_active">Active</string>
+    <string name="staff_deactivate">Deactivate</string>
+    <string name="staff_activate">Activate</string>
+    <string name="staff_remove_salesperson">Remove salesperson</string>
+
+    <!-- Owner (multi-shop) shell -->
+    <string name="own_your_business">Your business</string>
+    <string name="own_today">Today</string>
+    <string name="own_week">Week</string>
+    <string name="own_month">Month</string>
+    <string name="own_sales_by_shop">Sales by shop</string>
+    <plurals name="own_shop_bills">
+        <item quantity="one">%1$d bill</item>
+        <item quantity="other">%1$d bills</item>
+    </plurals>
+    <string name="own_payment_mix">Payment mix</string>
+    <string name="own_total_sales">Total sales</string>
+    <string name="own_net">Net</string>
+    <string name="own_shops_count">Shops (%1$d)</string>
+    <string name="own_no_shops">No shops linked yet. Ask the admin to assign your shops.</string>
+    <string name="own_top_sellers">Top sellers</string>
+    <string name="own_no_sales_period">No sales in this period.</string>
+    <string name="own_staff_line">%1$s • %2$s • %3$s</string>
+    <string name="own_shop_line">%1$s • Net %2$s • Due %3$s</string>
+    <string name="own_shop_fallback">Shop</string>
+    <string name="own_product_qty">%1$s ×%2$s</string>
+    <string name="own_loading_bills">Loading bills…</string>
+    <string name="own_no_bills_period">No bills in this period.</string>
+    <string name="own_no_workers">No workers yet.</string>
+    <string name="own_staff">Staff</string>
+    <string name="own_cih_all">Cash in hand • all time</string>
+    <string name="own_cih_day">Cash in hand • this day</string>
+    <string name="own_full">Full</string>
+    <string name="own_per_day_chip">Per day</string>
+    <string name="own_walkin">Walk-in customer</string>
+    <string name="own_by">%1$s • by %2$s</string>
+    <string name="own_due">Due %1$s</string>
+    <string name="own_unknown">Unknown</string>
+    <string name="own_bill_details">Bill details</string>
+    <string name="own_no_items">No items.</string>
+    <string name="own_price_qty">%1$s × %2$s</string>
+    <string name="own_staff_role_line">%1$s • %2$s</string>
+    <string name="own_remove">Remove</string>
+    <string name="own_password_min">Password (min 8)</string>
+    <string name="own_role_manager">Manager</string>
+    <string name="own_role_salesperson">Salesperson</string>
+    <string name="own_role_owner">Owner</string>
+
+    <!-- Language picker. Native names are identical in every locale, so they are
+         only defined here (other locales fall back to these). -->
+    <string name="language_dialog_title">Choose language</string>
+    <string name="lang_en">English</string>
+    <string name="lang_ml">മലയാളം</string>
+    <string name="lang_hi">हिन्दी</string>
+    <string name="lang_ta">தமிழ்</string>
+    <string name="lang_kn">ಕನ್ನಡ</string>
+
+    <!-- ViewModel-resident runtime messages (Toasts / snackbars / inline errors).
+         Resolved in the UI layer via UiText so they follow the chosen language. -->
+    <string name="crash_restart_toast">The app hit a problem and restarted. We\'ve been notified.</string>
+    <!-- Generic reusable -->
+    <string name="vm_saved">Saved.</string>
+    <string name="vm_deleted">Deleted.</string>
+    <string name="vm_removed">Removed %1$s</string>
+    <string name="vm_saved_downloads">Saved to Downloads: %1$s</string>
+    <string name="err_generic">Something went wrong. Please try again.</string>
+    <string name="err_network">Can\'t reach the server. Check your internet connection.</string>
+    <!-- Borrowings -->
+    <string name="vm_borrow_added">Borrowing added.</string>
+    <string name="vm_borrow_repaid">Repayment recorded.</string>
+    <!-- Labour -->
+    <string name="vm_worker_removed">Worker removed.</string>
+    <string name="vm_add_worker_first">Add a worker first.</string>
+    <string name="vm_payment_recorded">Payment recorded.</string>
+    <string name="vm_payment_deleted">Payment deleted.</string>
+    <!-- Printer -->
+    <string name="vm_bt_permission">Bluetooth permission is needed to use a printer.</string>
+    <string name="vm_printer_ready">Ready to print on %1$s.</string>
+    <string name="vm_test_printed">Test page printed.</string>
+    <!-- Products -->
+    <string name="vm_product_added">Product added.</string>
+    <string name="vm_product_deleted">Deleted %1$s.</string>
+    <string name="err_add_item">Couldn\'t add the item.</string>
+    <!-- Owner / staff -->
+    <string name="vm_staff_added">Staff added.</string>
+    <string name="vm_deactivated">Deactivated %1$s</string>
+    <string name="vm_activated">Activated %1$s</string>
+    <!-- Billing -->
+    <string name="vm_add_products_voice">Add products first, then use voice.</string>
+    <string name="vm_added_to_cart">Added %1$s to cart</string>
+    <string name="vm_added">Added %1$s</string>
+    <string name="vm_bill_held">Bill held. Open “Held bills” to continue it later.</string>
+    <string name="vm_walkin_customer">Walk-in customer</string>
+    <string name="vm_due_phone_required">Enter the customer\'s phone number — it\'s required when there\'s a due (money owed).</string>
+    <string name="err_save_bill">Couldn\'t save the bill. Please try again.</string>
+    <!-- Print phases -->
+    <string name="vm_print_connecting">Connecting to printer…</string>
+    <string name="vm_print_printing">Printing…</string>
+    <string name="vm_print_printed">Printed.</string>
+    <string name="vm_print_failed">Printing failed.</string>
+    <!-- Login -->
+    <string name="err_signin">Couldn\'t sign in. Please try again.</string>
+    <!-- Cash in hand -->
+    <string name="vm_cash_set">Cash in hand set to %1$s.</string>
+    <string name="err_cash_set">Couldn\'t set cash in hand.</string>
+    <!-- Approvals -->
+    <string name="vm_approved">Approved — %1$s collected.</string>
+    <string name="vm_rejected">Rejected.</string>
+    <string name="err_update_request">Couldn\'t update the request.</string>
+    <!-- Sales -->
+    <string name="vm_bill_deleted">Bill deleted.</string>
+    <string name="vm_all_staff">All staff</string>
+    <!-- Bill edit -->
+    <string name="vm_due_no_phone">This bill has a due but no customer phone on record. Settle the due to 0 before saving.</string>
+    <string name="err_save_changes">Couldn\'t save the changes.</string>
+    <!-- Shop settings -->
+    <string name="vm_shop_saved">Saved. These appear on printed receipts.</string>
+    <!-- Report -->
+    <string name="err_report_generate">Couldn\'t generate the report.</string>
+    <string name="err_report_download">Couldn\'t download the report.</string>
+    <!-- Dues -->
+    <string name="vm_dues_max">Enter an amount up to %1$s.</string>
+    <string name="vm_dues_partial">Collected %1$s — %2$s still owed.</string>
+    <string name="vm_dues_collected">Collected — %1$s.</string>
+    <string name="vm_dues_sent_approval">Sent to the manager for approval.</string>
+    <string name="err_collection">Couldn\'t record the collection.</string>
+    <!-- Customer detail -->
+    <string name="vm_customer_default">Customer</string>
+    <!-- Notifications -->
+    <string name="notif_title">Notifications</string>
+    <string name="cd_notifications">Notifications</string>
+    <string name="notif_empty_title">No notifications yet</string>
+    <string name="notif_empty_message">Updates and announcements will appear here.</string>
+    <string name="notif_action">Open</string>
 </resources>

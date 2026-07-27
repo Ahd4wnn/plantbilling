@@ -27,8 +27,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.plantora.billing.R
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.plantora.billing.domain.PendingSettlement
 import com.plantora.billing.domain.formatBillTime
@@ -50,16 +53,17 @@ fun ApprovalsScreen(
     val ui by viewModel.ui.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
 
-    LaunchedEffect(ui.message) { ui.message?.let { snackbar.showSnackbar(it); viewModel.dismissMessage() } }
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    LaunchedEffect(ui.message) { ui.message?.let { snackbar.showSnackbar(it.resolve(ctx)); viewModel.dismissMessage() } }
 
     Scaffold(
         contentWindowInsets = androidx.compose.foundation.layout.WindowInsets(0, 0, 0, 0),
         snackbarHost = { SnackbarHost(snackbar) },
         topBar = {
             TopAppBar(
-                title = { Text("Approve collections") },
+                title = { Text(stringResource(R.string.approvals_title)) },
                 navigationIcon = {
-                    IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Back") }
+                    IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = stringResource(R.string.cd_back)) }
                 },
             )
         },
@@ -69,8 +73,8 @@ fun ApprovalsScreen(
             ui.error != null -> ErrorState(ui.error!!, onRetry = viewModel::load, icon = Icons.Rounded.TaskAlt, modifier = Modifier.padding(padding))
             ui.items.isEmpty() -> EmptyState(
                 icon = Icons.Rounded.TaskAlt,
-                title = "Nothing to approve",
-                message = "When a salesperson collects a due, their request will appear here for you to accept.",
+                title = stringResource(R.string.approvals_empty_title),
+                message = stringResource(R.string.approvals_empty_msg),
                 modifier = Modifier.padding(padding),
             )
             else -> LazyColumn(
@@ -80,7 +84,7 @@ fun ApprovalsScreen(
             ) {
                 item {
                     Text(
-                        "${ui.items.size} collection(s) waiting. Approve once you've confirmed the money arrived.",
+                        pluralStringResource(R.plurals.approvals_waiting, ui.items.size, ui.items.size),
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -109,7 +113,7 @@ private fun ApprovalRow(
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text(
-                    item.customerName ?: item.customerPhone ?: "Walk-in",
+                    item.customerName ?: item.customerPhone ?: stringResource(R.string.bill_walkin),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
                 )
@@ -120,25 +124,25 @@ private fun ApprovalRow(
                 )
             }
             Column(horizontalAlignment = Alignment.End) {
-                Text("Collecting", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(stringResource(R.string.approvals_collecting), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 MoneyText(item.amount, style = MaterialTheme.typography.titleMedium)
             }
         }
         // The split, so the manager can verify how it came in.
         Text(
-            "Cash ${item.cashAmount.format()}  •  UPI ${item.upiAmount.format()}",
+            stringResource(R.string.approvals_cash_upi, item.cashAmount.format(), item.upiAmount.format()),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(top = Dimens.xs),
         )
         Row(Modifier.fillMaxWidth().padding(top = Dimens.sm), horizontalArrangement = Arrangement.spacedBy(Dimens.sm)) {
             SecondaryButton(
-                text = "Reject",
+                text = stringResource(R.string.action_reject),
                 onClick = onReject,
                 modifier = Modifier.weight(1f),
             )
             PrimaryButton(
-                text = "Approve",
+                text = stringResource(R.string.action_approve),
                 onClick = onApprove,
                 loading = acting,
                 modifier = Modifier.weight(1f),

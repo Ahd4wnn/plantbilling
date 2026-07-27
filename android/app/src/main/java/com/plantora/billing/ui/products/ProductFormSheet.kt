@@ -28,9 +28,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import com.plantora.billing.R
 import com.plantora.billing.ui.components.PlantoraTextField
 import com.plantora.billing.ui.components.PrimaryButton
 import com.plantora.billing.ui.components.SecondaryButton
@@ -64,28 +66,28 @@ fun ProductFormSheet(
             .padding(bottom = Dimens.xl),
     ) {
         Text(
-            if (form.isEdit) "Edit product" else "New product",
+            if (form.isEdit) stringResource(R.string.form_edit_product) else stringResource(R.string.form_new_product),
             style = MaterialTheme.typography.headlineMedium,
         )
         Spacer(Modifier.height(Dimens.lg))
 
-        PlantoraTextField(form.name, { v -> onUpdate { it.copy(name = v) } }, label = "Name")
+        PlantoraTextField(form.name, { v -> onUpdate { it.copy(name = v) } }, label = stringResource(R.string.label_name))
         Spacer(Modifier.height(Dimens.md))
         PlantoraTextField(
             form.priceInput, { v -> onUpdate { it.copy(priceInput = v) } },
-            label = "Price (₹)", keyboardType = KeyboardType.Decimal,
+            label = stringResource(R.string.price_label), keyboardType = KeyboardType.Decimal,
         )
         Spacer(Modifier.height(Dimens.md))
-        PlantoraTextField(form.category, { v -> onUpdate { it.copy(category = v) } }, label = "Category (optional)")
+        PlantoraTextField(form.category, { v -> onUpdate { it.copy(category = v) } }, label = stringResource(R.string.form_category))
 
         if (form.isEdit) {
             Spacer(Modifier.height(Dimens.lg))
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Text("Active (shown in billing)", Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
+                Text(stringResource(R.string.form_active), Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
                 Switch(checked = form.isActive, onCheckedChange = { c -> onUpdate { it.copy(isActive = c) } })
             }
 
-            SectionHeader("Photo")
+            SectionHeader(stringResource(R.string.form_photo))
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Dimens.md)) {
                 Surface(
                     shape = MaterialTheme.shapes.medium,
@@ -106,7 +108,7 @@ fun ProductFormSheet(
                     }
                 }
                 SecondaryButton(
-                    text = if (form.photoUrl != null) "Change photo" else "Add photo",
+                    text = if (form.photoUrl != null) stringResource(R.string.form_change_photo) else stringResource(R.string.form_add_photo),
                     onClick = { picker.launch("image/*") },
                     leadingIcon = Icons.Rounded.AddAPhoto,
                 )
@@ -114,7 +116,7 @@ fun ProductFormSheet(
         } else {
             Spacer(Modifier.height(Dimens.sm))
             Text(
-                "You can add a photo after saving the product.",
+                stringResource(R.string.form_photo_hint),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -127,7 +129,7 @@ fun ProductFormSheet(
 
         Spacer(Modifier.height(Dimens.xl))
         PrimaryButton(
-            text = if (form.isEdit) "Save changes" else "Add product",
+            text = if (form.isEdit) stringResource(R.string.action_save_changes) else stringResource(R.string.products_add),
             onClick = onSave,
             enabled = form.canSave,
             loading = form.saving,

@@ -28,6 +28,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -40,6 +41,7 @@ import com.plantora.billing.ui.theme.Dimens
 @Composable
 fun LoginScreen(viewModel: LoginViewModel = hiltViewModel()) {
     val ui by viewModel.ui.collectAsStateWithLifecycle()
+    val loginCtx = androidx.compose.ui.platform.LocalContext.current
 
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Column(
@@ -81,7 +83,7 @@ fun LoginScreen(viewModel: LoginViewModel = hiltViewModel()) {
                 color = MaterialTheme.colorScheme.onBackground,
             )
             Text(
-                "Sign in to your shop",
+                stringResource(com.plantora.billing.R.string.login_subtitle),
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
@@ -92,7 +94,7 @@ fun LoginScreen(viewModel: LoginViewModel = hiltViewModel()) {
             PlantoraTextField(
                 value = ui.email,
                 onValueChange = viewModel::onEmailChange,
-                label = "Email",
+                label = stringResource(com.plantora.billing.R.string.login_email),
                 placeholder = "you@example.com",
                 keyboardType = KeyboardType.Email,
                 enabled = !ui.submitting,
@@ -101,16 +103,16 @@ fun LoginScreen(viewModel: LoginViewModel = hiltViewModel()) {
             PlantoraTextField(
                 value = ui.password,
                 onValueChange = viewModel::onPasswordChange,
-                label = "Password",
+                label = stringResource(com.plantora.billing.R.string.login_password),
                 isPassword = true,
                 enabled = !ui.submitting,
-                errorText = ui.error,
+                errorText = ui.error?.resolve(loginCtx),
             )
 
             Spacer(Modifier.height(Dimens.xl))
 
             PrimaryButton(
-                text = "Sign in",
+                text = stringResource(com.plantora.billing.R.string.login_submit),
                 onClick = viewModel::submit,
                 enabled = ui.canSubmit,
                 loading = ui.submitting,
@@ -119,7 +121,7 @@ fun LoginScreen(viewModel: LoginViewModel = hiltViewModel()) {
 
             Spacer(Modifier.height(Dimens.xl))
             Text(
-                "Accounts are created by your PlantBill admin.",
+                stringResource(com.plantora.billing.R.string.login_footer),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,

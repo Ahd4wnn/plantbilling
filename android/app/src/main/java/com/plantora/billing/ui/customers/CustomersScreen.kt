@@ -25,11 +25,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.plantora.billing.R
 import com.plantora.billing.domain.Customer
 import com.plantora.billing.ui.components.EmptyState
 import com.plantora.billing.ui.components.ErrorState
@@ -48,7 +50,7 @@ fun CustomersScreen(
         OutlinedTextField(
             value = ui.query,
             onValueChange = viewModel::onQueryChange,
-            placeholder = { Text("Search name or phone") },
+            placeholder = { Text(stringResource(R.string.customers_search)) },
             leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null) },
             singleLine = true,
             shape = MaterialTheme.shapes.medium,
@@ -60,10 +62,10 @@ fun CustomersScreen(
             ui.error != null -> ErrorState(ui.error!!, onRetry = viewModel::load, icon = Icons.Rounded.Group)
             ui.visible.isEmpty() -> EmptyState(
                 icon = Icons.Rounded.Group,
-                title = "No customers yet",
+                title = stringResource(R.string.customers_empty_title),
                 message = if (ui.query.isBlank())
-                    "Customers appear here after you add their name on a bill."
-                else "No customer matches \"${ui.query}\".",
+                    stringResource(R.string.customers_empty_msg)
+                else stringResource(R.string.customers_no_match, ui.query),
             )
             else -> LazyColumn(
                 contentPadding = PaddingValues(Dimens.screenPadding),
@@ -99,7 +101,7 @@ private fun CustomerRow(customer: Customer, onClick: () -> Unit) {
                     overflow = TextOverflow.Ellipsis,
                 )
                 Text(
-                    customer.phone ?: "No phone",
+                    customer.phone ?: stringResource(R.string.customers_no_phone),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

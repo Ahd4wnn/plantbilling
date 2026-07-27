@@ -1,0 +1,547 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Bottom navigation -->
+    <string name="nav_bill">ബിൽ</string>
+    <string name="nav_products">സാധനങ്ങൾ</string>
+    <string name="nav_sales">വിൽപന</string>
+    <string name="nav_customers">ഉപഭോക്താക്കൾ</string>
+    <string name="nav_more">കൂടുതൽ</string>
+
+    <!-- Common actions -->
+    <string name="action_save">സേവ് ചെയ്യുക</string>
+    <string name="action_saving">സേവ് ചെയ്യുന്നു…</string>
+    <string name="action_cancel">റദ്ദാക്കുക</string>
+    <string name="action_logout">ലോഗ് ഔട്ട്</string>
+    <string name="action_try_again">വീണ്ടും ശ്രമിക്കുക</string>
+
+    <!-- Login -->
+    <string name="login_subtitle">നിങ്ങളുടെ കടയിലേക്ക് സൈൻ ഇൻ ചെയ്യുക</string>
+    <string name="login_email">ഇമെയിൽ</string>
+    <string name="login_password">പാസ്‌വേഡ്</string>
+    <string name="login_submit">സൈൻ ഇൻ</string>
+    <string name="login_footer">അക്കൗണ്ടുകൾ നിങ്ങളുടെ PlantBill അഡ്മിൻ ആണ് സൃഷ്ടിക്കുന്നത്.</string>
+
+    <!-- More / Settings -->
+    <string name="more_role">റോൾ: %1$s</string>
+    <string name="more_shop_details">കടയുടെ വിവരങ്ങൾ</string>
+    <string name="more_shop_details_sub">പേര്, വിലാസം, UPI — ബില്ലിൽ കാണിക്കും</string>
+    <string name="more_salespeople">വിൽപനക്കാർ</string>
+    <string name="more_salespeople_sub">കൗണ്ടർ ജീവനക്കാരെ ചേർക്കുകയും കൈകാര്യം ചെയ്യുകയും ചെയ്യുക</string>
+    <string name="more_labour">തൊഴിലാളികൾ</string>
+    <string name="more_labour_sub_manager">തൊഴിലാളികളെ കൈകാര്യം ചെയ്യുകയും പണം നൽകുന്നത് രേഖപ്പെടുത്തുകയും ചെയ്യുക</string>
+    <string name="more_labour_sub_staff">തൊഴിലാളികൾക്ക് നൽകിയ പണം രേഖപ്പെടുത്തുക</string>
+    <string name="more_borrowings">കടം വാങ്ങിയ പണം</string>
+    <string name="more_borrowings_sub">നിങ്ങൾ വാങ്ങിയ കടം രേഖപ്പെടുത്തി അടച്ചതായി അടയാളപ്പെടുത്തുക</string>
+    <string name="more_running_cash">കയ്യിലുള്ള പണം</string>
+    <string name="more_running_cash_sub">ഡ്രോയറിലെ തുക അടുത്ത ദിവസത്തേക്ക് കൊണ്ടുപോകുക</string>
+    <string name="more_set_cash">കയ്യിലുള്ള പണം സജ്ജമാക്കുക</string>
+    <string name="more_set_cash_sub">എണ്ണിയ പണത്തിന് അനുസരിച്ച് തുക ശരിയാക്കുക</string>
+    <string name="more_printer">പ്രിന്റർ</string>
+    <string name="more_printer_sub">ബ്ലൂടൂത്ത് തെർമൽ പ്രിന്റർ ബന്ധിപ്പിക്കുക</string>
+    <string name="more_support">സഹായം ബന്ധപ്പെടുക</string>
+    <string name="more_support_sub">വാട്‌സ്ആപ്പിൽ ഞങ്ങളോട് ചാറ്റ് ചെയ്യുക · %1$s</string>
+    <string name="more_support_error">വാട്‌സ്ആപ്പ് തുറക്കാനായില്ല. ദയവായി %1$s എന്ന നമ്പറിൽ സന്ദേശം അയയ്ക്കുക.</string>
+    <string name="more_language">ഭാഷ</string>
+    <string name="more_set_cash_desc">ഇപ്പോൾ കയ്യിൽ യഥാർത്ഥത്തിൽ ഉള്ള പണം നൽകുക. നടപ്പു തുക ഇതിൽ നിന്ന് തുടങ്ങി ഓരോ ദിവസവും കൂട്ടിച്ചേർക്കും.</string>
+    <string name="more_cash_label">കയ്യിലുള്ള പണം (₹)</string>
+
+    <!-- Bill screen -->
+    <string name="filter_all">എല്ലാം</string>
+    <string name="bill_search">സാധനങ്ങൾ തിരയുക</string>
+    <string name="bill_voice_unavailable">ഈ ഉപകരണത്തിൽ വോയ്‌സ് തിരയൽ ലഭ്യമല്ല.</string>
+    <string name="bill_quick_add">വേഗത്തിൽ സാധനം ചേർക്കുക</string>
+    <string name="bill_held_count">മാറ്റിവെച്ച ബില്ലുകൾ (%1$d)</string>
+    <string name="bill_no_products_title">സാധനങ്ങളൊന്നുമില്ല</string>
+    <string name="bill_no_products_hint">സാധനങ്ങൾ ടാബിൽ സാധനങ്ങൾ ചേർക്കുക, അല്ലെങ്കിൽ വേഗത്തിൽ ചേർക്കൽ ഉപയോഗിക്കുക.</string>
+    <string name="bill_no_products_search">\"%1$s\" എന്നതിന് സാധനങ്ങളൊന്നും കണ്ടെത്തിയില്ല.</string>
+    <string name="bill_review_pay">പരിശോധിച്ച് പണം അടയ്ക്കുക</string>
+    <string name="held_title">മാറ്റിവെച്ച ബില്ലുകൾ</string>
+    <string name="held_desc">മറ്റൊരു ഉപഭോക്താവിനെ സഹായിക്കാൻ നിങ്ങൾ മാറ്റിവെച്ച ബില്ലുകൾ. തുടരാൻ \'തുടരുക\' അമർത്തുക.</string>
+    <string name="held_resume">ഈ ബിൽ തുടരുക</string>
+    <string name="action_discard">ഒഴിവാക്കുക</string>
+    <plurals name="item_count">
+        <item quantity="one">%1$d സാധനം</item>
+        <item quantity="other">%1$d സാധനങ്ങൾ</item>
+    </plurals>
+
+    <!-- Cart / review / payment sheet -->
+    <string name="cart_review_title">ബിൽ പരിശോധിക്കുക</string>
+    <string name="cart_clear">കാർട്ട് മായ്ക്കുക</string>
+    <string name="cart_close_cd">പരിശോധന അടയ്ക്കുക</string>
+    <string name="cart_remove_cd">%1$s നീക്കം ചെയ്യുക</string>
+    <string name="cart_price">വില</string>
+    <string name="cart_add_item">സാധനം ചേർക്കുക</string>
+    <string name="cart_discount">കിഴിവ്</string>
+    <string name="discount_flat">₹ ഫ്ലാറ്റ്</string>
+    <string name="discount_percent">% ശതമാനം</string>
+    <string name="cart_amount">തുക</string>
+    <string name="cart_percent">ശതമാനം</string>
+    <string name="label_subtotal">ഉപത്തുക</string>
+    <string name="label_total">ആകെ</string>
+    <string name="cart_customer_required">ഉപഭോക്താവ് (കടത്തിന് ആവശ്യമാണ്)</string>
+    <string name="cart_customer_optional">ഉപഭോക്താവ് (നിർബന്ധമല്ല)</string>
+    <string name="label_name">പേര്</string>
+    <string name="cart_phone_required">ഫോൺ (നിർബന്ധം — പണം കടം)</string>
+    <string name="cart_phone_optional">ഫോൺ (രസീതുകൾക്ക്)</string>
+    <string name="cart_payment">പണമടയ്ക്കൽ</string>
+    <string name="pay_cash">പണം</string>
+    <string name="pay_upi">UPI</string>
+    <string name="pay_split">വിഭജനം</string>
+    <string name="cart_cash_part">പണത്തിന്റെ ഭാഗം</string>
+    <string name="cart_due">കടം (പിന്നീട് നൽകാൻ, നിർബന്ധമല്ല)</string>
+    <string name="cart_hold">ബിൽ മാറ്റിവെക്കുക — മറ്റൊരാളെ സഹായിക്കുക</string>
+    <string name="cart_save">ബിൽ സേവ് ചെയ്യുക • %1$s</string>
+    <string name="cart_remarks">കുറിപ്പ് (നിർബന്ധമല്ല)</string>
+    <string name="upi_not_set">UPI സജ്ജമാക്കിയിട്ടില്ല</string>
+    <string name="upi_not_set_desc">ഉപഭോക്താക്കൾക്ക് സ്കാൻ ചെയ്ത് പണം അടയ്ക്കാൻ കടയുടെ UPI ഐഡി ചേർക്കാൻ അഡ്മിനോട് ആവശ്യപ്പെടുക.</string>
+    <string name="upi_scan">സ്കാൻ ചെയ്ത് പണം അടയ്ക്കുക</string>
+
+    <!-- Product grid / quick add / bill success -->
+    <string name="product_add_cd">%1$s ചേർക്കുക</string>
+    <string name="quickadd_title">ഇഷ്‌ടാനുസൃത സാധനം വേഗത്തിൽ ചേർക്കുക</string>
+    <string name="quickadd_desc">ഈ ബില്ലിലേക്ക് ഒറ്റത്തവണ സാധനം ചേർക്കുന്നു (\"വേഗത്തിൽ ചേർക്കൽ\" എന്നതിന് കീഴിൽ സൂക്ഷിക്കും).</string>
+    <string name="quickadd_name_label">സാധനത്തിന്റെ പേര്</string>
+    <string name="quickadd_name_hint">ഉദാ. ചെടി, ചട്ടി, മണ്ണ്</string>
+    <string name="price_label">വില (₹)</string>
+    <string name="quantity_label">എണ്ണം</string>
+    <string name="quickadd_add">ബില്ലിലേക്ക് ചേർക്കുക</string>
+    <string name="success_saved">ബിൽ സേവ് ചെയ്തു</string>
+    <string name="success_already_saved">ബിൽ നേരത്തെ സേവ് ചെയ്തിട്ടുണ്ട്</string>
+    <string name="print_receipt">രസീത് പ്രിന്റ് ചെയ്യുക</string>
+    <string name="print_again">വീണ്ടും പ്രിന്റ് ചെയ്യുക</string>
+    <string name="success_new_bill">പുതിയ ബിൽ</string>
+
+    <!-- Daily summary / cash book -->
+    <string name="summary_total_sales">ആകെ വിൽപന</string>
+    <plurals name="bills_count">
+        <item quantity="one">%1$d ബിൽ</item>
+        <item quantity="other">%1$d ബില്ലുകൾ</item>
+    </plurals>
+    <string name="label_expenses">ചെലവുകൾ</string>
+    <string name="summary_expenses_sub">ചെലവ്</string>
+    <string name="summary_net_profit">അറ്റ ലാഭം</string>
+    <string name="summary_net_sub">വിൽപന − ചെലവുകൾ</string>
+    <string name="summary_labour_paid">കൂലി നൽകിയത്</string>
+    <string name="summary_cash_all_time">കയ്യിലുള്ള പണം (എല്ലാ കാലവും)</string>
+    <string name="summary_cash_today">കയ്യിലുള്ള പണം</string>
+    <string name="summary_net">അറ്റം</string>
+    <string name="label_sales">വിൽപന</string>
+    <string name="summary_expense_ratio">ചെലവ് അനുപാതം</string>
+    <string name="summary_add">+ ചേർക്കുക</string>
+    <string name="summary_no_expenses">ചെലവുകളൊന്നും രേഖപ്പെടുത്തിയിട്ടില്ല.</string>
+    <string name="summary_edit_expense_cd">ചെലവ് തിരുത്തുക</string>
+    <string name="summary_delete_expense_cd">ചെലവ് ഇല്ലാതാക്കുക</string>
+
+    <!-- Sales screen -->
+    <string name="sales_dues">കടങ്ങൾ</string>
+    <string name="sales_reports">റിപ്പോർട്ടുകൾ</string>
+    <string name="sales_approve">കട പിരിവുകൾ അംഗീകരിക്കുക</string>
+    <string name="sales_bills">ബില്ലുകൾ</string>
+    <string name="sales_no_bills">ഈ ദിവസം ബില്ലുകളൊന്നുമില്ല.</string>
+    <string name="action_loading">ലോഡ് ചെയ്യുന്നു…</string>
+    <string name="sales_load_more">കൂടുതൽ കാണിക്കുക</string>
+    <string name="sales_view_by_staff">ജീവനക്കാരനനുസരിച്ച് കാണുക</string>
+    <string name="sales_all_staff">എല്ലാ ജീവനക്കാരും</string>
+    <string name="sales_top_sellers">ഇന്നത്തെ മികച്ച വിൽപനക്കാർ</string>
+    <string name="date_prev">മുൻ ദിവസം</string>
+    <string name="date_next">അടുത്ത ദിവസം</string>
+    <string name="bill_walkin">വാക്ക്-ഇൻ</string>
+    <string name="status_edited">തിരുത്തി</string>
+    <string name="pay_due">കടം</string>
+    <string name="pay_none">—</string>
+
+    <!-- Products screen + form -->
+    <string name="products_add">സാധനം ചേർക്കുക</string>
+    <string name="products_bulk_import">കൂട്ടത്തോടെ ചേർക്കൽ</string>
+    <string name="products_include_inactive">നിഷ്‌ക്രിയമായവയും ഉൾപ്പെടുത്തുക</string>
+    <string name="products_empty_title">സാധനങ്ങളൊന്നും ഇല്ല</string>
+    <string name="products_empty_msg">ആദ്യത്തേത് ഉണ്ടാക്കാൻ \"സാധനം ചേർക്കുക\" അമർത്തുക.</string>
+    <string name="products_delete_title">സാധനം ഇല്ലാതാക്കണോ?</string>
+    <string name="products_delete_msg">\"%1$s\" നിങ്ങളുടെ പട്ടികയിൽ നിന്ന് നീക്കണോ? പഴയ ബില്ലുകളെ ബാധിക്കില്ല.</string>
+    <string name="action_delete">ഇല്ലാതാക്കുക</string>
+    <string name="product_delete_cd">%1$s ഇല്ലാതാക്കുക</string>
+    <string name="cat_uncategorised">വിഭാഗമില്ലാത്തവ</string>
+    <string name="label_inactive">നിഷ്‌ക്രിയം</string>
+    <string name="bulk_desc">ഒരു സ്‌പ്രെഡ്‌ഷീറ്റിൽ നിന്ന് ഒരുമിച്ച് ഒട്ടേറെ സാധനങ്ങൾ ചേർക്കുക, പിന്നെ ഫയൽ പേര് വഴി ഫോട്ടോകൾ ചേർക്കുക.</string>
+    <string name="bulk_download">എക്‌സൽ ടെംപ്ലേറ്റ് ഡൗൺലോഡ് ചെയ്യുക</string>
+    <string name="action_working">പ്രവർത്തിക്കുന്നു…</string>
+    <string name="bulk_upload_sheet">സ്‌പ്രെഡ്‌ഷീറ്റ് അപ്‌ലോഡ് ചെയ്യുക (.xlsx/.csv)</string>
+    <string name="bulk_upload_photos">ഫോട്ടോകൾ അപ്‌ലോഡ് ചെയ്യുക (.zip)</string>
+    <string name="form_edit_product">സാധനം തിരുത്തുക</string>
+    <string name="form_new_product">പുതിയ സാധനം</string>
+    <string name="form_category">വിഭാഗം (നിർബന്ധമല്ല)</string>
+    <string name="form_active">സജീവം (ബില്ലിംഗിൽ കാണിക്കും)</string>
+    <string name="form_photo">ഫോട്ടോ</string>
+    <string name="form_change_photo">ഫോട്ടോ മാറ്റുക</string>
+    <string name="form_add_photo">ഫോട്ടോ ചേർക്കുക</string>
+    <string name="form_photo_hint">സാധനം സേവ് ചെയ്‌ത ശേഷം ഫോട്ടോ ചേർക്കാം.</string>
+    <string name="action_save_changes">മാറ്റങ്ങൾ സേവ് ചെയ്യുക</string>
+
+    <string name="language_dialog_title">ഭാഷ തിരഞ്ഞെടുക്കുക</string>
+
+    <!-- Common -->
+    <string name="cd_back">തിരികെ</string>
+    <string name="label_amount_rupees">തുക (₹)</string>
+
+    <!-- Expense editor -->
+    <string name="expense_edit_title">ചെലവ് തിരുത്തുക</string>
+    <string name="expense_record_title">ചെലവ് രേഖപ്പെടുത്തുക</string>
+    <string name="label_reason">കാരണം</string>
+    <string name="expense_reason_tea">ചായയും ലഘുഭക്ഷണവും</string>
+    <string name="expense_reason_soil">മണ്ണും ചട്ടിയും</string>
+    <string name="expense_reason_electricity">വൈദ്യുതി</string>
+    <string name="expense_reason_labor">കൂലി</string>
+    <string name="expense_reason_transport">വാഹനച്ചെലവ്</string>
+    <string name="expense_reason_others">മറ്റുള്ളവ</string>
+    <string name="expense_paid_from">എവിടെ നിന്ന് നൽകി</string>
+    <string name="expense_save">ചെലവ് സേവ് ചെയ്യുക</string>
+
+    <!-- Dues + settle -->
+    <string name="dues_empty_title">കടങ്ങളൊന്നുമില്ല</string>
+    <string name="dues_empty_msg">എല്ലാവരും പണം അടച്ചു. പണം കടമുള്ള ബില്ലുകൾ ഇവിടെ കാണിക്കും.</string>
+    <string name="dues_total_outstanding">ആകെ ബാക്കിയുള്ളത്</string>
+    <plurals name="dues_customers_count">
+        <item quantity="one">%1$d ഉപഭോക്താവ് ഇനിയും അടയ്ക്കാനുണ്ട് — എല്ലാ ജീവനക്കാർക്കും പൊതുവായത്.</item>
+        <item quantity="other">%1$d ഉപഭോക്താക്കൾ ഇനിയും അടയ്ക്കാനുണ്ട് — എല്ലാ ജീവനക്കാർക്കും പൊതുവായത്.</item>
+    </plurals>
+    <string name="dues_search">പേരോ ഫോണോ ഉപയോഗിച്ച് തിരയുക</string>
+    <string name="dues_no_match">\"%1$s\" എന്നതിന് കടങ്ങളൊന്നും കണ്ടെത്തിയില്ല.</string>
+    <string name="dues_priority">മുൻഗണന — 30+ ദിവസം കഴിഞ്ഞവ</string>
+    <string name="dues_other">മറ്റ് കടങ്ങൾ</string>
+    <string name="settle_title">കടം പിരിക്കുക</string>
+    <string name="settle_amount_owed">കടമുള്ള തുക</string>
+    <string name="settle_collecting_now">ഇപ്പോൾ പിരിക്കുന്നത് (₹)</string>
+    <string name="settle_too_much">കടമുള്ള %1$s യിൽ കൂടുതൽ ആകാൻ പാടില്ല.</string>
+    <string name="settle_how_paid">എങ്ങനെ അടച്ചു?</string>
+    <string name="settle_cash_part">പണത്തിന്റെ ഭാഗം (₹)</string>
+    <string name="settle_upi_part">UPI ഭാഗം: %1$s</string>
+    <string name="settle_needs_approval">കടം അടച്ചതായി അടയാളപ്പെടുത്തുന്നതിന് മുമ്പ് ഇത് നിങ്ങളുടെ മാനേജർക്ക് അംഗീകാരത്തിനായി അയയ്ക്കും.</string>
+    <string name="settle_collect">%1$s പിരിക്കുക</string>
+    <string name="settle_send_approval">അംഗീകാരത്തിനായി അയയ്ക്കുക</string>
+    <plurals name="due_overdue_days">
+        <item quantity="one">%1$d ദിവസം കഴിഞ്ഞു</item>
+        <item quantity="other">%1$d ദിവസം കഴിഞ്ഞു</item>
+    </plurals>
+    <string name="due_time_bill">%1$s • ബിൽ %2$s</string>
+    <string name="due_owes">കടം</string>
+    <string name="due_view_bill">ബിൽ കാണുക</string>
+    <string name="due_waiting_approval">മാനേജരുടെ അംഗീകാരത്തിനായി കാത്തിരിക്കുന്നു</string>
+
+    <!-- Approvals -->
+    <string name="approvals_title">പിരിവുകൾ അംഗീകരിക്കുക</string>
+    <string name="approvals_empty_title">അംഗീകരിക്കാൻ ഒന്നുമില്ല</string>
+    <string name="approvals_empty_msg">ഒരു വിൽപനക്കാരൻ കടം പിരിക്കുമ്പോൾ, നിങ്ങൾ അംഗീകരിക്കാൻ അവരുടെ അഭ്യർത്ഥന ഇവിടെ കാണിക്കും.</string>
+    <plurals name="approvals_waiting">
+        <item quantity="one">%1$d പിരിവ് കാത്തിരിക്കുന്നു. പണം എത്തിയെന്ന് ഉറപ്പാക്കിയ ശേഷം അംഗീകരിക്കുക.</item>
+        <item quantity="other">%1$d പിരിവുകൾ കാത്തിരിക്കുന്നു. പണം എത്തിയെന്ന് ഉറപ്പാക്കിയ ശേഷം അംഗീകരിക്കുക.</item>
+    </plurals>
+    <string name="approvals_collecting">പിരിക്കുന്നത്</string>
+    <string name="approvals_cash_upi">പണം %1$s  •  UPI %2$s</string>
+    <string name="action_reject">നിരസിക്കുക</string>
+    <string name="action_approve">അംഗീകരിക്കുക</string>
+
+    <!-- Bill detail -->
+    <string name="bd_delete_title">ഈ ബിൽ ഇല്ലാതാക്കണോ?</string>
+    <string name="bd_delete_msg">ഇത് ബില്ലും അതിലെ സാധനങ്ങളും സ്ഥിരമായി നീക്കം ചെയ്യും. ഇത് പഴയപടിയാക്കാനാവില്ല.</string>
+    <string name="cd_edit_bill">ബിൽ തിരുത്തുക</string>
+    <string name="cd_delete_bill">ബിൽ ഇല്ലാതാക്കുക</string>
+    <string name="bd_receipt">രസീത്</string>
+    <string name="bd_customer">ഉപഭോക്താവ്: %1$s</string>
+    <string name="bd_customer_phone">ഉപഭോക്താവ്: %1$s (%2$s)</string>
+    <string name="bd_edited">തിരുത്തി</string>
+    <string name="bd_qty_price">%1$s × %2$s</string>
+    <string name="label_discount">കിഴിവ്</string>
+    <string name="bd_payment">പണമടയ്ക്കൽ</string>
+    <string name="bd_remarks">കുറിപ്പ്: %1$s</string>
+
+    <!-- Bill edit -->
+    <string name="be_items">സാധനങ്ങൾ</string>
+    <string name="be_add_plant">ചെടി ചേർക്കുക</string>
+    <string name="be_add_plant_title">ഒരു ചെടി ചേർക്കുക</string>
+    <string name="be_save_changes">മാറ്റങ്ങൾ സേവ് ചെയ്യുക • %1$s</string>
+
+    <!-- Detailed report -->
+    <string name="report_title">വിശദമായ റിപ്പോർട്ട്</string>
+    <string name="report_generate">റിപ്പോർട്ട് ഉണ്ടാക്കുക</string>
+    <string name="report_period">റിപ്പോർട്ട് കാലയളവ്</string>
+    <string name="period_daily">ദിവസേന</string>
+    <string name="period_weekly">ആഴ്ചതോറും</string>
+    <string name="period_monthly">മാസംതോറും</string>
+    <string name="period_custom">ഇഷ്‌ടാനുസൃതം</string>
+    <string name="report_from">മുതൽ</string>
+    <string name="report_to">വരെ</string>
+    <string name="cd_earlier">മുമ്പത്തേത്</string>
+    <string name="cd_later">പിന്നീട്</string>
+    <string name="report_total_revenue">ആകെ വിൽപന വരുമാനം</string>
+    <string name="report_bills">ബില്ലുകൾ</string>
+    <string name="report_avg_bill">ശരാശരി ബിൽ</string>
+    <string name="report_total_expenses">ആകെ ചെലവുകൾ</string>
+    <string name="report_net_income">അറ്റ വരുമാനം</string>
+    <string name="report_sales_trend">വിൽപന പ്രവണത</string>
+    <string name="report_by_category">വിഭാഗം അനുസരിച്ച് വിൽപന</string>
+    <plurals name="report_qty_sold">
+        <item quantity="one">%1$d വിറ്റു</item>
+        <item quantity="other">%1$d വിറ്റു</item>
+    </plurals>
+    <string name="report_top_products">മികച്ച സാധനങ്ങൾ</string>
+    <string name="report_expenses_log">ചെലവുകളുടെ ലിസ്റ്റ്</string>
+    <string name="report_download">എക്‌സൽ റിപ്പോർട്ട് ഡൗൺലോഡ് ചെയ്യുക</string>
+
+    <!-- Customers -->
+    <string name="customers_search">പേരോ ഫോണോ തിരയുക</string>
+    <string name="customers_empty_title">ഉപഭോക്താക്കൾ ഇല്ല</string>
+    <string name="customers_empty_msg">ബില്ലിൽ പേര് ചേർത്ത ശേഷം ഉപഭോക്താക്കൾ ഇവിടെ കാണിക്കും.</string>
+    <string name="customers_no_match">\"%1$s\" എന്നതിന് ഉപഭോക്താക്കളൊന്നും കണ്ടെത്തിയില്ല.</string>
+    <string name="customers_no_phone">ഫോൺ ഇല്ല</string>
+    <string name="cust_total_spent">ആകെ ചെലവാക്കിയത്</string>
+    <string name="cust_on_credit">കടത്തിൽ</string>
+    <string name="cust_purchase_history">വാങ്ങൽ ചരിത്രം</string>
+    <string name="cust_no_bills">ബില്ലുകളൊന്നുമില്ല.</string>
+    <string name="cust_bill_line">%1$s • %2$s</string>
+
+    <!-- Shared components -->
+    <string name="action_ok">ശരി</string>
+    <string name="cd_decrease_qty">എണ്ണം കുറയ്ക്കുക</string>
+    <string name="cd_increase_qty">എണ്ണം കൂട്ടുക</string>
+    <string name="del_title">അക്കൗണ്ട് ഇല്ലാതാക്കണോ?</string>
+    <string name="del_confirm">അക്കൗണ്ട് ഇല്ലാതാക്കുക</string>
+    <string name="del_type_confirm">സ്ഥിരീകരിക്കാൻ ഇമെയിൽ ടൈപ്പ് ചെയ്യുക:</string>
+    <string name="del_enter_email">ഇമെയിൽ നൽകുക</string>
+    <string name="cd_hide_password">പാസ്‌വേഡ് മറയ്ക്കുക</string>
+    <string name="cd_show_password">പാസ്‌വേഡ് കാണിക്കുക</string>
+
+    <!-- Unsupported role (admin) -->
+    <string name="unsupported_title">വെബ് ആപ്പ് ഉപയോഗിക്കുക</string>
+    <string name="unsupported_msg">ഈ ആപ്പ് കടയുടമകൾക്കും വിൽപനക്കാർക്കും വേണ്ടിയുള്ളതാണ്. അഡ്മിൻ ഉപകരണങ്ങൾ PlantBill വെബ് ഡാഷ്‌ബോർഡിൽ ലഭ്യമാണ്.</string>
+
+    <!-- Labour -->
+    <string name="action_add">ചേർക്കുക</string>
+    <string name="lab_record_payment">പണം രേഖപ്പെടുത്തുക</string>
+    <string name="lab_attendance">ഹാജർ</string>
+    <string name="lab_workers">തൊഴിലാളികൾ</string>
+    <string name="lab_search">തൊഴിലാളികളെ തിരയുക</string>
+    <string name="lab_no_workers">ഇതുവരെ തൊഴിലാളികളില്ല. ആദ്യ തൊഴിലാളിയെ ചേർക്കാൻ \'ചേർക്കുക\' അമർത്തുക.</string>
+    <string name="lab_recent_payments">സമീപകാല പണമടവുകൾ</string>
+    <string name="lab_no_payments">ഇതുവരെ പണമടവുകളൊന്നും രേഖപ്പെടുത്തിയിട്ടില്ല.</string>
+    <string name="lab_per_day">%1$s/ദിവസം</string>
+    <string name="lab_balance_to_pay_amt">നൽകാനുള്ള ബാക്കി %1$s</string>
+    <string name="lab_paid_ahead_amt">മുൻകൂർ നൽകിയത് %1$s</string>
+    <string name="cd_edit_worker">തൊഴിലാളിയെ തിരുത്തുക</string>
+    <string name="cd_remove_worker">തൊഴിലാളിയെ നീക്കുക</string>
+    <string name="lab_tag_advance">മുൻകൂർ</string>
+    <string name="lab_tag_due_cleared">കടം തീർത്തു</string>
+    <string name="lab_days_count">%1$s ദിവസം</string>
+    <string name="cd_edit_payment">പണമടവ് തിരുത്തുക</string>
+    <string name="cd_delete_payment">പണമടവ് ഇല്ലാതാക്കുക</string>
+    <string name="lab_add_worker">തൊഴിലാളിയെ ചേർക്കുക</string>
+    <string name="lab_phone">ഫോൺ നമ്പർ</string>
+    <string name="lab_aadhaar">ആധാർ നമ്പർ (നിർബന്ധമല്ല)</string>
+    <string name="lab_wage_per_day">ദിവസക്കൂലി (₹)</string>
+    <string name="lab_gender">ലിംഗം</string>
+    <string name="lab_gender_male">പുരുഷൻ</string>
+    <string name="lab_gender_female">സ്ത്രീ</string>
+    <string name="lab_give_advance">മുൻകൂർ നൽകുക</string>
+    <string name="lab_worker">തൊഴിലാളി</string>
+    <string name="lab_wage_payment">കൂലി നൽകൽ</string>
+    <string name="lab_advance">മുൻകൂർ</string>
+    <string name="lab_wage_per_day_label">ദിവസക്കൂലി: %1$s</string>
+    <string name="lab_num_days">ദിവസങ്ങളുടെ എണ്ണം</string>
+    <string name="lab_advance_amount">മുൻകൂർ തുക (₹)</string>
+    <string name="lab_payment_method">പണമടയ്ക്കൽ രീതി</string>
+    <string name="lab_note">കുറിപ്പ് (നിർബന്ധമല്ല)</string>
+    <string name="lab_aadhaar_val">ആധാർ %1$s</string>
+    <string name="lab_days_worked">ജോലി ചെയ്ത ദിവസങ്ങൾ</string>
+    <string name="lab_earned">സമ്പാദിച്ചത് (%1$s/ദിവസം)</string>
+    <string name="lab_total_paid">ആകെ നൽകിയത്</string>
+    <string name="lab_paid_ahead_label">മുൻകൂർ നൽകിയത്</string>
+    <string name="lab_balance_to_pay_label">നൽകാനുള്ള ബാക്കി</string>
+    <string name="lab_payment_history">പണമടവ് ചരിത്രം</string>
+    <string name="lab_no_payments_yet">ഇതുവരെ പണമടവുകളില്ല.</string>
+    <string name="lab_today_attendance">ഇന്നത്തെ ഹാജർ</string>
+    <string name="lab_add_worker_first">ആദ്യം ഒരു തൊഴിലാളിയെ ചേർക്കുക.</string>
+    <string name="lab_days_worked_count">%1$s ദിവസം ജോലി ചെയ്തു</string>
+    <string name="att_present">ഹാജർ</string>
+    <string name="att_half_day">അര ദിവസം</string>
+    <string name="att_absent">ഹാജരല്ല</string>
+
+    <!-- Money borrowed -->
+    <string name="borrow_still_to_pay">ഇനിയും തിരിച്ചടയ്ക്കാനുള്ളത്</string>
+    <string name="borrow_filter_open">അടയ്ക്കാൻ</string>
+    <string name="borrow_filter_paid">അടച്ചു</string>
+    <string name="borrow_add">കടം ചേർക്കുക</string>
+    <string name="borrow_empty_paid">തിരിച്ചടച്ച കടങ്ങളൊന്നുമില്ല.</string>
+    <string name="borrow_empty_open">ഒന്നും കടം വാങ്ങിയിട്ടില്ല. കടം രേഖപ്പെടുത്താൻ \'ചേർക്കുക\' അമർത്തുക.</string>
+    <string name="borrow_delete_title">ഈ കടം ഇല്ലാതാക്കണോ?</string>
+    <string name="borrow_delete_msg">%2$s ൽ നിന്ന് വാങ്ങിയ %1$s നീക്കണോ? ഇത് പഴയപടിയാക്കാനാവില്ല.</string>
+    <string name="borrow_paid">അടച്ചു</string>
+    <string name="borrow_partly_paid">ഭാഗികമായി അടച്ചു</string>
+    <string name="borrow_received_by">%1$s വഴി ലഭിച്ചു</string>
+    <string name="borrow_paid_by">%1$s വഴി അടച്ചു</string>
+    <string name="borrow_left">%1$s ബാക്കി</string>
+    <string name="borrow_pay_back">തിരിച്ചടയ്ക്കുക</string>
+    <string name="cd_delete_borrowing">കടം ഇല്ലാതാക്കുക</string>
+    <string name="borrow_from_name">ആരിൽ നിന്ന് വാങ്ങി (പേര്)</string>
+    <string name="borrow_phone">ഫോൺ നമ്പർ (നിർബന്ധമല്ല)</string>
+    <string name="borrow_save">കടം സേവ് ചെയ്യുക</string>
+    <string name="borrow_pay_title">തിരിച്ചടയ്ക്കുക — %1$s</string>
+    <string name="borrow_still_owed">ഇനിയും ബാക്കി</string>
+    <string name="borrow_paying_now">ഇപ്പോൾ തിരിച്ചടയ്ക്കുന്നത് (₹)</string>
+    <string name="borrow_how_paid">എങ്ങനെ തിരിച്ചടച്ചു?</string>
+    <string name="borrow_pay_amount_btn">%1$s തിരിച്ചടയ്ക്കുക</string>
+    <string name="borrow_method">രീതി</string>
+
+    <!-- Printer -->
+    <string name="prn_default">സ്ഥിര പ്രിന്റർ: %1$s</string>
+    <string name="prn_set_not_paired">പ്രിന്റർ സജ്ജമാക്കി (ഈ ഫോണിൽ ജോടിയാക്കിയിട്ടില്ല)</string>
+    <string name="prn_none_chosen">പ്രിന്റർ തിരഞ്ഞെടുത്തിട്ടില്ല</string>
+    <string name="prn_shared_desc">രസീത് പ്രിന്റ് ചെയ്യുമ്പോൾ മാത്രമേ പ്രിന്റർ ബന്ധിപ്പിക്കൂ, പിന്നെ ഒഴിവാകും — അതിനാൽ പല വിൽപനക്കാർക്ക് ഒരു പ്രിന്റർ പങ്കിടാം.</string>
+    <string name="prn_printing">പ്രിന്റ് ചെയ്യുന്നു…</string>
+    <string name="prn_test_print">ടെസ്റ്റ് പ്രിന്റ്</string>
+    <string name="prn_no_bluetooth">ഈ ഉപകരണത്തിൽ ബ്ലൂടൂത്ത് ഇല്ല.</string>
+    <string name="prn_allow_bluetooth">ബ്ലൂടൂത്ത് അനുവദിക്കുക</string>
+    <string name="prn_turn_on_bluetooth">ദയവായി ബ്ലൂടൂത്ത് ഓണാക്കി, പിന്നെ റിഫ്രഷ് അമർത്തുക.</string>
+    <string name="prn_paired">ജോടിയാക്കിയ പ്രിന്ററുകൾ</string>
+    <string name="prn_no_paired">ജോടിയാക്കിയ പ്രിന്ററുകളൊന്നും കണ്ടെത്തിയില്ല. നിങ്ങളുടെ തെർമൽ പ്രിന്റർ Android ബ്ലൂടൂത്ത് സെറ്റിംഗ്‌സിൽ ജോടിയാക്കി, പിന്നെ റിഫ്രഷ് അമർത്തുക.</string>
+    <string name="prn_refresh">റിഫ്രഷ്</string>
+    <string name="prn_paper">പേപ്പർ</string>
+    <string name="prn_58mm">58 mm</string>
+    <string name="prn_80mm">80 mm</string>
+    <string name="prn_auto_cut">പേപ്പർ സ്വയം മുറിക്കുക</string>
+    <string name="cd_connected">ബന്ധിപ്പിച്ചു</string>
+
+    <!-- Shop settings -->
+    <string name="shop_receipts_note">ഇവ പ്രിന്റ് ചെയ്ത രസീതുകളുടെ മുകളിൽ കാണിക്കും. മാറ്റാൻ, നിങ്ങളുടെ PlantBill അഡ്മിനെ ബന്ധപ്പെടുക.</string>
+    <string name="shop_business_name">സ്ഥാപനത്തിന്റെ പേര്</string>
+    <string name="shop_address">വിലാസം</string>
+    <string name="shop_phone">ഫോൺ</string>
+    <string name="shop_upi">UPI ഐഡി</string>
+
+    <!-- Staff management -->
+    <string name="staff_add">ജീവനക്കാരനെ ചേർക്കുക</string>
+    <string name="staff_empty_title">ജീവനക്കാരൊന്നുമില്ല</string>
+    <string name="staff_empty_msg">കൗണ്ടറിൽ ബിൽ ചെയ്യാൻ ഒരു വിൽപനക്കാരനെ ചേർക്കുക.</string>
+    <string name="staff_add_salesperson">വിൽപനക്കാരനെ ചേർക്കുക</string>
+    <string name="staff_login_email">ലോഗിൻ ഇമെയിൽ</string>
+    <string name="staff_password">പാസ്‌വേഡ് (കുറഞ്ഞത് 8 അക്ഷരങ്ങൾ)</string>
+    <string name="staff_set_own_or">സ്വന്തമായി നൽകുക, അല്ലെങ്കിൽ</string>
+    <string name="staff_generate_pw">ശക്തമായ പാസ്‌വേഡ് ഉണ്ടാക്കുക</string>
+    <string name="staff_create_account">അക്കൗണ്ട് ഉണ്ടാക്കുക</string>
+    <string name="staff_reset_password">പാസ്‌വേഡ് പുനഃസജ്ജമാക്കുക</string>
+    <string name="staff_new_password">പുതിയ പാസ്‌വേഡ് (കുറഞ്ഞത് 8 അക്ഷരങ്ങൾ)</string>
+    <string name="staff_password_reset_title">പാസ്‌വേഡ് പുനഃസജ്ജമാക്കി</string>
+    <string name="staff_account_created">അക്കൗണ്ട് ഉണ്ടാക്കി</string>
+    <string name="staff_share_note">ഈ ക്രെഡൻഷ്യലുകൾ ഇപ്പോൾ നിങ്ങളുടെ ജീവനക്കാരനുമായി പങ്കിടുക — പാസ്‌വേഡ് ഒരു തവണ മാത്രമേ കാണിക്കൂ.</string>
+    <string name="staff_email_line">ഇമെയിൽ: %1$s</string>
+    <string name="staff_password_line">പാസ്‌വേഡ്: %1$s</string>
+    <string name="staff_copy_close">പകർത്തി അടയ്ക്കുക</string>
+    <string name="staff_close">അടയ്ക്കുക</string>
+    <string name="staff_remove_title">വിൽപനക്കാരനെ നീക്കണോ?</string>
+    <string name="staff_remove_body">ഇത് %1$s സ്ഥിരമായി ഇല്ലാതാക്കും. അവരുടെ പഴയ ബില്ലുകൾ നിലനിർത്തും.</string>
+    <string name="staff_active">സജീവം</string>
+    <string name="staff_deactivate">നിഷ്‌ക്രിയമാക്കുക</string>
+    <string name="staff_activate">സജീവമാക്കുക</string>
+    <string name="staff_remove_salesperson">വിൽപനക്കാരനെ നീക്കുക</string>
+
+    <!-- Owner (multi-shop) shell -->
+    <string name="own_your_business">നിങ്ങളുടെ ബിസിനസ്</string>
+    <string name="own_today">ഇന്ന്</string>
+    <string name="own_week">ആഴ്ച</string>
+    <string name="own_month">മാസം</string>
+    <string name="own_sales_by_shop">കട അനുസരിച്ച് വിൽപന</string>
+    <plurals name="own_shop_bills">
+        <item quantity="one">%1$d ബിൽ</item>
+        <item quantity="other">%1$d ബില്ലുകൾ</item>
+    </plurals>
+    <string name="own_payment_mix">പണമടയ്ക്കൽ വിഭജനം</string>
+    <string name="own_total_sales">ആകെ വിൽപന</string>
+    <string name="own_net">അറ്റം</string>
+    <string name="own_shops_count">കടകൾ (%1$d)</string>
+    <string name="own_no_shops">ഇതുവരെ കടകളൊന്നും ബന്ധിപ്പിച്ചിട്ടില്ല. നിങ്ങളുടെ കടകൾ നൽകാൻ അഡ്മിനോട് ആവശ്യപ്പെടുക.</string>
+    <string name="own_top_sellers">മികച്ച വിൽപനക്കാർ</string>
+    <string name="own_no_sales_period">ഈ കാലയളവിൽ വിൽപനയൊന്നുമില്ല.</string>
+    <string name="own_staff_line">%1$s • %2$s • %3$s</string>
+    <string name="own_shop_line">%1$s • അറ്റം %2$s • കടം %3$s</string>
+    <string name="own_shop_fallback">കട</string>
+    <string name="own_product_qty">%1$s ×%2$s</string>
+    <string name="own_loading_bills">ബില്ലുകൾ ലോഡ് ചെയ്യുന്നു…</string>
+    <string name="own_no_bills_period">ഈ കാലയളവിൽ ബില്ലുകളൊന്നുമില്ല.</string>
+    <string name="own_no_workers">ഇതുവരെ തൊഴിലാളികളില്ല.</string>
+    <string name="own_staff">ജീവനക്കാർ</string>
+    <string name="own_cih_all">കയ്യിലുള്ള പണം • എല്ലാ കാലവും</string>
+    <string name="own_cih_day">കയ്യിലുള്ള പണം • ഈ ദിവസം</string>
+    <string name="own_full">മുഴുവൻ</string>
+    <string name="own_per_day_chip">ദിവസേന</string>
+    <string name="own_walkin">വാക്ക്-ഇൻ ഉപഭോക്താവ്</string>
+    <string name="own_by">%1$s • %2$s വഴി</string>
+    <string name="own_due">കടം %1$s</string>
+    <string name="own_unknown">അജ്ഞാതം</string>
+    <string name="own_bill_details">ബിൽ വിവരങ്ങൾ</string>
+    <string name="own_no_items">സാധനങ്ങളൊന്നുമില്ല.</string>
+    <string name="own_price_qty">%1$s × %2$s</string>
+    <string name="own_staff_role_line">%1$s • %2$s</string>
+    <string name="own_remove">നീക്കുക</string>
+    <string name="own_password_min">പാസ്‌വേഡ് (കുറഞ്ഞത് 8)</string>
+    <string name="own_role_manager">മാനേജർ</string>
+    <string name="own_role_salesperson">വിൽപനക്കാരൻ</string>
+    <string name="own_role_owner">ഉടമ</string>
+
+    <!-- ViewModel-resident runtime messages -->
+    <string name="crash_restart_toast">ആപ്പിന് ഒരു പ്രശ്നം നേരിട്ടു, വീണ്ടും ആരംഭിച്ചു. ഞങ്ങൾക്ക് അറിയിപ്പ് ലഭിച്ചു.</string>
+    <string name="vm_saved">സേവ് ചെയ്തു.</string>
+    <string name="vm_deleted">ഇല്ലാതാക്കി.</string>
+    <string name="vm_removed">%1$s നീക്കം ചെയ്തു</string>
+    <string name="vm_saved_downloads">ഡൗൺലോഡ്‌സിൽ സേവ് ചെയ്തു: %1$s</string>
+    <string name="err_generic">എന്തോ കുഴപ്പം സംഭവിച്ചു. വീണ്ടും ശ്രമിക്കുക.</string>
+    <string name="err_network">സെർവറിൽ എത്താൻ കഴിയുന്നില്ല. നിങ്ങളുടെ ഇന്റർനെറ്റ് കണക്ഷൻ പരിശോധിക്കുക.</string>
+    <string name="vm_borrow_added">കടം ചേർത്തു.</string>
+    <string name="vm_borrow_repaid">തിരിച്ചടവ് രേഖപ്പെടുത്തി.</string>
+    <string name="vm_worker_removed">ജോലിക്കാരനെ നീക്കം ചെയ്തു.</string>
+    <string name="vm_add_worker_first">ആദ്യം ഒരു ജോലിക്കാരനെ ചേർക്കുക.</string>
+    <string name="vm_payment_recorded">പേയ്‌മെന്റ് രേഖപ്പെടുത്തി.</string>
+    <string name="vm_payment_deleted">പേയ്‌മെന്റ് ഇല്ലാതാക്കി.</string>
+    <string name="vm_bt_permission">പ്രിന്റർ ഉപയോഗിക്കാൻ ബ്ലൂടൂത്ത് അനുമതി വേണം.</string>
+    <string name="vm_printer_ready">%1$s-ൽ പ്രിന്റ് ചെയ്യാൻ തയ്യാർ.</string>
+    <string name="vm_test_printed">ടെസ്റ്റ് പേജ് പ്രിന്റ് ചെയ്തു.</string>
+    <string name="vm_product_added">ഉൽപ്പന്നം ചേർത്തു.</string>
+    <string name="vm_product_deleted">%1$s ഇല്ലാതാക്കി.</string>
+    <string name="err_add_item">ഇനം ചേർക്കാൻ കഴിഞ്ഞില്ല.</string>
+    <string name="vm_staff_added">ജീവനക്കാരനെ ചേർത്തു.</string>
+    <string name="vm_deactivated">%1$s നിഷ്‌ക്രിയമാക്കി</string>
+    <string name="vm_activated">%1$s സജീവമാക്കി</string>
+    <string name="vm_add_products_voice">ആദ്യം ഉൽപ്പന്നങ്ങൾ ചേർക്കുക, എന്നിട്ട് ശബ്ദം ഉപയോഗിക്കുക.</string>
+    <string name="vm_added_to_cart">%1$s കാർട്ടിൽ ചേർത്തു</string>
+    <string name="vm_added">%1$s ചേർത്തു</string>
+    <string name="vm_bill_held">ബിൽ പിടിച്ചുവെച്ചു. പിന്നീട് തുടരാൻ “പിടിച്ച ബില്ലുകൾ” തുറക്കുക.</string>
+    <string name="vm_walkin_customer">വാക്ക്-ഇൻ ഉപഭോക്താവ്</string>
+    <string name="vm_due_phone_required">ഉപഭോക്താവിന്റെ ഫോൺ നമ്പർ നൽകുക — കടം (നൽകാനുള്ള പണം) ഉള്ളപ്പോൾ ഇത് നിർബന്ധമാണ്.</string>
+    <string name="err_save_bill">ബിൽ സേവ് ചെയ്യാൻ കഴിഞ്ഞില്ല. വീണ്ടും ശ്രമിക്കുക.</string>
+    <string name="vm_print_connecting">പ്രിന്ററുമായി ബന്ധിപ്പിക്കുന്നു…</string>
+    <string name="vm_print_printing">പ്രിന്റ് ചെയ്യുന്നു…</string>
+    <string name="vm_print_printed">പ്രിന്റ് ചെയ്തു.</string>
+    <string name="vm_print_failed">പ്രിന്റിംഗ് പരാജയപ്പെട്ടു.</string>
+    <string name="err_signin">സൈൻ ഇൻ ചെയ്യാൻ കഴിഞ്ഞില്ല. വീണ്ടും ശ്രമിക്കുക.</string>
+    <string name="vm_cash_set">കയ്യിലുള്ള പണം %1$s ആയി സജ്ജമാക്കി.</string>
+    <string name="err_cash_set">കയ്യിലുള്ള പണം സജ്ജമാക്കാൻ കഴിഞ്ഞില്ല.</string>
+    <string name="vm_approved">അംഗീകരിച്ചു — %1$s ശേഖരിച്ചു.</string>
+    <string name="vm_rejected">നിരസിച്ചു.</string>
+    <string name="err_update_request">അഭ്യർത്ഥന അപ്ഡേറ്റ് ചെയ്യാൻ കഴിഞ്ഞില്ല.</string>
+    <string name="vm_bill_deleted">ബിൽ ഇല്ലാതാക്കി.</string>
+    <string name="vm_all_staff">എല്ലാ ജീവനക്കാരും</string>
+    <string name="vm_due_no_phone">ഈ ബില്ലിന് കടം ഉണ്ട്, പക്ഷേ ഉപഭോക്താവിന്റെ ഫോൺ നമ്പർ രേഖയിലില്ല. സേവ് ചെയ്യുന്നതിന് മുമ്പ് കടം 0 ആക്കുക.</string>
+    <string name="err_save_changes">മാറ്റങ്ങൾ സേവ് ചെയ്യാൻ കഴിഞ്ഞില്ല.</string>
+    <string name="vm_shop_saved">സേവ് ചെയ്തു. ഇവ പ്രിന്റ് ചെയ്ത ബില്ലുകളിൽ കാണിക്കും.</string>
+    <string name="err_report_generate">റിപ്പോർട്ട് തയ്യാറാക്കാൻ കഴിഞ്ഞില്ല.</string>
+    <string name="err_report_download">റിപ്പോർട്ട് ഡൗൺലോഡ് ചെയ്യാൻ കഴിഞ്ഞില്ല.</string>
+    <string name="vm_dues_max">%1$s വരെ തുക നൽകുക.</string>
+    <string name="vm_dues_partial">%1$s ശേഖരിച്ചു — %2$s ഇനിയും ബാക്കി.</string>
+    <string name="vm_dues_collected">ശേഖരിച്ചു — %1$s.</string>
+    <string name="vm_dues_sent_approval">അംഗീകാരത്തിനായി മാനേജർക്ക് അയച്ചു.</string>
+    <string name="err_collection">ശേഖരണം രേഖപ്പെടുത്താൻ കഴിഞ്ഞില്ല.</string>
+    <string name="vm_customer_default">ഉപഭോക്താവ്</string>
+    <!-- Notifications -->
+    <string name="notif_title">അറിയിപ്പുകൾ</string>
+    <string name="cd_notifications">അറിയിപ്പുകൾ</string>
+    <string name="notif_empty_title">അറിയിപ്പുകൾ ഒന്നുമില്ല</string>
+    <string name="notif_empty_message">പുതിയ വിവരങ്ങളും അറിയിപ്പുകളും ഇവിടെ കാണാം.</string>
+    <string name="notif_action">തുറക്കുക</string>
+</resources>

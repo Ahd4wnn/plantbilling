@@ -28,8 +28,8 @@ android {
         applicationId = "com.plantora.billing"
         minSdk = 24
         targetSdk = 36
-        versionCode = 20
-        versionName = "0.1.19"
+        versionCode = 23
+        versionName = "0.1.22"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         // Default backend: the hosted production API. Overridable at runtime in
@@ -55,8 +55,15 @@ android {
         }
         release {
             isMinifyEnabled = true
+            // Use the NON-optimizing R8 config (still shrinks + obfuscates). The
+            // Review-screen freeze reproduces only in the release build, never in
+            // debug — the classic signature of an R8 optimization artifact (the
+            // -optimize config's inlining/class-merging pass runs only here). This
+            // drops that pass as a low-risk, reversible mitigation while the ANR
+            // watchdog captures the real frozen stack. Revert to the -optimize
+            // file once the ANR trace confirms the true cause.
             proguardFiles(
-                getDefaultProguardFile("proguard-android-optimize.txt"),
+                getDefaultProguardFile("proguard-android.txt"),
                 "proguard-rules.pro",
             )
             // Upload native debug symbols so Play can symbolicate native crashes/ANRs.
@@ -130,4 +137,11 @@ dependencies {
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
+    androidTestImplementation(libs.androidx.test.runner)
+    // Hosts the Review-sheet freeze regression test (ReviewSheetFreezeTest). It
+    // drives an empty ComponentActivity from ui-test-manifest via ActivityScenario
+    // + Compose setContent — deliberately NOT the Compose test rule / Espresso,
+    // which crash on new-API emulators (InputManager.getInstance removed).
+    androidTestImplementation(platform(libs.androidx.compose.bom))
+    debugImplementation(libs.androidx.ui.test.manifest)
 }

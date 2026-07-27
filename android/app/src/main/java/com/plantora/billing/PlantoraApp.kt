@@ -2,6 +2,7 @@ package com.plantora.billing
 
 import android.app.Application
 import android.content.Context
+import com.plantora.billing.i18n.LocaleManager
 import dagger.hilt.android.HiltAndroidApp
 import org.acra.ACRA
 import org.acra.config.CoreConfigurationBuilder
@@ -15,6 +16,9 @@ class PlantoraApp : Application() {
 
     override fun attachBaseContext(base: Context) {
         super.attachBaseContext(base)
+        // Resolve the crash notice in the app's chosen language (the setting is
+        // readable synchronously here); falls back to the system language.
+        val localized = LocaleManager.wrap(base)
         // Self-hosted crash reporting: uncaught exceptions are POSTed as JSON to
         // our own backend (/crash-reports on the same host the app talks to), so
         // no crash data ever goes to Google/Sentry. Must be initialised here, in
@@ -30,9 +34,19 @@ class PlantoraApp : Application() {
                 // A calm, plain-language notice for the (often elderly) user — no
                 // scary stack trace, no dialog to dismiss.
                 ToastConfigurationBuilder()
-                    .withText("The app hit a problem and restarted. We've been notified.")
+                    .withText(localized.getString(R.string.crash_restart_toast))
                     .build(),
             )
         ACRA.init(this, builder)
+    }
+
+    override fun onCreate() {
+        super.onCreate()
+        // Detect hard freezes (ANRs) on the main thread and upload the frozen
+        // stack via ACRA. Skip ACRA's own sender process. Runs in every build so a
+        // real freeze on a salesperson's device finally reports where it is stuck.
+        if (!ACRA.isACRASenderServiceProcess()) {
+            AnrWatchdog().start()
+        }
     }
 }

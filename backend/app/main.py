@@ -28,6 +28,8 @@ from app.routers.labour import router as labour_router
 from app.routers.borrowings import router as borrowings_router
 from app.routers.owner import router as owner_router
 from app.routers.crash import router as crash_router
+from app.routers.admin_notifications import router as admin_notifications_router
+from app.routers.notifications import router as notifications_router
 from app.services.whatsapp.worker import start_whatsapp_worker, stop_whatsapp_worker
 import logging
 import sys
@@ -112,3 +114,5 @@ app.include_router(labour_router)
 app.include_router(borrowings_router)
 app.include_router(owner_router)
 app.include_router(crash_router)
+app.include_router(admin_notifications_router)
+app.include_router(notifications_router)

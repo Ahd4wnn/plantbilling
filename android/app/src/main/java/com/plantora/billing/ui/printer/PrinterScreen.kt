@@ -35,9 +35,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.plantora.billing.R
+import com.plantora.billing.i18n.asString
 import com.plantora.billing.print.PrinterDevice
 import com.plantora.billing.ui.components.PlantoraCard
 import com.plantora.billing.ui.components.PrimaryButton
@@ -71,10 +74,10 @@ fun PrinterScreen(
         contentWindowInsets = androidx.compose.foundation.layout.WindowInsets(0, 0, 0, 0),
         topBar = {
             TopAppBar(
-                title = { Text("Printer") },
+                title = { Text(stringResource(R.string.more_printer)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = stringResource(R.string.cd_back))
                     }
                 },
             )
@@ -102,23 +105,23 @@ fun PrinterScreen(
                     Spacer(Modifier.padding(Dimens.sm))
                     Text(
                         when {
-                            selected != null -> "Default printer: ${selected.name}"
-                            hasSelection -> "Printer set (not paired on this phone)"
-                            else -> "No printer chosen"
+                            selected != null -> stringResource(R.string.prn_default, selected.name)
+                            hasSelection -> stringResource(R.string.prn_set_not_paired)
+                            else -> stringResource(R.string.prn_none_chosen)
                         },
                         style = MaterialTheme.typography.titleMedium,
                     )
                 }
                 Spacer(Modifier.height(Dimens.sm))
                 Text(
-                    "The printer connects only while a receipt prints, then frees up — so several salespeople can share one printer.",
+                    stringResource(R.string.prn_shared_desc),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 if (hasSelection) {
                     Spacer(Modifier.height(Dimens.md))
                     SecondaryButton(
-                        if (ui.busy) "Printing…" else "Test print",
+                        if (ui.busy) stringResource(R.string.prn_printing) else stringResource(R.string.prn_test_print),
                         onClick = viewModel::testPrint,
                         leadingIcon = Icons.Rounded.Print,
                     )
@@ -126,15 +129,15 @@ fun PrinterScreen(
             }
 
             when {
-                !ui.bluetoothSupported -> Text("This device has no Bluetooth.")
-                ui.needsPermission -> PrimaryButton("Allow Bluetooth", onClick = { requestPermission() })
-                !ui.bluetoothEnabled -> Text("Please turn on Bluetooth, then tap Refresh.")
+                !ui.bluetoothSupported -> Text(stringResource(R.string.prn_no_bluetooth))
+                ui.needsPermission -> PrimaryButton(stringResource(R.string.prn_allow_bluetooth), onClick = { requestPermission() })
+                !ui.bluetoothEnabled -> Text(stringResource(R.string.prn_turn_on_bluetooth))
             }
 
-            SectionHeader("Paired printers")
+            SectionHeader(stringResource(R.string.prn_paired))
             if (ui.devices.isEmpty()) {
                 Text(
-                    "No paired printers found. Pair your thermal printer in Android Bluetooth settings, then tap Refresh.",
+                    stringResource(R.string.prn_no_paired),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -148,28 +151,28 @@ fun PrinterScreen(
                     )
                 }
             }
-            SecondaryButton("Refresh", onClick = viewModel::refresh)
+            SecondaryButton(stringResource(R.string.prn_refresh), onClick = viewModel::refresh)
 
-            SectionHeader("Paper")
+            SectionHeader(stringResource(R.string.prn_paper))
             Row(horizontalArrangement = Arrangement.spacedBy(Dimens.sm)) {
                 FilterChip(
                     selected = ui.paperWidthChars == 32,
                     onClick = { viewModel.setPaperWidth(32) },
-                    label = { Text("58 mm") },
+                    label = { Text(stringResource(R.string.prn_58mm)) },
                 )
                 FilterChip(
                     selected = ui.paperWidthChars == 48,
                     onClick = { viewModel.setPaperWidth(48) },
-                    label = { Text("80 mm") },
+                    label = { Text(stringResource(R.string.prn_80mm)) },
                 )
             }
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Text("Auto-cut paper", Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
+                Text(stringResource(R.string.prn_auto_cut), Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
                 Switch(checked = ui.autoCut, onCheckedChange = viewModel::setAutoCut)
             }
 
             ui.message?.let {
-                Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
+                Text(it.asString(), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
             }
         }
     }
@@ -190,7 +193,7 @@ private fun DeviceRow(
             }
             when {
                 connecting -> CircularProgressIndicator(Modifier.height(24.dp))
-                connected -> Icon(Icons.Rounded.CheckCircle, contentDescription = "Connected", tint = MaterialTheme.colorScheme.primary)
+                connected -> Icon(Icons.Rounded.CheckCircle, contentDescription = stringResource(R.string.cd_connected), tint = MaterialTheme.colorScheme.primary)
             }
         }
     }

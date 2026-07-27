@@ -17,8 +17,10 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.plantora.billing.R
 import com.plantora.billing.domain.Bill
 import com.plantora.billing.ui.components.MoneyText
 import com.plantora.billing.ui.components.PrimaryButton
@@ -48,7 +50,7 @@ fun SuccessView(
         )
         Spacer(Modifier.height(Dimens.lg))
         Text(
-            if (bill.idempotentReplay) "Bill already saved" else "Bill saved",
+            if (bill.idempotentReplay) stringResource(R.string.success_already_saved) else stringResource(R.string.success_saved),
             style = MaterialTheme.typography.headlineMedium,
             textAlign = TextAlign.Center,
         )
@@ -61,7 +63,7 @@ fun SuccessView(
         Spacer(Modifier.height(Dimens.xxl))
 
         PrimaryButton(
-            text = if (printPhase == PrintPhase.DONE) "Print again" else "Print receipt",
+            text = if (printPhase == PrintPhase.DONE) stringResource(R.string.print_again) else stringResource(R.string.print_receipt),
             onClick = onPrint,
             loading = printPhase == PrintPhase.PRINTING || printPhase == PrintPhase.CONNECTING,
             leadingIcon = Icons.Rounded.Print,
@@ -78,6 +80,6 @@ fun SuccessView(
         }
 
         Spacer(Modifier.height(Dimens.md))
-        SecondaryButton(text = "New bill", onClick = onNewBill, modifier = Modifier.fillMaxWidth())
+        SecondaryButton(text = stringResource(R.string.success_new_bill), onClick = onNewBill, modifier = Modifier.fillMaxWidth())
     }
 }

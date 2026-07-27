@@ -1,15 +1,33 @@
 package com.plantora.billing.ui.nav
 
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Notifications
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.plantora.billing.R
+import com.plantora.billing.ui.notifications.NotificationsScreen
+import com.plantora.billing.ui.notifications.NotificationsViewModel
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavType
@@ -41,10 +59,12 @@ import com.plantora.billing.ui.settings.staff.StaffManagementScreen
  * Mirrors the web flow — the shop owner lands on Products with the Bill tab
  * hidden; salespeople land on Bill.
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainShell(
     user: User,
     onLogout: () -> Unit,
+    notificationsViewModel: NotificationsViewModel = hiltViewModel(),
 ) {
     val navController = rememberNavController()
     val tabs = tabsFor(user.role)
@@ -54,8 +74,50 @@ fun MainShell(
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = backStackEntry?.destination
     val onTabRoute = tabs.any { tab -> currentDestination?.route == tab.route }
+    val currentTab = tabs.firstOrNull { it.route == currentDestination?.route }
+
+    val notifUi by notificationsViewModel.ui.collectAsStateWithLifecycle()
+
+    // Refresh the unread badge whenever the shop returns to the app (it is often
+    // swiped out of Recents and relaunched), not only on first composition.
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) notificationsViewModel.refresh()
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
 
     Scaffold(
+        topBar = {
+            // Slim bar on the top-level tabs only, carrying the notifications bell.
+            if (onTabRoute) TopAppBar(
+                title = { currentTab?.let { Text(stringResource(it.labelRes)) } },
+                actions = {
+                    IconButton(
+                        onClick = {
+                            navController.navigate(Routes.NOTIFICATIONS) { launchSingleTop = true }
+                        },
+                    ) {
+                        BadgedBox(
+                            badge = {
+                                if (notifUi.unreadCount > 0) {
+                                    Badge {
+                                        Text(if (notifUi.unreadCount > 99) "99+" else notifUi.unreadCount.toString())
+                                    }
+                                }
+                            },
+                        ) {
+                            Icon(
+                                Icons.Rounded.Notifications,
+                                contentDescription = stringResource(R.string.cd_notifications),
+                            )
+                        }
+                    }
+                },
+            )
+        },
         bottomBar = {
             // Only show the bottom nav on the top-level tabs, not on pushed
             // sub-screens (bill detail, settings, printer, customer detail).
@@ -76,16 +138,18 @@ fun MainShell(
                         icon = {
                             Icon(
                                 if (selected) tab.selectedIcon else tab.unselectedIcon,
-                                contentDescription = tab.label,
+                                contentDescription = stringResource(tab.labelRes),
                             )
                         },
                         label = {
+                            // Ellipsize (not overflow) so a long translated label
+                            // — some Indic words are much longer than the English —
+                            // can never spill over and break the tab bar.
                             Text(
-                                tab.label,
+                                stringResource(tab.labelRes),
                                 style = MaterialTheme.typography.labelMedium,
                                 maxLines = 1,
-                                softWrap = false,
-                                overflow = androidx.compose.ui.text.style.TextOverflow.Visible,
+                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                                 textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                             )
                         },
@@ -98,7 +162,14 @@ fun MainShell(
         NavHost(
             navController = navController,
             startDestination = homeRoute,
-            modifier = Modifier.padding(innerPadding),
+            // Pad by the shell's insets (bottom nav + system bars) AND mark them
+            // consumed, so a nested screen's imePadding() lifts its bottom bar by
+            // only (keyboard − navBar), not the full keyboard height. Without the
+            // consume, the IME inset double-counts and leaves a large empty gap
+            // between the Bill action bar and the keyboard.
+            modifier = Modifier
+                .padding(innerPadding)
+                .consumeWindowInsets(innerPadding),
         ) {
             composable(Tab.BILL.route) {
                 BillScreen()
@@ -185,6 +256,13 @@ fun MainShell(
             }
             composable(Routes.STAFF_MANAGEMENT) {
                 StaffManagementScreen(onBack = { navController.popBackStack() })
+            }
+            composable(Routes.NOTIFICATIONS) {
+                // Share the shell-scoped VM so opening the list clears the bell badge.
+                NotificationsScreen(
+                    onBack = { navController.popBackStack() },
+                    viewModel = notificationsViewModel,
+                )
             }
         }
     }

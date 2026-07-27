@@ -2,9 +2,11 @@ package com.plantora.billing.ui.labour
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.plantora.billing.R
 import com.plantora.billing.data.LabourRepository
 import com.plantora.billing.data.remote.friendlyError
 import com.plantora.billing.domain.Attendance
+import com.plantora.billing.i18n.UiText
 import com.plantora.billing.domain.Labourer
 import com.plantora.billing.domain.LabourPayment
 import com.plantora.billing.domain.Money
@@ -95,7 +97,7 @@ data class LabourUiState(
     val showAttendance: Boolean = false,
     val attendance: Map<String, Attendance> = emptyMap(),  // labourerId -> record
     val attendanceBusyId: String? = null,
-    val message: String? = null,
+    val message: UiText? = null,
 ) {
     val filteredLabourers: List<Labourer>
         get() {
@@ -161,7 +163,7 @@ class LabourViewModel @Inject constructor(
             runCatching {
                 if (e.id == null) repo.addLabourer(e.name, e.phone, e.aadhaar, e.gender, Money.parse(e.wage))
                 else repo.updateLabourer(e.id, e.name, e.phone, e.aadhaar, e.gender, Money.parse(e.wage))
-            }.onSuccess { _ui.update { it.copy(workerEditor = null, message = "Saved.") }; load() }
+            }.onSuccess { _ui.update { it.copy(workerEditor = null, message = UiText.res(R.string.vm_saved)) }; load() }
                 .onFailure { err -> _ui.update { it.copy(workerEditor = e.copy(saving = false, error = friendlyError(err))) } }
         }
     }
@@ -169,14 +171,14 @@ class LabourViewModel @Inject constructor(
     fun deleteWorker(id: String) {
         viewModelScope.launch {
             runCatching { repo.deleteLabourer(id) }
-                .onSuccess { _ui.update { it.copy(message = "Worker removed.", detail = null) }; load() }
-                .onFailure { e -> _ui.update { it.copy(message = friendlyError(e)) } }
+                .onSuccess { _ui.update { it.copy(message = UiText.res(R.string.vm_worker_removed), detail = null) }; load() }
+                .onFailure { e -> _ui.update { it.copy(message = UiText.err(e, R.string.err_generic)) } }
         }
     }
 
     // ── Payment editor ──
     fun openRecordPayment(worker: Labourer? = null, advance: Boolean = false) {
-        if (_ui.value.labourers.isEmpty()) { _ui.update { it.copy(message = "Add a worker first.") }; return }
+        if (_ui.value.labourers.isEmpty()) { _ui.update { it.copy(message = UiText.res(R.string.vm_add_worker_first)) }; return }
         val editor = PaymentEditor(
             labourerId = worker?.id,
             labourerName = worker?.name ?: "",
@@ -236,7 +238,7 @@ class LabourViewModel @Inject constructor(
             runCatching {
                 if (e.id == null) repo.recordPayment(e.labourerId!!, kind, amount, days, e.cash, e.upi, e.note)
                 else repo.updatePayment(e.id, amount, days, e.cash, e.upi, e.note)
-            }.onSuccess { _ui.update { it.copy(paymentEditor = null, message = "Payment recorded.") }; load(); refreshDetail() }
+            }.onSuccess { _ui.update { it.copy(paymentEditor = null, message = UiText.res(R.string.vm_payment_recorded)) }; load(); refreshDetail() }
                 .onFailure { err -> _ui.update { it.copy(paymentEditor = e.copy(saving = false, error = friendlyError(err))) } }
         }
     }
@@ -244,8 +246,8 @@ class LabourViewModel @Inject constructor(
     fun deletePayment(id: String) {
         viewModelScope.launch {
             runCatching { repo.deletePayment(id) }
-                .onSuccess { _ui.update { it.copy(message = "Payment deleted.") }; load(); refreshDetail() }
-                .onFailure { e -> _ui.update { it.copy(message = friendlyError(e)) } }
+                .onSuccess { _ui.update { it.copy(message = UiText.res(R.string.vm_payment_deleted)) }; load(); refreshDetail() }
+                .onFailure { e -> _ui.update { it.copy(message = UiText.err(e, R.string.err_generic)) } }
         }
     }
 
@@ -255,7 +257,7 @@ class LabourViewModel @Inject constructor(
         viewModelScope.launch {
             runCatching { repo.payments(labourerId = l.id) }
                 .onSuccess { list -> _ui.update { it.copy(detail = it.detail?.copy(loading = false, payments = list)) } }
-                .onFailure { e -> _ui.update { it.copy(detail = it.detail?.copy(loading = false), message = friendlyError(e)) } }
+                .onFailure { e -> _ui.update { it.copy(detail = it.detail?.copy(loading = false), message = UiText.err(e, R.string.err_generic)) } }
         }
     }
     fun closeDetail() = _ui.update { it.copy(detail = null) }
@@ -279,7 +281,7 @@ class LabourViewModel @Inject constructor(
                     // Attendance changes days worked → refresh balances.
                     load()
                 }
-                .onFailure { e -> _ui.update { it.copy(attendanceBusyId = null, message = friendlyError(e)) } }
+                .onFailure { e -> _ui.update { it.copy(attendanceBusyId = null, message = UiText.err(e, R.string.err_generic)) } }
         }
     }
 

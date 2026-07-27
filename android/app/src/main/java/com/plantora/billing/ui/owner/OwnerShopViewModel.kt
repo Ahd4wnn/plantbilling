@@ -3,9 +3,11 @@ package com.plantora.billing.ui.owner
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.plantora.billing.R
 import com.plantora.billing.data.OwnerRepository
 import com.plantora.billing.data.remote.friendlyError
 import com.plantora.billing.domain.DetailedReport
+import com.plantora.billing.i18n.UiText
 import com.plantora.billing.domain.Labourer
 import com.plantora.billing.domain.LabourPayment
 import com.plantora.billing.domain.OwnerBill
@@ -50,7 +52,7 @@ data class OwnerShopState(
     val labourers: List<Labourer> = emptyList(),
     val labourerDetail: LabourerDetail? = null,
     val billDetail: BillDetailState? = null,
-    val message: String? = null,
+    val message: UiText? = null,
 )
 
 data class LabourerDetail(
@@ -169,7 +171,7 @@ class OwnerShopViewModel @Inject constructor(
         viewModelScope.launch {
             runCatching { repo.billDetail(shopId, billId) }
                 .onSuccess { b -> _ui.update { it.copy(billDetail = BillDetailState(loading = false, bill = b)) } }
-                .onFailure { e -> _ui.update { it.copy(billDetail = null, message = friendlyError(e)) } }
+                .onFailure { e -> _ui.update { it.copy(billDetail = null, message = UiText.err(e, R.string.err_generic)) } }
         }
     }
 
@@ -187,7 +189,7 @@ class OwnerShopViewModel @Inject constructor(
         viewModelScope.launch {
             runCatching { repo.createStaff(shopId, form.email, form.password, form.role) }
                 .onSuccess {
-                    _ui.update { it.copy(newStaff = NewStaffForm(), message = "Staff added.") }
+                    _ui.update { it.copy(newStaff = NewStaffForm(), message = UiText.res(R.string.vm_staff_added)) }
                     loadStaff()
                 }
                 .onFailure { e -> _ui.update { it.copy(newStaff = form.copy(saving = false, error = friendlyError(e))) } }
@@ -197,8 +199,8 @@ class OwnerShopViewModel @Inject constructor(
     fun deleteStaff(s: OwnerStaff) {
         viewModelScope.launch {
             runCatching { repo.deleteStaff(shopId, s.id) }
-                .onSuccess { _ui.update { it.copy(message = "Removed ${s.email}") }; loadStaff() }
-                .onFailure { e -> _ui.update { it.copy(message = friendlyError(e)) } }
+                .onSuccess { _ui.update { it.copy(message = UiText.res(R.string.vm_removed, s.email)) }; loadStaff() }
+                .onFailure { e -> _ui.update { it.copy(message = UiText.err(e, R.string.err_generic)) } }
         }
     }
 }

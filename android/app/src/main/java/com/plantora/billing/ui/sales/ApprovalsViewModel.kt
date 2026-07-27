@@ -2,9 +2,11 @@ package com.plantora.billing.ui.sales
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.plantora.billing.R
 import com.plantora.billing.data.SettlementRepository
 import com.plantora.billing.data.remote.friendlyError
 import com.plantora.billing.domain.PendingSettlement
+import com.plantora.billing.i18n.UiText
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -23,7 +25,7 @@ data class ApprovalsUiState(
     val error: String? = null,
     val items: List<PendingSettlement> = emptyList(),
     val actingId: String? = null,
-    val message: String? = null,
+    val message: UiText? = null,
 )
 
 @HiltViewModel
@@ -58,11 +60,11 @@ class ApprovalsViewModel @Inject constructor(
                         s.copy(
                             actingId = null,
                             items = s.items.filterNot { it.id == item.id },
-                            message = if (approve) "Approved — ${item.amount.format()} collected." else "Rejected.",
+                            message = if (approve) UiText.res(R.string.vm_approved, item.amount.format()) else UiText.res(R.string.vm_rejected),
                         )
                     }
                 }
-                .onFailure { e -> _ui.update { it.copy(actingId = null, message = friendlyError(e, "Couldn't update the request.")) } }
+                .onFailure { e -> _ui.update { it.copy(actingId = null, message = UiText.err(e, R.string.err_update_request)) } }
         }
     }
 

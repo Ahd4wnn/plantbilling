@@ -19,7 +19,8 @@ import javax.inject.Inject
 data class CustomerDetailUiState(
     val loading: Boolean = true,
     val error: String? = null,
-    val name: String = "Customer",
+    /** Customer's name, or null when none is recorded (UI shows a localized fallback). */
+    val name: String? = null,
     val bills: List<BillListEntry> = emptyList(),
     val totalSpent: Money = Money.ZERO,
     val creditBillCount: Int = 0,
@@ -45,7 +46,7 @@ class CustomerDetailViewModel @Inject constructor(
                 .onSuccess { page ->
                     val spent = page.items.fold(Money.ZERO) { acc, b -> acc + b.total }
                     val credit = page.items.count { it.paymentMethod == PaymentMethod.DUE }
-                    val name = page.items.firstOrNull { !it.customerName.isNullOrBlank() }?.customerName ?: "Customer"
+                    val name = page.items.firstOrNull { !it.customerName.isNullOrBlank() }?.customerName
                     _ui.update {
                         it.copy(
                             loading = false,

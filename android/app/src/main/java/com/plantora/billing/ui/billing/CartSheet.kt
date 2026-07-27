@@ -24,11 +24,15 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.key
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import com.plantora.billing.R
+import com.plantora.billing.i18n.asString
 import com.plantora.billing.domain.DiscountType
 import com.plantora.billing.domain.Money
 import com.plantora.billing.ui.components.MoneyText
@@ -73,7 +77,7 @@ fun CartSheetContent(
     ) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text(
-                "Review bill",
+                stringResource(R.string.cart_review_title),
                 style = MaterialTheme.typography.headlineMedium,
                 modifier = Modifier.weight(1f),
             )
@@ -86,17 +90,21 @@ fun CartSheetContent(
                     contentDescription = null,
                     modifier = Modifier.padding(end = Dimens.xs).height(20.dp).width(20.dp),
                 )
-                Text("Clear cart")
+                Text(stringResource(R.string.cart_clear))
             }
             // Explicit close — the sheet no longer dismisses on swipe/scrim.
             IconButton(onClick = onClose) {
-                Icon(Icons.Rounded.Close, contentDescription = "Close review", modifier = Modifier.size(28.dp))
+                Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.cart_close_cd), modifier = Modifier.size(28.dp))
             }
         }
         Spacer(Modifier.height(Dimens.md))
 
         // ── Cart lines ──
+        // key(line.id): each line owns stateful editors (price NumberField, quantity
+        // stepper). Without a stable key, removing a line would reassign those
+        // remembered field states positionally to the wrong line.
         state.lines.forEach { line ->
+            key(line.id) {
             Column(Modifier.padding(vertical = Dimens.sm)) {
                 // Name + line total on one row so the total always has room (the
                 // price field + stepper below would otherwise squeeze it to nothing).
@@ -112,7 +120,7 @@ fun CartSheetContent(
                         modifier = Modifier.padding(start = Dimens.sm),
                     )
                     IconButton(onClick = { onRemoveLine(line.id) }) {
-                        Icon(Icons.Rounded.Close, contentDescription = "Remove ${line.product.name}")
+                        Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.cart_remove_cd, line.product.name))
                     }
                 }
                 Row(
@@ -122,7 +130,7 @@ fun CartSheetContent(
                     com.plantora.billing.ui.components.NumberField(
                         value = line.unitPrice.toInput(),
                         onValueChange = { onSetUnitPrice(line.id, it) },
-                        label = "Price",
+                        label = stringResource(R.string.cart_price),
                         modifier = Modifier.weight(1f),
                     )
                     QuantityStepper(
@@ -134,6 +142,7 @@ fun CartSheetContent(
                 }
             }
             HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f))
+            }
         }
 
         Spacer(Modifier.height(Dimens.md))
@@ -141,7 +150,7 @@ fun CartSheetContent(
         // Minimizes the review so the owner can tap more products; the sheet pops
         // back open automatically on the next add.
         com.plantora.billing.ui.components.SecondaryButton(
-            text = "Add item",
+            text = stringResource(R.string.cart_add_item),
             onClick = onAddItem,
             leadingIcon = Icons.Rounded.Add,
             modifier = Modifier.fillMaxWidth(),
@@ -150,23 +159,23 @@ fun CartSheetContent(
         Spacer(Modifier.height(Dimens.lg))
 
         // ── Discount ──
-        SectionHeader("Discount")
+        SectionHeader(stringResource(R.string.cart_discount))
         Row(horizontalArrangement = Arrangement.spacedBy(Dimens.sm), verticalAlignment = Alignment.CenterVertically) {
             FilterChip(
                 selected = state.discountType == DiscountType.FLAT,
                 onClick = { onSetDiscountType(DiscountType.FLAT) },
-                label = { Text("₹ Flat") },
+                label = { Text(stringResource(R.string.discount_flat)) },
             )
             FilterChip(
                 selected = state.discountType == DiscountType.PERCENT,
                 onClick = { onSetDiscountType(DiscountType.PERCENT) },
-                label = { Text("% Percent") },
+                label = { Text(stringResource(R.string.discount_percent)) },
             )
             Spacer(Modifier.width(Dimens.sm))
             PlantoraTextField(
                 value = state.discountInput,
                 onValueChange = onSetDiscountInput,
-                label = if (state.discountType == DiscountType.FLAT) "Amount" else "Percent",
+                label = if (state.discountType == DiscountType.FLAT) stringResource(R.string.cart_amount) else stringResource(R.string.cart_percent),
                 keyboardType = KeyboardType.Decimal,
                 modifier = Modifier.width(130.dp),
             )
@@ -175,11 +184,11 @@ fun CartSheetContent(
         Spacer(Modifier.height(Dimens.lg))
 
         // ── Totals ──
-        SummaryRow("Subtotal", totals.subtotal)
-        if (totals.discountAmount.isPositive()) SummaryRow("Discount", Money.ZERO - totals.discountAmount)
+        SummaryRow(stringResource(R.string.label_subtotal), totals.subtotal)
+        if (totals.discountAmount.isPositive()) SummaryRow(stringResource(R.string.cart_discount), Money.ZERO - totals.discountAmount)
         Spacer(Modifier.height(Dimens.xs))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text("Total", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            Text(stringResource(R.string.label_total), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
             MoneyText(totals.total, style = MaterialTheme.typography.titleLarge)
         }
 
@@ -187,40 +196,40 @@ fun CartSheetContent(
 
         // ── Customer (entered fresh; phone required when there's a due) ──
         val hasDue = Money.parse(state.dueInput.ifBlank { "0" }).isPositive()
-        SectionHeader(if (hasDue) "Customer (required for due)" else "Customer (optional)")
-        PlantoraTextField(state.customerName, onSetCustomerName, label = "Name")
+        SectionHeader(if (hasDue) stringResource(R.string.cart_customer_required) else stringResource(R.string.cart_customer_optional))
+        PlantoraTextField(state.customerName, onSetCustomerName, label = stringResource(R.string.label_name))
         Spacer(Modifier.height(Dimens.sm))
         PlantoraTextField(
             state.customerPhone, onSetCustomerPhone,
-            label = if (hasDue) "Phone (required — money owed)" else "Phone (for receipts)",
+            label = if (hasDue) stringResource(R.string.cart_phone_required) else stringResource(R.string.cart_phone_optional),
             keyboardType = KeyboardType.Phone,
         )
 
         Spacer(Modifier.height(Dimens.lg))
 
         // ── Payment ──
-        SectionHeader("Payment")
+        SectionHeader(stringResource(R.string.cart_payment))
         Row(horizontalArrangement = Arrangement.spacedBy(Dimens.sm)) {
-            PaymentChip("Cash", state.paymentMode == PaymentMode.CASH) { onSetPaymentMode(PaymentMode.CASH) }
-            PaymentChip("UPI", state.paymentMode == PaymentMode.UPI) { onSetPaymentMode(PaymentMode.UPI) }
-            PaymentChip("Split", state.paymentMode == PaymentMode.SPLIT) { onSetPaymentMode(PaymentMode.SPLIT) }
+            PaymentChip(stringResource(R.string.pay_cash), state.paymentMode == PaymentMode.CASH) { onSetPaymentMode(PaymentMode.CASH) }
+            PaymentChip(stringResource(R.string.pay_upi), state.paymentMode == PaymentMode.UPI) { onSetPaymentMode(PaymentMode.UPI) }
+            PaymentChip(stringResource(R.string.pay_split), state.paymentMode == PaymentMode.SPLIT) { onSetPaymentMode(PaymentMode.SPLIT) }
         }
         if (state.paymentMode == PaymentMode.SPLIT) {
             Spacer(Modifier.height(Dimens.sm))
             PlantoraTextField(
                 state.cashInput, onSetCashInput,
-                label = "Cash part", keyboardType = KeyboardType.Decimal,
+                label = stringResource(R.string.cart_cash_part), keyboardType = KeyboardType.Decimal,
             )
         }
         Spacer(Modifier.height(Dimens.sm))
         PlantoraTextField(
             state.dueInput, onSetDueInput,
-            label = "Due (owed later, optional)", keyboardType = KeyboardType.Decimal,
+            label = stringResource(R.string.cart_due), keyboardType = KeyboardType.Decimal,
         )
         Spacer(Modifier.height(Dimens.sm))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Dimens.lg)) {
-            PayPill("Cash", cash, Modifier.weight(1f))
-            PayPill("UPI", upi, Modifier.weight(1f))
+            PayPill(stringResource(R.string.pay_cash), cash, Modifier.weight(1f))
+            PayPill(stringResource(R.string.pay_upi), upi, Modifier.weight(1f))
         }
 
         // Scan-to-pay QR — appears whenever any amount is being collected via UPI.
@@ -231,20 +240,20 @@ fun CartSheetContent(
 
         state.checkoutError?.let {
             Spacer(Modifier.height(Dimens.md))
-            Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium)
+            Text(it.asString(), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium)
         }
 
         Spacer(Modifier.height(Dimens.xl))
         // Park this bill to serve another customer first; it moves to "Held bills".
         com.plantora.billing.ui.components.SecondaryButton(
-            text = "Hold bill — serve another customer",
+            text = stringResource(R.string.cart_hold),
             onClick = onHold,
             leadingIcon = Icons.Rounded.Pause,
             modifier = Modifier.fillMaxWidth(),
         )
         Spacer(Modifier.height(Dimens.md))
         PrimaryButton(
-            text = "Save bill • ${totals.total.format()}",
+            text = stringResource(R.string.cart_save, totals.total.format()),
             onClick = onCheckout,
             enabled = !state.isCartEmpty,
             loading = state.checkout == CheckoutPhase.SUBMITTING,
@@ -252,7 +261,7 @@ fun CartSheetContent(
 
         // Remarks last (rarely used).
         Spacer(Modifier.height(Dimens.md))
-        PlantoraTextField(state.remarks, onSetRemarks, label = "Remarks (optional)", singleLine = false)
+        PlantoraTextField(state.remarks, onSetRemarks, label = stringResource(R.string.cart_remarks), singleLine = false)
     }
 }
 
@@ -269,20 +278,20 @@ private fun UpiQrSection(upiId: String?, businessName: String, amount: Money) {
         ) {
             if (upiId.isNullOrBlank()) {
                 Text(
-                    "UPI not set up",
+                    stringResource(R.string.upi_not_set),
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.error,
                 )
                 Spacer(Modifier.height(Dimens.xs))
                 Text(
-                    "Ask your admin to add the shop's UPI ID so customers can scan to pay.",
+                    stringResource(R.string.upi_not_set_desc),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                 )
             } else {
                 Text(
-                    "SCAN TO PAY",
+                    stringResource(R.string.upi_scan),
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.primary,
                 )
