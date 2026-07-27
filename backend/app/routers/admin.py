@@ -203,6 +203,46 @@ def list_owners(db: Session = Depends(get_db)) -> list[OwnerAccountInfo]:
     ]
 
 
+@router.post("/owners/{owner_id}/reset-password", response_model=OwnerAccountInfo)
+def reset_owner_account_password(
+    owner_id: uuid.UUID,
+    payload: ResetPasswordRequest,
+    db: Session = Depends(get_db),
+) -> OwnerAccountInfo:
+    """Set a new password for a multi-shop owner account (credentials shown once)."""
+    owner = db.execute(
+        select(User).where(User.id == owner_id, User.role == ROLE_OWNER)
+    ).scalar_one_or_none()
+    if owner is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Owner account not found")
+    owner.password_hash = hash_password(payload.new_password)
+    db.flush()
+    db.refresh(owner)
+    count = db.execute(
+        select(func.count()).select_from(ShopOwner).where(ShopOwner.owner_id == owner.id)
+    ).scalar_one()
+    return OwnerAccountInfo(
+        id=owner.id, email=owner.email, is_active=owner.is_active,
+        created_at=owner.created_at, shop_count=int(count),
+    )
+
+
+@router.delete("/owners/{owner_id}", status_code=status.HTTP_204_NO_CONTENT, response_class=Response)
+def delete_owner(
+    owner_id: uuid.UUID,
+    db: Session = Depends(get_db),
+):
+    """Delete a multi-shop owner login. Their shop_owners links are removed via the
+    FK's ON DELETE CASCADE; the shops and their data are untouched."""
+    owner = db.execute(
+        select(User).where(User.id == owner_id, User.role == ROLE_OWNER)
+    ).scalar_one_or_none()
+    if owner is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Owner account not found")
+    db.delete(owner)
+    db.flush()
+
+
 def _shop_owner_rows(db: Session, shop_id: uuid.UUID) -> list[ShopOwnerRow]:
     rows = db.execute(
         select(User.id, User.email)

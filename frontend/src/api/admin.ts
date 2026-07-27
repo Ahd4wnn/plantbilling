@@ -145,6 +145,17 @@ export async function createOwner(email: string, password: string): Promise<Owne
   return data;
 }
 
+/** Set a new password for a multi-shop owner account. */
+export async function resetOwnerAccountPassword(ownerId: string, newPassword: string): Promise<OwnerAccount> {
+  const { data } = await api.post<OwnerAccount>(`/admin/owners/${ownerId}/reset-password`, { new_password: newPassword });
+  return data;
+}
+
+/** Delete an owner login. Shop links are auto-removed; shops are untouched. */
+export async function deleteOwner(ownerId: string): Promise<void> {
+  await api.delete(`/admin/owners/${ownerId}`);
+}
+
 export async function listShopOwners(shopId: string): Promise<ShopOwnerLink[]> {
   const { data } = await api.get<ShopOwnerLink[]>(`/admin/shops/${shopId}/owners`);
   return data;

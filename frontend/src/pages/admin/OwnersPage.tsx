@@ -3,16 +3,20 @@ import {
   addShopOwner,
   removeShopOwner,
   createOwner,
+  resetOwnerAccountPassword,
+  deleteOwner,
   listOwners,
   listShops,
   type OwnerAccount,
   type ShopRow,
 } from "@/api/admin";
 import { getAdminOverview } from "@/api/adminAnalytics";
-import { X, Store } from "lucide-react";
+import { X, Store, KeyRound, Trash2 } from "lucide-react";
 import { friendlyError } from "@/api/client";
 import { Spinner } from "@/components/Spinner";
 import { Button } from "@/components/Button";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { TypeToConfirmDialog } from "@/components/TypeToConfirmDialog";
 
 function ymd(d: Date): string {
   return d.toISOString().slice(0, 10);
@@ -38,6 +42,13 @@ export function OwnersPage() {
   const [created, setCreated] = useState<{ email: string; password: string } | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [billsByShop, setBillsByShop] = useState<Record<string, number>>({});
+
+  // Reset-password + delete flows for existing owner accounts.
+  const [resetTarget, setResetTarget] = useState<OwnerAccount | null>(null);
+  const [resetting, setResetting] = useState(false);
+  const [resetResult, setResetResult] = useState<{ email: string; password: string } | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<OwnerAccount | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -130,12 +141,63 @@ export function OwnersPage() {
     }
   };
 
+  const doReset = async () => {
+    if (!resetTarget) return;
+    setResetting(true);
+    const pwd = genPassword();
+    try {
+      await resetOwnerAccountPassword(resetTarget.id, pwd);
+      setResetResult({ email: resetTarget.email, password: pwd });
+      setResetTarget(null);
+    } catch (e) {
+      flash(friendlyError(e, "Couldn't reset the password."), 3500);
+    } finally {
+      setResetting(false);
+    }
+  };
+
+  const doDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    const email = deleteTarget.email;
+    try {
+      await deleteOwner(deleteTarget.id);
+      setOwners((prev) => prev.filter((o) => o.id !== deleteTarget.id));
+      setDeleteTarget(null);
+      flash(`Deleted ${email}.`);
+      void load();
+    } catch (e) {
+      flash(friendlyError(e, "Couldn't delete the owner."), 3500);
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   return (
     <div className="space-y-8">
       <div>
         <h1 className="text-2xl font-extrabold text-ink">Business owners</h1>
         <p className="text-sm text-ink-soft">Multi-shop owners see analytics and manage staff across the shops you assign them.</p>
       </div>
+
+      {resetResult && (
+        <div className="flex items-start justify-between gap-3 rounded-card border border-primary-200 bg-primary-50 p-4 shadow-card">
+          <div className="min-w-0 text-sm text-primary-900">
+            <div className="font-bold">Password reset — share these once</div>
+            <div className="mt-1">
+              <b>{resetResult.email}</b> / <b className="font-mono break-all">{resetResult.password}</b>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setResetResult(null)}
+            aria-label="Dismiss"
+            className="shrink-0 rounded-control p-1 text-primary-700 hover:bg-primary-100"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
 
       {/* Create owner */}
       <section className="rounded-card border border-border bg-surface p-4 shadow-card">
@@ -212,6 +274,23 @@ export function OwnersPage() {
                           ))}
                         </div>
                       )}
+
+                      <div className="mt-3 flex gap-2 border-t border-border pt-3">
+                        <button
+                          type="button"
+                          onClick={() => setResetTarget(o)}
+                          className="inline-flex items-center gap-1.5 rounded-control px-2.5 py-1.5 text-sm font-semibold text-ink-soft hover:bg-surface-muted hover:text-ink"
+                        >
+                          <KeyRound className="h-4 w-4" /> Reset password
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setDeleteTarget(o)}
+                          className="inline-flex items-center gap-1.5 rounded-control px-2.5 py-1.5 text-sm font-semibold text-danger hover:bg-danger-soft"
+                        >
+                          <Trash2 className="h-4 w-4" /> Delete
+                        </button>
+                      </div>
                     </div>
                   );
                 })}
@@ -275,6 +354,38 @@ export function OwnersPage() {
           </section>
         </>
       )}
+
+      <ConfirmDialog
+        open={resetTarget !== null}
+        title="Reset password?"
+        body={
+          <>
+            A new password will be generated for <b>{resetTarget?.email}</b>. Their current
+            password stops working immediately, and the new one is shown once.
+          </>
+        }
+        confirmLabel={resetting ? "Resetting…" : "Reset password"}
+        cancelLabel="Cancel"
+        onConfirm={doReset}
+        onCancel={() => !resetting && setResetTarget(null)}
+      />
+
+      <TypeToConfirmDialog
+        open={deleteTarget !== null}
+        title="Delete owner account?"
+        expected={deleteTarget?.email ?? ""}
+        label="email"
+        body={
+          <>
+            This permanently deletes <b>{deleteTarget?.email}</b> and removes them from all
+            assigned shops. The shops and their data are not affected.
+          </>
+        }
+        confirmLabel="Delete owner"
+        loading={deleting}
+        onConfirm={doDelete}
+        onCancel={() => setDeleteTarget(null)}
+      />
 
       {toast && (
         <div className="fixed inset-x-0 top-4 z-[70] flex justify-center px-4">
