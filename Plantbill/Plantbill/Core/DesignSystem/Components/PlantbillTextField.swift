@@ -9,8 +9,14 @@ struct PlantbillTextField: View {
     var keyboardType: UIKeyboardType = .default
     var textContentType: UITextContentType? = nil
     var errorMessage: String? = nil
+    /// Selects all existing text the moment the field gains focus — for
+    /// numeric fields (price, amounts) where typing is almost always meant
+    /// to replace the whole value, not insert into it. Never combine with
+    /// `isSecure`.
+    var selectAllOnFocus: Bool = false
 
     @FocusState private var isFocused: Bool
+    @State private var isUIKitFieldFocused = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: PlantbillSpacing.xs) {
@@ -21,8 +27,25 @@ struct PlantbillTextField: View {
             Group {
                 if isSecure {
                     SecureField(placeholder, text: $text)
+                        .focused($isFocused)
+                } else if selectAllOnFocus {
+                    // Placeholder is deliberately not threaded through here:
+                    // `LocalizedStringKey` has no public API to resolve back
+                    // to a plain String, and every current selectAllOnFocus
+                    // field is numeric with a "0" placeholder — language-
+                    // neutral, so hardcoding it is correct today. Revisit if
+                    // a non-numeric selectAllOnFocus field is ever needed.
+                    SelectAllTextField(
+                        text: $text,
+                        placeholder: "0",
+                        keyboardType: keyboardType,
+                        onFocusChange: { focused in
+                            isUIKitFieldFocused = focused
+                        }
+                    )
                 } else {
                     TextField(placeholder, text: $text)
+                        .focused($isFocused)
                 }
             }
             .font(PlantbillTypography.body)
@@ -31,7 +54,6 @@ struct PlantbillTextField: View {
             .textContentType(textContentType)
             .autocorrectionDisabled()
             .textInputAutocapitalization(.never)
-            .focused($isFocused)
             .padding(.horizontal, PlantbillSpacing.md)
             .frame(height: PlantbillSpacing.minTouchTarget + 8)
             .background(
@@ -40,7 +62,7 @@ struct PlantbillTextField: View {
             )
             .overlay(
                 RoundedRectangle(cornerRadius: PlantbillSpacing.controlCornerRadius)
-                    .stroke(borderColor, lineWidth: isFocused ? 2 : 1)
+                    .stroke(borderColor, lineWidth: effectivelyFocused ? 2 : 1)
             )
             // Same fix as buttons: without this, tapping the padding around
             // the actual text (top/bottom of the 56pt-tall box) doesn't
@@ -54,8 +76,10 @@ struct PlantbillTextField: View {
         }
     }
 
+    private var effectivelyFocused: Bool { isFocused || isUIKitFieldFocused }
+
     private var borderColor: Color {
         if errorMessage != nil { return PlantbillColor.error }
-        return isFocused ? PlantbillColor.green : PlantbillColor.border
+        return effectivelyFocused ? PlantbillColor.green : PlantbillColor.border
     }
 }

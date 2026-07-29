@@ -25,7 +25,7 @@ struct QuickAddSheet: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
 
                 PlantbillTextField(label: "Item name", text: $name, placeholder: "e.g. Ad-hoc plant, pot, soil")
-                PlantbillTextField(label: "Price (₹)", text: $priceText, placeholder: "0", keyboardType: .numberPad)
+                PlantbillTextField(label: "Price (₹)", text: $priceText, placeholder: "0", keyboardType: .numberPad, selectAllOnFocus: true)
 
                 HStack {
                     Text("Quantity")

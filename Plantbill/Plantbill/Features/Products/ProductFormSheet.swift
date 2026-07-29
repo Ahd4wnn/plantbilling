@@ -41,7 +41,7 @@ struct ProductFormSheet: View {
                     VStack(spacing: PlantbillSpacing.md) {
                         PlantbillTextField(label: "Name", text: $name, placeholder: "e.g. Money Plant")
                         PlantbillTextField(label: "Category (optional)", text: $category, placeholder: "e.g. Indoor")
-                        PlantbillTextField(label: "Price (₹)", text: $priceText, placeholder: "0", keyboardType: .numberPad)
+                        PlantbillTextField(label: "Price (₹)", text: $priceText, placeholder: "0", keyboardType: .numberPad, selectAllOnFocus: true)
 
                         if product != nil {
                             Toggle(isOn: $isActive) {

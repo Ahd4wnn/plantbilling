@@ -6,7 +6,7 @@ struct CartReviewSheet: View {
     @Environment(\.dismiss) private var dismiss
     @FocusState private var focusedField: Field?
 
-    private enum Field { case discount, cashPart, due, name, phone, remarks }
+    private enum Field { case name, phone, remarks }
 
     var body: some View {
         NavigationStack {
@@ -97,9 +97,9 @@ struct CartReviewSheet: View {
                 label: viewModel.discountType == .flat ? "Amount" : "Percent",
                 text: $viewModel.discountValueText,
                 placeholder: "0",
-                keyboardType: .numberPad
+                keyboardType: .numberPad,
+                selectAllOnFocus: true
             )
-            .focused($focusedField, equals: .discount)
 
             HStack {
                 Text("Total")
@@ -147,8 +147,7 @@ struct CartReviewSheet: View {
             }
 
             if viewModel.paymentMode == .split {
-                PlantbillTextField(label: "Cash part", text: $viewModel.cashPartText, placeholder: "0", keyboardType: .numberPad)
-                    .focused($focusedField, equals: .cashPart)
+                PlantbillTextField(label: "Cash part", text: $viewModel.cashPartText, placeholder: "0", keyboardType: .numberPad, selectAllOnFocus: true)
 
                 HStack {
                     Text("UPI part")
@@ -165,9 +164,9 @@ struct CartReviewSheet: View {
                 label: "Due (owed later, optional)",
                 text: $viewModel.dueAmountText,
                 placeholder: "0",
-                keyboardType: .numberPad
+                keyboardType: .numberPad,
+                selectAllOnFocus: true
             )
-            .focused($focusedField, equals: .due)
         }
     }
 
@@ -292,10 +291,7 @@ private struct CartLineRow: View {
             Text(label)
                 .font(PlantbillTypography.caption)
                 .foregroundStyle(PlantbillColor.textSecondary)
-            TextField("0", text: text)
-                .keyboardType(.numberPad)
-                .font(PlantbillTypography.bodyEmphasized)
-                .multilineTextAlignment(.center)
+            SelectAllTextField(text: text, placeholder: "0", keyboardType: .numberPad, textAlignment: .center)
                 .frame(width: width, height: PlantbillSpacing.minTouchTarget)
                 .background(
                     RoundedRectangle(cornerRadius: PlantbillSpacing.controlCornerRadius)
@@ -305,7 +301,6 @@ private struct CartLineRow: View {
                     RoundedRectangle(cornerRadius: PlantbillSpacing.controlCornerRadius)
                         .stroke(PlantbillColor.border, lineWidth: 1)
                 )
-                .contentShape(Rectangle())
                 .onChange(of: text.wrappedValue) { _, newValue in
                     onChange(newValue)
                 }
