@@ -43,6 +43,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -69,6 +74,23 @@ fun BillScreen(viewModel: BillingViewModel = hiltViewModel()) {
     // anchor state from showReview and hard-froze the app (ANR) when the review was
     // dismissed via back/swipe-down and then reopened. Let it settle to Hidden.
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    // Once the cart list has scrolled as far down as it can, swallow any remaining
+    // DOWNWARD drag/fling so the sheet body can't collapse the review — you scroll
+    // the cart freely and only the drag handle at the top (or ✕ / Add item) closes
+    // it. This lives INSIDE the sheet's own nested-scroll connection, so its
+    // onPostScroll runs first and consumes the delta before the dismiss path sees
+    // it. It never touches sheetState / onDismissRequest, so the earlier freeze
+    // (from rejecting the Hidden state) cannot return. Upward drags and normal
+    // scrolling are untouched — verticalScroll consumes what it needs first.
+    val blockSheetDismissDrag = remember {
+        object : NestedScrollConnection {
+            override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource): Offset =
+                if (available.y > 0f && source == NestedScrollSource.UserInput) available.copy(x = 0f) else Offset.Zero
+
+            override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity =
+                if (available.y > 0f) available.copy(x = 0f) else Velocity.Zero
+        }
+    }
     val quickAddSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val snackbar = remember { SnackbarHostState() }
     val ctx = androidx.compose.ui.platform.LocalContext.current
@@ -206,6 +228,7 @@ fun BillScreen(viewModel: BillingViewModel = hiltViewModel()) {
             sheetState = sheetState,
         ) {
             CartSheetContent(
+                modifier = Modifier.nestedScroll(blockSheetDismissDrag),
                 state = state,
                 onSetQuantity = viewModel::setQuantity,
                 onSetUnitPrice = viewModel::setUnitPrice,

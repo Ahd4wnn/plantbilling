@@ -44,6 +44,7 @@ import com.plantora.billing.ui.theme.Dimens
 
 @Composable
 fun CartSheetContent(
+    modifier: Modifier = Modifier,
     state: BillingUiState,
     onSetQuantity: (String, Int) -> Unit,
     onSetUnitPrice: (String, String) -> Unit,
@@ -66,7 +67,7 @@ fun CartSheetContent(
     val (cash, upi) = state.payment
 
     Column(
-        Modifier
+        modifier
             .fillMaxWidth()
             // imePadding lifts the sheet above the keyboard so the field being typed
             // into (price, phone, remarks) is never hidden behind it.

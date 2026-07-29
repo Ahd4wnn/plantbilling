@@ -28,8 +28,8 @@ android {
         applicationId = "com.plantora.billing"
         minSdk = 24
         targetSdk = 36
-        versionCode = 25
-        versionName = "0.1.24"
+        versionCode = 28
+        versionName = "0.1.27"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         // Default backend: the hosted production API. Overridable at runtime in
@@ -55,15 +55,14 @@ android {
         }
         release {
             isMinifyEnabled = true
-            // Use the NON-optimizing R8 config (still shrinks + obfuscates). The
-            // Review-screen freeze reproduces only in the release build, never in
-            // debug — the classic signature of an R8 optimization artifact (the
-            // -optimize config's inlining/class-merging pass runs only here). This
-            // drops that pass as a low-risk, reversible mitigation while the ANR
-            // watchdog captures the real frozen stack. Revert to the -optimize
-            // file once the ANR trace confirms the true cause.
+            // Full R8 optimization (shrink + obfuscate + optimize). We had temporarily
+            // dropped the -optimize pass while chasing the Review-screen freeze, on the
+            // theory it was an R8 inlining artifact. The real causes were later found and
+            // fixed elsewhere (the ModalBottomSheet dismiss anti-pattern, and a Keystore
+            // ANR at startup) — neither was R8 — so the optimizing config is restored.
+            // Play flags the non-optimizing build under "improve memory & performance".
             proguardFiles(
-                getDefaultProguardFile("proguard-android.txt"),
+                getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
             )
             // Upload native debug symbols so Play can symbolicate native crashes/ANRs.
@@ -97,6 +96,18 @@ android {
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
+        }
+    }
+
+    bundle {
+        language {
+            // Ship every translation in the base APK. By default an App Bundle splits
+            // resources by language and Play installs only the split matching the phone's
+            // SYSTEM locale — which breaks the in-app language picker (More → Languages):
+            // the chosen language's resources simply aren't on the device, so it falls back
+            // to English. Disabling the split keeps all languages so the picker always finds
+            // them. Strings-only, so the download-size cost is negligible.
+            enableSplit = false
         }
     }
 }
