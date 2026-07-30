@@ -1,5 +1,6 @@
 package com.plantora.billing.ui.admin
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -143,6 +144,32 @@ class AdminBooksViewModel @Inject constructor(
         }
     }
 
+    fun updateSale(id: String, title: String, amount: Money, method: String, note: String?, onDone: () -> Unit) {
+        _ui.update { it.copy(saving = true) }
+        viewModelScope.launch {
+            runCatching { repo.updateSale(id, title, amount, method, note) }
+                .onSuccess {
+                    _ui.update { it.copy(saving = false, message = "Sale updated.") }
+                    onDone()
+                    load()
+                }
+                .onFailure { e -> _ui.update { it.copy(saving = false, message = friendlyError(e)) } }
+        }
+    }
+
+    fun updateExpense(id: String, reason: String, amount: Money, method: String, note: String?, onDone: () -> Unit) {
+        _ui.update { it.copy(saving = true) }
+        viewModelScope.launch {
+            runCatching { repo.updateExpense(id, reason, amount, method, note) }
+                .onSuccess {
+                    _ui.update { it.copy(saving = false, message = "Expense updated.") }
+                    onDone()
+                    load()
+                }
+                .onFailure { e -> _ui.update { it.copy(saving = false, message = friendlyError(e)) } }
+        }
+    }
+
     fun deleteSale(id: String) {
         viewModelScope.launch {
             runCatching { repo.deleteSale(id) }
@@ -163,6 +190,25 @@ class AdminBooksViewModel @Inject constructor(
 private enum class EntryType { SALE, EXPENSE }
 private data class PendingDelete(val id: String, val type: EntryType, val label: String)
 
+/** Drives the add/edit bottom sheet. [editId] null = adding; non-null = editing that row. */
+private data class BookSheet(
+    val type: EntryType,
+    val editId: String? = null,
+    val title: String = "",
+    val amount: String = "",
+    val method: String = "cash",
+    val note: String = "",
+) {
+    val isEdit: Boolean get() = editId != null
+}
+
+/** The single bucket a sale's amount sits in (we only ever write single-bucket). */
+private fun saleMethod(s: AdminSale): String = when {
+    s.dueAmount.isPositive() -> "due"
+    s.upiAmount.isPositive() && !s.cashAmount.isPositive() -> "upi"
+    else -> "cash"
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AdminBooksScreen(
@@ -171,7 +217,7 @@ fun AdminBooksScreen(
 ) {
     val ui by viewModel.ui.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
-    var sheet by remember { mutableStateOf<EntryType?>(null) }
+    var sheet by remember { mutableStateOf<BookSheet?>(null) }
     var pendingDelete by remember { mutableStateOf<PendingDelete?>(null) }
     LaunchedEffect(ui.message) { ui.message?.let { snackbar.showSnackbar(it); viewModel.dismissMessage() } }
 
@@ -217,8 +263,8 @@ fun AdminBooksScreen(
                 }
                 item {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Dimens.sm)) {
-                        PrimaryButton("Add sale", onClick = { sheet = EntryType.SALE }, leadingIcon = Icons.Rounded.Add, modifier = Modifier.weight(1f))
-                        PrimaryButton("Add expense", onClick = { sheet = EntryType.EXPENSE }, leadingIcon = Icons.Rounded.Add, modifier = Modifier.weight(1f))
+                        PrimaryButton("Add sale", onClick = { sheet = BookSheet(EntryType.SALE) }, leadingIcon = Icons.Rounded.Add, modifier = Modifier.weight(1f))
+                        PrimaryButton("Add expense", onClick = { sheet = BookSheet(EntryType.EXPENSE) }, leadingIcon = Icons.Rounded.Add, modifier = Modifier.weight(1f))
                     }
                 }
 
@@ -227,7 +273,16 @@ fun AdminBooksScreen(
                     item { Text("No sales in this period.", color = MaterialTheme.colorScheme.onSurfaceVariant) }
                 } else {
                     items(ui.sales, key = { it.id }) { sale ->
-                        SaleRow(sale, onDelete = { pendingDelete = PendingDelete(sale.id, EntryType.SALE, sale.title) })
+                        SaleRow(
+                            sale,
+                            onEdit = {
+                                sheet = BookSheet(
+                                    type = EntryType.SALE, editId = sale.id, title = sale.title,
+                                    amount = sale.amount.toInput(), method = saleMethod(sale), note = sale.note ?: "",
+                                )
+                            },
+                            onDelete = { pendingDelete = PendingDelete(sale.id, EntryType.SALE, sale.title) },
+                        )
                     }
                 }
 
@@ -236,26 +291,40 @@ fun AdminBooksScreen(
                     item { Text("No expenses in this period.", color = MaterialTheme.colorScheme.onSurfaceVariant) }
                 } else {
                     items(ui.expenses, key = { it.id }) { exp ->
-                        ExpenseRow(exp, onDelete = { pendingDelete = PendingDelete(exp.id, EntryType.EXPENSE, exp.reason) })
+                        ExpenseRow(
+                            exp,
+                            onEdit = {
+                                sheet = BookSheet(
+                                    type = EntryType.EXPENSE, editId = exp.id, title = exp.reason,
+                                    amount = exp.amount.toInput(), method = exp.paymentMethod, note = exp.note ?: "",
+                                )
+                            },
+                            onDelete = { pendingDelete = PendingDelete(exp.id, EntryType.EXPENSE, exp.reason) },
+                        )
                     }
                 }
             }
         }
     }
 
-    sheet?.let { type ->
+    sheet?.let { s ->
         ModalBottomSheet(
             onDismissRequest = { sheet = null },
             sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
         ) {
             EntryForm(
-                type = type,
+                sheet = s,
                 saving = ui.saving,
                 onSubmit = { title, amount, method, note ->
-                    if (type == EntryType.SALE) {
-                        viewModel.createSale(title, amount, method, note) { sheet = null }
-                    } else {
-                        viewModel.createExpense(title, amount, method, note) { sheet = null }
+                    when {
+                        s.type == EntryType.SALE && s.editId != null ->
+                            viewModel.updateSale(s.editId, title, amount, method, note) { sheet = null }
+                        s.type == EntryType.SALE ->
+                            viewModel.createSale(title, amount, method, note) { sheet = null }
+                        s.editId != null ->
+                            viewModel.updateExpense(s.editId, title, amount, method, note) { sheet = null }
+                        else ->
+                            viewModel.createExpense(title, amount, method, note) { sheet = null }
                     }
                 },
             )
@@ -287,8 +356,8 @@ private fun MoneyKpi(label: String, money: Money, modifier: Modifier = Modifier)
 }
 
 @Composable
-private fun SaleRow(sale: AdminSale, onDelete: () -> Unit) {
-    PlantoraCard {
+private fun SaleRow(sale: AdminSale, onEdit: () -> Unit, onDelete: () -> Unit) {
+    PlantoraCard(modifier = Modifier.clickable(onClick = onEdit)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text(sale.title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
@@ -308,8 +377,8 @@ private fun SaleRow(sale: AdminSale, onDelete: () -> Unit) {
 }
 
 @Composable
-private fun ExpenseRow(exp: AdminExpense, onDelete: () -> Unit) {
-    PlantoraCard {
+private fun ExpenseRow(exp: AdminExpense, onEdit: () -> Unit, onDelete: () -> Unit) {
+    PlantoraCard(modifier = Modifier.clickable(onClick = onEdit)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text(exp.reason, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
@@ -329,28 +398,33 @@ private fun ExpenseRow(exp: AdminExpense, onDelete: () -> Unit) {
 
 @Composable
 private fun EntryForm(
-    type: EntryType,
+    sheet: BookSheet,
     saving: Boolean,
     onSubmit: (title: String, amount: Money, method: String, note: String?) -> Unit,
 ) {
-    var title by remember { mutableStateOf("") }
-    var amountText by remember { mutableStateOf("") }
-    var note by remember { mutableStateOf("") }
+    val isSale = sheet.type == EntryType.SALE
+    // Re-seed the form whenever a different row (or add) opens the sheet.
+    var title by remember(sheet.editId, sheet.type) { mutableStateOf(sheet.title) }
+    var amountText by remember(sheet.editId, sheet.type) { mutableStateOf(sheet.amount) }
+    var note by remember(sheet.editId, sheet.type) { mutableStateOf(sheet.note) }
+    var method by remember(sheet.editId, sheet.type) { mutableStateOf(sheet.method) }
     // Sales can be cash/upi/due; expenses only cash/upi.
-    val methods = if (type == EntryType.SALE) listOf("cash", "upi", "due") else listOf("cash", "upi")
-    var method by remember { mutableStateOf("cash") }
+    val methods = if (isSale) listOf("cash", "upi", "due") else listOf("cash", "upi")
 
     val amount = Money.parse(amountText)
     val canSave = title.isNotBlank() && amount.isPositive() && !saving
 
+    val heading = when {
+        sheet.isEdit && isSale -> "Edit sale"
+        sheet.isEdit -> "Edit expense"
+        isSale -> "Add sale"
+        else -> "Add expense"
+    }
+
     Column(Modifier.fillMaxWidth().imePadding().padding(horizontal = Dimens.lg).padding(bottom = Dimens.xl)) {
-        Text(
-            if (type == EntryType.SALE) "Add sale" else "Add expense",
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold,
-        )
+        Text(heading, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(Dimens.md))
-        PlantoraTextField(title, { title = it }, label = if (type == EntryType.SALE) "What was sold" else "What for")
+        PlantoraTextField(title, { title = it }, label = if (isSale) "What was sold" else "What for")
         Spacer(Modifier.height(Dimens.sm))
         NumberField(amountText, { amountText = it }, label = "Amount (₹)")
         Spacer(Modifier.height(Dimens.md))
@@ -369,7 +443,7 @@ private fun EntryForm(
         PlantoraTextField(note, { note = it }, label = "Note (optional)", singleLine = false)
         Spacer(Modifier.height(Dimens.lg))
         PrimaryButton(
-            text = if (type == EntryType.SALE) "Save sale" else "Save expense",
+            text = if (sheet.isEdit) "Save changes" else if (isSale) "Save sale" else "Save expense",
             onClick = { onSubmit(title, amount, method, note.ifBlank { null }) },
             enabled = canSave,
             loading = saving,

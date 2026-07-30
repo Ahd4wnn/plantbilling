@@ -5,11 +5,13 @@ import com.plantora.billing.data.remote.dto.AdminActivityDto
 import com.plantora.billing.data.remote.dto.AdminAttentionDto
 import com.plantora.billing.data.remote.dto.AdminExpenseCreateDto
 import com.plantora.billing.data.remote.dto.AdminExpenseDto
+import com.plantora.billing.data.remote.dto.AdminExpenseUpdateDto
 import com.plantora.billing.data.remote.dto.AdminNotificationCreateDto
 import com.plantora.billing.data.remote.dto.AdminNotificationDto
 import com.plantora.billing.data.remote.dto.AdminOverviewDto
 import com.plantora.billing.data.remote.dto.AdminSaleCreateDto
 import com.plantora.billing.data.remote.dto.AdminSaleDto
+import com.plantora.billing.data.remote.dto.AdminSaleUpdateDto
 import com.plantora.billing.data.remote.dto.AdminShopDetailDto
 import com.plantora.billing.data.remote.dto.AdminShopRowDto
 import com.plantora.billing.data.remote.dto.AdminTrendPointDto
@@ -78,6 +80,22 @@ class AdminRepository @Inject constructor(
         return api.createSale(body).toDomain()
     }
 
+    /** Edit a platform sale. Same single-bucket split as [createSale] so the
+     *  server invariant cash + upi + due == amount holds after the change. */
+    suspend fun updateSale(id: String, title: String, amount: Money, method: String, note: String?): AdminSale {
+        val zero = Money.ZERO.toWire()
+        val amt = amount.toWire()
+        val body = AdminSaleUpdateDto(
+            title = title.trim(),
+            amount = amt,
+            cashAmount = if (method == "cash") amt else zero,
+            upiAmount = if (method == "upi") amt else zero,
+            dueAmount = if (method == "due") amt else zero,
+            note = note?.trim().orEmpty(),
+        )
+        return api.updateSale(id, body).toDomain()
+    }
+
     suspend fun deleteSale(id: String) = api.deleteSale(id)
 
     suspend fun createExpense(reason: String, amount: Money, method: String, note: String?): AdminExpense {
@@ -88,6 +106,16 @@ class AdminRepository @Inject constructor(
             note = note?.trim()?.ifBlank { null },
         )
         return api.createExpense(body).toDomain()
+    }
+
+    suspend fun updateExpense(id: String, reason: String, amount: Money, method: String, note: String?): AdminExpense {
+        val body = AdminExpenseUpdateDto(
+            reason = reason.trim(),
+            amount = amount.toWire(),
+            paymentMethod = method,
+            note = note?.trim().orEmpty(),
+        )
+        return api.updateExpense(id, body).toDomain()
     }
 
     suspend fun deleteExpense(id: String) = api.deleteExpense(id)

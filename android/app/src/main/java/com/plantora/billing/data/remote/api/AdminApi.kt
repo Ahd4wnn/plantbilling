@@ -7,14 +7,17 @@ import com.plantora.billing.data.remote.dto.AdminNotificationCreateDto
 import com.plantora.billing.data.remote.dto.AdminNotificationDto
 import com.plantora.billing.data.remote.dto.AdminNotificationListDto
 import com.plantora.billing.data.remote.dto.AdminOverviewDto
+import com.plantora.billing.data.remote.dto.AdminExpenseUpdateDto
 import com.plantora.billing.data.remote.dto.AdminSaleCreateDto
 import com.plantora.billing.data.remote.dto.AdminSaleDto
 import com.plantora.billing.data.remote.dto.AdminSaleListDto
+import com.plantora.billing.data.remote.dto.AdminSaleUpdateDto
 import com.plantora.billing.data.remote.dto.AdminShopDetailDto
 import com.plantora.billing.data.remote.dto.LedgerSummaryDto
 import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.GET
+import retrofit2.http.PATCH
 import retrofit2.http.POST
 import retrofit2.http.Path
 import retrofit2.http.Query
@@ -58,6 +61,9 @@ interface AdminApi {
     @POST("/admin/ledger/sales")
     suspend fun createSale(@Body body: AdminSaleCreateDto): AdminSaleDto
 
+    @PATCH("/admin/ledger/sales/{id}")
+    suspend fun updateSale(@Path("id") id: String, @Body body: AdminSaleUpdateDto): AdminSaleDto
+
     @DELETE("/admin/ledger/sales/{id}")
     suspend fun deleteSale(@Path("id") id: String)
 
@@ -70,6 +76,9 @@ interface AdminApi {
 
     @POST("/admin/ledger/expenses")
     suspend fun createExpense(@Body body: AdminExpenseCreateDto): AdminExpenseDto
+
+    @PATCH("/admin/ledger/expenses/{id}")
+    suspend fun updateExpense(@Path("id") id: String, @Body body: AdminExpenseUpdateDto): AdminExpenseDto
 
     @DELETE("/admin/ledger/expenses/{id}")
     suspend fun deleteExpense(@Path("id") id: String)

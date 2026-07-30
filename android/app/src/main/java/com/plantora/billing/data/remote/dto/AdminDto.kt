@@ -143,6 +143,16 @@ data class AdminSaleCreateDto(
 )
 
 @Serializable
+data class AdminSaleUpdateDto(
+    val title: String? = null,
+    val amount: String? = null,
+    @SerialName("cash_amount") val cashAmount: String? = null,
+    @SerialName("upi_amount") val upiAmount: String? = null,
+    @SerialName("due_amount") val dueAmount: String? = null,
+    val note: String? = null,
+)
+
+@Serializable
 data class AdminExpenseDto(
     val id: String,
     val reason: String,
@@ -166,6 +176,14 @@ data class AdminExpenseCreateDto(
     @SerialName("payment_method") val paymentMethod: String,
     val note: String? = null,
     @SerialName("occurred_on") val occurredOn: String? = null,
+)
+
+@Serializable
+data class AdminExpenseUpdateDto(
+    val reason: String? = null,
+    val amount: String? = null,
+    @SerialName("payment_method") val paymentMethod: String? = null,
+    val note: String? = null,
 )
 
 @Serializable
