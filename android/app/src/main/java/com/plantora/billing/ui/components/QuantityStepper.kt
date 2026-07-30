@@ -76,7 +76,9 @@ fun QuantityStepper(
             OutlinedTextField(
                 value = field,
                 onValueChange = { input ->
-                    val digits = input.text.filter { it.isDigit() }.take(4)
+                    // Allow up to 7 digits so bulk orders (e.g. 200000) can be entered.
+                    // toIntOrNull guards against overflow beyond Int range.
+                    val digits = input.text.filter { it.isDigit() }.take(7)
                     field = input.copy(text = digits, selection = TextRange(digits.length))
                     digits.toIntOrNull()?.let { if (it >= minValue) onQuantityChange(it) }
                 },
@@ -85,7 +87,7 @@ fun QuantityStepper(
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 shape = MaterialTheme.shapes.medium,
                 modifier = Modifier
-                    .width(80.dp)
+                    .width(120.dp)
                     .onFocusChanged { focus ->
                         if (focus.isFocused) {
                             field = field.copy(selection = TextRange(0, field.text.length))
