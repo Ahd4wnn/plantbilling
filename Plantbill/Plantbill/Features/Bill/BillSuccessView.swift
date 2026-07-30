@@ -29,10 +29,9 @@ struct BillSuccessView: View {
             Spacer()
 
             VStack(spacing: PlantbillSpacing.sm) {
-                SecondaryButton(title: "Print receipt", isDisabled: true) {}
-                Text("Printing is coming in a future update.")
-                    .font(PlantbillTypography.caption)
-                    .foregroundStyle(PlantbillColor.textSecondary)
+                SecondaryButton(title: "Print receipt") {
+                    ReceiptPrinter.print(bill.receiptData)
+                }
 
                 PrimaryButton(title: "New bill", action: onNewBill)
                     .padding(.top, PlantbillSpacing.sm)

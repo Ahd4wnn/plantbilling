@@ -15,6 +15,7 @@ struct ProductsListView: View {
                 content
             }
             .navigationTitle("Products")
+            .navigationBarTitleDisplayMode(.inline)
             .background(PlantbillColor.background)
             .searchable(text: $viewModel.searchText, prompt: Text("Search products"))
             .task { await viewModel.load() }

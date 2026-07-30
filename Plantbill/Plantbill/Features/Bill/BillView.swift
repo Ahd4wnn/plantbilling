@@ -18,6 +18,7 @@ struct BillView: View {
                 }
             }
             .navigationTitle("Bill")
+            .navigationBarTitleDisplayMode(.inline)
             .background(PlantbillColor.background)
             .searchable(text: $viewModel.searchText, prompt: Text("Search products"))
             .task { await viewModel.loadProducts() }

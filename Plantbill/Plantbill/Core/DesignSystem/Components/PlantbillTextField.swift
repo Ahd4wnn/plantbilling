@@ -17,6 +17,7 @@ struct PlantbillTextField: View {
 
     @FocusState private var isFocused: Bool
     @State private var isUIKitFieldFocused = false
+    @State private var isPasswordVisible = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: PlantbillSpacing.xs) {
@@ -24,36 +25,71 @@ struct PlantbillTextField: View {
                 .font(PlantbillTypography.caption)
                 .foregroundStyle(PlantbillColor.textSecondary)
 
-            Group {
-                if isSecure {
-                    SecureField(placeholder, text: $text)
-                        .focused($isFocused)
-                } else if selectAllOnFocus {
-                    // Placeholder is deliberately not threaded through here:
-                    // `LocalizedStringKey` has no public API to resolve back
-                    // to a plain String, and every current selectAllOnFocus
-                    // field is numeric with a "0" placeholder — language-
-                    // neutral, so hardcoding it is correct today. Revisit if
-                    // a non-numeric selectAllOnFocus field is ever needed.
-                    SelectAllTextField(
-                        text: $text,
-                        placeholder: "0",
-                        keyboardType: keyboardType,
-                        onFocusChange: { focused in
-                            isUIKitFieldFocused = focused
+            HStack(spacing: PlantbillSpacing.xs) {
+                Group {
+                    if isSecure {
+                        // Native TextField/SecureField placeholder text can
+                        // render in the system's blue AutoFill-suggestion
+                        // color when paired with a username/password
+                        // textContentType — passing "" as the real
+                        // placeholder and drawing our own colored Text
+                        // instead sidesteps that entirely.
+                        ZStack(alignment: .leading) {
+                            if text.isEmpty {
+                                Text(placeholder)
+                                    .foregroundStyle(PlantbillColor.textSecondary)
+                            }
+                            if isPasswordVisible {
+                                TextField("", text: $text).focused($isFocused)
+                            } else {
+                                SecureField("", text: $text).focused($isFocused)
+                            }
                         }
-                    )
-                } else {
-                    TextField(placeholder, text: $text)
-                        .focused($isFocused)
+                    } else if selectAllOnFocus {
+                        // Placeholder is deliberately not threaded through here:
+                        // `LocalizedStringKey` has no public API to resolve back
+                        // to a plain String, and every current selectAllOnFocus
+                        // field is numeric with a "0" placeholder — language-
+                        // neutral, so hardcoding it is correct today. Revisit if
+                        // a non-numeric selectAllOnFocus field is ever needed.
+                        SelectAllTextField(
+                            text: $text,
+                            placeholder: "0",
+                            keyboardType: keyboardType,
+                            onFocusChange: { focused in
+                                isUIKitFieldFocused = focused
+                            }
+                        )
+                    } else {
+                        ZStack(alignment: .leading) {
+                            if text.isEmpty {
+                                Text(placeholder)
+                                    .foregroundStyle(PlantbillColor.textSecondary)
+                            }
+                            TextField("", text: $text).focused($isFocused)
+                        }
+                    }
+                }
+                .font(PlantbillTypography.body)
+                .foregroundStyle(PlantbillColor.textPrimary)
+                .keyboardType(keyboardType)
+                .textContentType(textContentType)
+                .autocorrectionDisabled()
+                .textInputAutocapitalization(.never)
+
+                if isSecure {
+                    Button {
+                        isPasswordVisible.toggle()
+                    } label: {
+                        Image(systemName: isPasswordVisible ? "eye.slash" : "eye")
+                            .foregroundStyle(PlantbillColor.textSecondary)
+                            .frame(width: PlantbillSpacing.minTouchTarget - PlantbillSpacing.md, height: PlantbillSpacing.minTouchTarget)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(isPasswordVisible ? "Hide password" : "Show password")
                 }
             }
-            .font(PlantbillTypography.body)
-            .foregroundStyle(PlantbillColor.textPrimary)
-            .keyboardType(keyboardType)
-            .textContentType(textContentType)
-            .autocorrectionDisabled()
-            .textInputAutocapitalization(.never)
             .padding(.horizontal, PlantbillSpacing.md)
             .frame(height: PlantbillSpacing.minTouchTarget + 8)
             .background(

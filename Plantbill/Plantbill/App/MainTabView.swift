@@ -77,9 +77,9 @@ struct MainTabView: View {
         case .products:
             ProductsListView(canManage: user.role == .manager)
         case .sales:
-            ComingSoonView(title: "Sales", icon: "chart.bar.fill")
+            SalesView(isManager: user.role == .manager)
         case .customers:
-            ComingSoonView(title: "Customers", icon: "person.2.fill")
+            CustomersView(isManager: user.role == .manager)
         case .more:
             MoreView(user: user)
         }
