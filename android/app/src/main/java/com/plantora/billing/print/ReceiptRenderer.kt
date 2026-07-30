@@ -11,6 +11,7 @@ import android.text.TextPaint
 import com.plantora.billing.domain.BillDetail
 import com.plantora.billing.domain.DiscountType
 import com.plantora.billing.domain.Money
+import com.plantora.billing.domain.formatReceiptDateTime
 import java.io.ByteArrayOutputStream
 
 /**
@@ -102,7 +103,7 @@ class ReceiptRenderer(private val dotsWide: Int) {
         add(Divider())
 
         add(Para("Bill: #${bill.id.take(8).uppercase()}", pSmall, center = false))
-        add(Para("Date: ${bill.createdAt}", pSmall, center = false))
+        add(Para("Date: ${formatReceiptDateTime(bill.createdAt)}", pSmall, center = false))
         bill.salespersonEmail?.let { add(Para("Staff: $it", pSmall, center = false)) }
         bill.customerName?.let { name ->
             val v = if (bill.customerPhone != null) "$name (${bill.customerPhone})" else name

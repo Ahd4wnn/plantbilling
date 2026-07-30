@@ -13,6 +13,9 @@ val SHOP_ZONE: ZoneId = ZoneId.of("Asia/Kolkata")
 private val apiDate: DateTimeFormatter = DateTimeFormatter.ISO_LOCAL_DATE
 private val timeFmt: DateTimeFormatter = DateTimeFormatter.ofPattern("d MMM, h:mm a", Locale.ENGLISH)
 private val dayFmt: DateTimeFormatter = DateTimeFormatter.ofPattern("EEE, d MMM yyyy", Locale.ENGLISH)
+// Printed receipts keep the year (a receipt is a record the customer may hold for
+// months), e.g. "30 Jul 2026, 3:13 PM".
+private val receiptFmt: DateTimeFormatter = DateTimeFormatter.ofPattern("d MMM yyyy, h:mm a", Locale.ENGLISH)
 
 fun todayInShopZone(): LocalDate = LocalDate.now(SHOP_ZONE)
 
@@ -42,6 +45,17 @@ fun formatBillTime(raw: String): String {
         val ldt = runCatching { OffsetDateTime.parse(raw).atZoneSameInstant(SHOP_ZONE).toLocalDateTime() }
             .getOrElse { LocalDateTime.parse(raw) }
         ldt.format(timeFmt)
+    } catch (e: Exception) {
+        raw
+    }
+}
+
+/** Server ISO datetime → shop-time date+time with year, for printed receipts. */
+fun formatReceiptDateTime(raw: String): String {
+    return try {
+        val ldt = runCatching { OffsetDateTime.parse(raw).atZoneSameInstant(SHOP_ZONE).toLocalDateTime() }
+            .getOrElse { LocalDateTime.parse(raw) }
+        ldt.format(receiptFmt)
     } catch (e: Exception) {
         raw
     }
