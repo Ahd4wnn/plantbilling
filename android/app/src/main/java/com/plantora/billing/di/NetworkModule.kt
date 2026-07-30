@@ -121,4 +121,9 @@ object NetworkModule {
     @Singleton
     fun provideNotificationsApi(retrofit: Retrofit): com.plantora.billing.data.remote.api.NotificationsApi =
         retrofit.create(com.plantora.billing.data.remote.api.NotificationsApi::class.java)
+
+    @Provides
+    @Singleton
+    fun provideAdminApi(retrofit: Retrofit): com.plantora.billing.data.remote.api.AdminApi =
+        retrofit.create(com.plantora.billing.data.remote.api.AdminApi::class.java)
 }
