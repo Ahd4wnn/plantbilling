@@ -1,7 +1,7 @@
 import { Button } from "@/components/Button";
 import { formatINR, toPaise } from "@/lib/money";
 import type { Totals } from "@/lib/money";
-import { useBilling } from "@/store/billing";
+import { useBilling, allLinesFilled } from "@/store/billing";
 import { DiscountSection } from "./DiscountSection";
 import { CustomerSection } from "./CustomerSection";
 import { PaymentSection } from "./PaymentSection";
@@ -39,7 +39,8 @@ export function CartForm({ totals, onCheckout, saving, errorMsg, inline = false 
   const sumPaise = toPaise(cash) + toPaise(upi) + toPaise(due);
   const balanced = sumPaise === totals.totalPaise;
   const phoneValid = !customer.phone.trim() || customer.phone.replace(/\D/g, "").length === 10;
-  const canSave = lines.length > 0 && payMethod !== null && balanced && !saving && phoneValid;
+  const linesFilled = allLinesFilled(lines);
+  const canSave = lines.length > 0 && linesFilled && payMethod !== null && balanced && !saving && phoneValid;
 
   return (
     <div className={`space-y-6 ${inline ? "" : "pb-6"}`}>
@@ -54,15 +55,21 @@ export function CartForm({ totals, onCheckout, saving, errorMsg, inline = false 
             <h3 className="text-base font-semibold text-ink-soft">Items Review</h3>
             <ul className="divide-y divide-border rounded-2xl border border-border bg-surface px-4 py-2 max-h-48 overflow-y-auto">
               {lines.map((l) => {
-                const lineTotal = toPaise(l.unit_price) * l.quantity;
+                const incomplete = l.quantity == null || l.quantity < 1 || l.unit_price.trim() === "";
+                const lineTotal = toPaise(l.unit_price) * (l.quantity ?? 0);
                 return (
                   <li key={l.product_id} className="flex items-center justify-between py-2 text-base font-semibold text-ink">
                     <span className="min-w-0 flex-1 truncate">
-                      {l.product_name} <span className="text-ink-soft ml-1">x{l.quantity}</span>
+                      {l.product_name}{" "}
+                      {incomplete ? (
+                        <span className="ml-1 text-sm font-semibold text-danger">enter qty &amp; price</span>
+                      ) : (
+                        <span className="text-ink-soft ml-1">x{l.quantity}</span>
+                      )}
                     </span>
                     <div className="flex items-center gap-3">
                       <span className="tnum shrink-0">
-                        {formatINR(lineTotal)}
+                        {incomplete ? "—" : formatINR(lineTotal)}
                       </span>
                       <button
                         type="button"
@@ -154,7 +161,12 @@ export function CartForm({ totals, onCheckout, saving, errorMsg, inline = false 
               >
                 Save Bill · {formatINR(totals.totalPaise)}
               </Button>
-              {!balanced && lines.length > 0 && payMethod !== null && (
+              {!linesFilled && lines.length > 0 && (
+                <p className="text-center text-sm font-semibold text-ink-soft">
+                  Enter a quantity and price for every item.
+                </p>
+              )}
+              {linesFilled && !balanced && lines.length > 0 && payMethod !== null && (
                 <p className="text-center text-sm font-semibold text-ink-soft">
                   Payments must add up to {formatINR(totals.totalPaise)}.
                 </p>

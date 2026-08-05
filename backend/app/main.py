@@ -23,6 +23,7 @@ from app.routers.products import router as products_router
 from app.routers.shop import router as shop_router
 from app.routers.shop_users import router as shop_users_router
 from app.routers.expenses import router as expenses_router
+from app.routers.expense_categories import router as expense_categories_router
 from app.routers.settlements import router as settlements_router
 from app.routers.labour import router as labour_router
 from app.routers.borrowings import router as borrowings_router
@@ -109,6 +110,7 @@ app.include_router(bills_router)
 app.include_router(shop_router)
 app.include_router(shop_users_router)
 app.include_router(expenses_router)
+app.include_router(expense_categories_router)
 app.include_router(settlements_router)
 app.include_router(labour_router)
 app.include_router(borrowings_router)

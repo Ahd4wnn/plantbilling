@@ -88,7 +88,7 @@ class BillEditViewModel @Inject constructor(
                 ?: Product(id = pid, name = item.productName, category = null, retailPrice = item.unitPrice, photoUrl = null, isActive = true)
             // Each saved item becomes its OWN line (unique id), so editing or removing
             // one "Banana tree" line never affects another line of the same product.
-            CartLine(id = java.util.UUID.randomUUID().toString(), product = product, quantity = item.quantity, unitPrice = item.unitPrice)
+            CartLine(id = java.util.UUID.randomUUID().toString(), product = product, qtyInput = item.quantity.toString(), priceInput = item.unitPrice.toInput())
         }
         val mode = when {
             detail.cashAmount.isPositive() && detail.upiAmount.isPositive() -> PaymentMode.SPLIT
@@ -111,13 +111,12 @@ class BillEditViewModel @Inject constructor(
 
     fun setQuantity(lineId: String, quantity: Int) = _ui.update { state ->
         val lines = if (quantity <= 0) state.lines.filterNot { it.id == lineId }
-        else state.lines.map { if (it.id == lineId) it.copy(quantity = quantity) else it }
+        else state.lines.map { if (it.id == lineId) it.copy(qtyInput = quantity.toString()) else it }
         state.copy(lines = lines)
     }
 
     fun setUnitPrice(lineId: String, priceInput: String) = _ui.update { state ->
-        val price = Money.parse(priceInput.ifBlank { "0" })
-        state.copy(lines = state.lines.map { if (it.id == lineId) it.copy(unitPrice = price) else it })
+        state.copy(lines = state.lines.map { if (it.id == lineId) it.copy(priceInput = priceInput) else it })
     }
 
     fun removeLine(lineId: String) = setQuantity(lineId, 0)
@@ -128,8 +127,8 @@ class BillEditViewModel @Inject constructor(
         val line = CartLine(
             id = java.util.UUID.randomUUID().toString(),
             product = product,
-            quantity = 1,
-            unitPrice = product.retailPrice,
+            qtyInput = "1",
+            priceInput = product.retailPrice.toInput(),
         )
         state.copy(lines = state.lines + line, showAddPicker = false)
     }

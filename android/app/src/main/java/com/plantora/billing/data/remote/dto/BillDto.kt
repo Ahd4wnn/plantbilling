@@ -137,6 +137,7 @@ data class BillSummaryDto(
     @SerialName("cash_expenses") val cashExpenses: String = "0",
     @SerialName("upi_expenses") val upiExpenses: String = "0",
     @SerialName("labour_total") val labourTotal: String = "0",
+    @SerialName("labour_cash") val labourCash: String = "0",
     @SerialName("cash_in_hand_running") val cashInHandRunning: String = "0",
     @SerialName("net_sales") val netSales: String = "0",
     val expenses: List<ExpenseDto> = emptyList(),

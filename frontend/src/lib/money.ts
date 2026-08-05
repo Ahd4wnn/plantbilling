@@ -49,13 +49,14 @@ export interface Totals {
  * The server remains the source of truth; we send the same (capped) values.
  */
 export function computeTotals(
-  lines: { unitPrice: string; quantity: number }[],
+  lines: { unitPrice: string; quantity: number | null }[],
   discountType: DiscountType,
   discountValue: string,
 ): Totals {
   let subtotalPaise = 0;
   for (const l of lines) {
-    subtotalPaise += toPaise(l.unitPrice) * Math.max(0, Math.floor(l.quantity));
+    // Quantity may be blank (null) while the operator is still filling the line in.
+    subtotalPaise += toPaise(l.unitPrice) * Math.max(0, Math.floor(l.quantity ?? 0));
   }
 
   let discountPaise = 0;

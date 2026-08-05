@@ -5,7 +5,7 @@ import uuid
 from decimal import Decimal
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, Field, StringConstraints
+from pydantic import BaseModel, Field, StringConstraints, field_validator
 
 from app.schemas.money import MoneyIn, MoneyOut, MoneyOutOpt
 from app.schemas.expense import ExpenseOut
@@ -27,6 +27,19 @@ class BillItemIn(BaseModel):
 class NewCustomerIn(BaseModel):
     name: NonEmptyStr
     phone: str | None = None
+
+    @field_validator("phone")
+    @classmethod
+    def _check_phone(cls, v: str | None) -> str | None:
+        # Optional, but if present it must be exactly 10 digits. Store bare digits.
+        if v is None:
+            return None
+        digits = "".join(ch for ch in v if ch.isdigit())
+        if digits == "":
+            return None
+        if len(digits) != 10:
+            raise ValueError("Phone number must be exactly 10 digits")
+        return digits
 
 
 class BillCreate(BaseModel):

@@ -1,5 +1,7 @@
 package com.plantora.billing.data.remote.api
 
+import com.plantora.billing.data.remote.dto.ExpenseCategoryCreateDto
+import com.plantora.billing.data.remote.dto.ExpenseCategoryDto
 import com.plantora.billing.data.remote.dto.ExpenseCreateDto
 import com.plantora.billing.data.remote.dto.ExpenseDto
 import retrofit2.http.Body
@@ -25,4 +27,11 @@ interface ExpensesApi {
 
     @DELETE("/expenses/{id}")
     suspend fun delete(@Path("id") id: String)
+
+    // ── Expense categories ────────────────────────────────────────────────────
+    @GET("/expense-categories")
+    suspend fun listCategories(): List<ExpenseCategoryDto>
+
+    @POST("/expense-categories")
+    suspend fun createCategory(@Body body: ExpenseCategoryCreateDto): ExpenseCategoryDto
 }

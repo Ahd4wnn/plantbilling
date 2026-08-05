@@ -6,18 +6,22 @@ import com.plantora.billing.R
 import com.plantora.billing.data.BillRepository
 import com.plantora.billing.data.CheckoutItem
 import com.plantora.billing.data.CheckoutRequest
+import com.plantora.billing.data.CustomerRepository
 import com.plantora.billing.data.ProductRepository
 import com.plantora.billing.data.local.HeldBill
 import com.plantora.billing.data.local.HeldBillStore
 import com.plantora.billing.data.local.HeldLine
 import com.plantora.billing.data.remote.friendlyError
 import com.plantora.billing.domain.Bill
+import com.plantora.billing.domain.CustomerLookup
 import com.plantora.billing.domain.DiscountType
 import com.plantora.billing.domain.Money
 import com.plantora.billing.domain.Product
 import com.plantora.billing.i18n.UiText
 import com.plantora.billing.print.PrinterController
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -45,6 +49,8 @@ data class BillingUiState(
     val dueInput: String = "",
     val customerName: String = "",
     val customerPhone: String = "",
+    /** Returning-customer hint (this shop only); null when unknown/new number. */
+    val returningCustomer: CustomerLookup? = null,
     val remarks: String = "",
     val checkout: CheckoutPhase = CheckoutPhase.IDLE,
     val checkoutError: UiText? = null,
@@ -66,6 +72,8 @@ data class BillingUiState(
     val totals: CartTotals get() = CartMath.totals(lines, discountType, discountValue)
     val itemCount: Int get() = lines.sumOf { it.quantity }
     val isCartEmpty: Boolean get() = lines.isEmpty()
+    /** Every line has a quantity and a price — the bill is safe to save. */
+    val allLinesFilled: Boolean get() = lines.isNotEmpty() && lines.all { it.isFilled }
 
     val payment: Pair<Money, Money>
         get() = CartMath.paymentSplit(totals.total, paymentMode, Money.parse(cashInput.ifBlank { "0" }), Money.parse(dueInput.ifBlank { "0" }))
@@ -95,6 +103,7 @@ data class QuickAddState(
 class BillingViewModel @Inject constructor(
     private val productRepo: ProductRepository,
     private val billRepo: BillRepository,
+    private val customerRepo: CustomerRepository,
     private val printer: PrinterController,
     private val heldStore: HeldBillStore,
     session: com.plantora.billing.data.SessionRepository,
@@ -102,6 +111,9 @@ class BillingViewModel @Inject constructor(
 
     private val _ui = MutableStateFlow(BillingUiState())
     val ui: StateFlow<BillingUiState> = _ui.asStateFlow()
+
+    /** Debounced returning-customer lookup for the phone field. */
+    private var lookupJob: Job? = null
 
     /** Parked bills stored on this device (for the "Held bills" list). */
     val heldBills: StateFlow<List<HeldBill>> =
@@ -191,14 +203,17 @@ class BillingViewModel @Inject constructor(
      * so each tap is kept separate (the owner edits each line's price independently).
      * Bumps [cartPulse] so the screen pops the review sheet on every add.
      */
-    fun addProduct(product: Product) = addLine(product, quantity = 1)
+    fun addProduct(product: Product) = addLine(product, quantity = null)
 
-    private fun addLine(product: Product, quantity: Int) = _ui.update { state ->
+    /** Adds a line. [quantity] null → BLANK qty (manual tap/scan); a value seeds it
+     *  (quick-add, resume). The price always starts blank — the operator enters the
+     *  size-based price for every line. */
+    private fun addLine(product: Product, quantity: Int?) = _ui.update { state ->
         val line = CartLine(
             id = UUID.randomUUID().toString(),
             product = product,
-            quantity = quantity.coerceAtLeast(1),
-            unitPrice = product.retailPrice,
+            qtyInput = quantity?.takeIf { it >= 1 }?.toString().orEmpty(),
+            priceInput = "",
         )
         // Open the review on every add; also clear the search box so the next
         // product is searched from empty (no leftover "rose" to backspace).
@@ -211,21 +226,27 @@ class BillingViewModel @Inject constructor(
     /** Close the review (✕ / Add item). Cart is untouched; next add reopens it. */
     fun dismissReview() = _ui.update { it.copy(showReview = false) }
 
+    /** +/- stepper: floors at 1 (from a blank line, + gives 1). Never removes — the
+     *  trash button is the only way to remove a line. */
     fun setQuantity(lineId: String, quantity: Int) = _ui.update { state ->
-        val newLines = if (quantity <= 0) {
-            state.lines.filterNot { it.id == lineId }
-        } else {
-            state.lines.map { if (it.id == lineId) it.copy(quantity = quantity) else it }
-        }
-        state.copy(lines = newLines)
+        val q = quantity.coerceAtLeast(1)
+        state.copy(lines = state.lines.map { if (it.id == lineId) it.copy(qtyInput = q.toString()) else it })
     }
 
+    /** Raw quantity text edit — a blank field STAYS blank (line kept, save disabled). */
+    fun setQuantityText(lineId: String, raw: String) = _ui.update { state ->
+        val digits = raw.filter { it.isDigit() }.take(7)
+        state.copy(lines = state.lines.map { if (it.id == lineId) it.copy(qtyInput = digits) else it })
+    }
+
+    /** Raw price text edit — blank stays blank (not coerced to 0). */
     fun setUnitPrice(lineId: String, priceInput: String) = _ui.update { state ->
-        val price = Money.parse(priceInput.ifBlank { "0" })
-        state.copy(lines = state.lines.map { if (it.id == lineId) it.copy(unitPrice = price) else it })
+        state.copy(lines = state.lines.map { if (it.id == lineId) it.copy(priceInput = priceInput) else it })
     }
 
-    fun removeLine(lineId: String) = setQuantity(lineId, 0)
+    fun removeLine(lineId: String) = _ui.update { state ->
+        state.copy(lines = state.lines.filterNot { it.id == lineId })
+    }
 
     /** Empty the cart and reset all bill inputs, keeping the loaded catalog. */
     fun clearCart() {
@@ -240,6 +261,7 @@ class BillingViewModel @Inject constructor(
                 dueInput = "",
                 customerName = "",
                 customerPhone = "",
+                returningCustomer = null,
                 remarks = "",
                 checkoutError = null,
                 showReview = false,
@@ -306,8 +328,8 @@ class BillingViewModel @Inject constructor(
                     photoUrl = hl.productPhotoUrl,
                     isActive = true,
                 ),
-                quantity = hl.quantity,
-                unitPrice = Money.parse(hl.unitPrice),
+                qtyInput = hl.quantity.toString(),
+                priceInput = Money.parse(hl.unitPrice).toInput(),
             )
         }
         _ui.update {
@@ -338,12 +360,35 @@ class BillingViewModel @Inject constructor(
     fun setCashInput(v: String) = _ui.update { it.copy(cashInput = v) }
     fun setDueInput(v: String) = _ui.update { it.copy(dueInput = v) }
     fun setCustomerName(v: String) = _ui.update { it.copy(customerName = v) }
-    fun setCustomerPhone(v: String) = _ui.update { it.copy(customerPhone = v) }
+
+    /** Numeric-only, capped at 10 digits. On reaching 10, debounce a returning-
+     *  customer lookup; below 10 the hint is cleared. Lookup never blocks billing. */
+    fun setCustomerPhone(v: String) {
+        val digits = v.filter { it.isDigit() }.take(10)
+        _ui.update { it.copy(customerPhone = digits, returningCustomer = if (digits.length < 10) null else it.returningCustomer) }
+        lookupJob?.cancel()
+        if (digits.length != 10) return
+        lookupJob = viewModelScope.launch {
+            delay(350)
+            runCatching { customerRepo.lookup(digits) }
+                .onSuccess { res ->
+                    // Ignore if the field changed while we were fetching.
+                    if (_ui.value.customerPhone == digits) {
+                        _ui.update { it.copy(returningCustomer = if (res.found) res else null) }
+                    }
+                }
+        }
+    }
     fun setRemarks(v: String) = _ui.update { it.copy(remarks = v) }
 
     fun checkout() {
         val state = _ui.value
         if (state.isCartEmpty || state.checkout == CheckoutPhase.SUBMITTING) return
+        // Every line must have a quantity and a price before we can save.
+        if (!state.allLinesFilled) {
+            _ui.update { it.copy(checkoutError = UiText.res(R.string.vm_fill_lines)) }
+            return
+        }
         val (cash, upi) = state.payment
         val due = Money.parse(state.dueInput.ifBlank { "0" }).let { if (it > state.totals.total) state.totals.total else it }
 

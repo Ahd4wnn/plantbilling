@@ -27,6 +27,19 @@ class ProductSales(BaseModel):
         return f"{v:.2f}"
 
 
+class ExpenseCategoryTotal(BaseModel):
+    """Total spend per expense category across the whole period (all the "Petrol"
+    together), so the report shows one line per category instead of per-day rows."""
+
+    category: str
+    total: decimal.Decimal
+    count: int
+
+    @field_serializer("total")
+    def _ser_total(self, v: decimal.Decimal) -> str:
+        return f"{v:.2f}"
+
+
 class DetailedReportResponse(BaseModel):
     start_date: dt.date
     end_date: dt.date
@@ -39,6 +52,7 @@ class DetailedReportResponse(BaseModel):
     total_expenses: decimal.Decimal
     net_sales: decimal.Decimal
     expenses: list[ExpenseOut]
+    expenses_by_category: list[ExpenseCategoryTotal] = []
     categories: list[CategorySales]
     top_products: list[ProductSales]
 

@@ -18,6 +18,13 @@ data class ProductSalesDto(
 )
 
 @Serializable
+data class ExpenseCategoryTotalDto(
+    val category: String,
+    val total: String,
+    val count: Int = 0,
+)
+
+@Serializable
 data class DetailedReportDto(
     @SerialName("start_date") val startDate: String,
     @SerialName("end_date") val endDate: String,
@@ -30,6 +37,7 @@ data class DetailedReportDto(
     @SerialName("total_expenses") val totalExpenses: String = "0",
     @SerialName("net_sales") val netSales: String = "0",
     val expenses: List<ExpenseDto> = emptyList(),
+    @SerialName("expenses_by_category") val expensesByCategory: List<ExpenseCategoryTotalDto> = emptyList(),
     val categories: List<CategorySalesDto> = emptyList(),
     @SerialName("top_products") val topProducts: List<ProductSalesDto> = emptyList(),
 )

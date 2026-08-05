@@ -14,15 +14,37 @@ NonEmptyStr = Annotated[str, StringConstraints(strip_whitespace=True, min_length
 ExpenseMethod = Literal["cash", "upi"]
 
 
+# ── Expense categories (manager-curated, shop-scoped) ─────────────────────────
+class ExpenseCategoryCreate(BaseModel):
+    name: NonEmptyStr
+
+
+class ExpenseCategoryOut(BaseModel):
+    id: uuid.UUID
+    name: str
+    created_at: dt.datetime
+
+    model_config = {"from_attributes": True}
+
+
+# ── Expenses ──────────────────────────────────────────────────────────────────
 class ExpenseCreate(BaseModel):
     amount: MoneyIn = Field(..., gt=0, description="Expense amount, e.g. 150.00")
-    reason: NonEmptyStr
+    # Pick a category (preferred) — its name is snapshotted into `reason`. `reason`
+    # remains accepted for the legacy free-text path / backward compatibility; at
+    # least one of the two must be present (validated in the router).
+    category_id: uuid.UUID | None = None
+    reason: NonEmptyStr | None = None
+    # Optional free-text remark with the specifics of this spend.
+    note: str | None = None
     payment_method: ExpenseMethod = "cash"
 
 
 class ExpenseUpdate(BaseModel):
     amount: MoneyIn | None = Field(default=None, gt=0, description="Expense amount, e.g. 150.00")
+    category_id: uuid.UUID | None = None
     reason: NonEmptyStr | None = None
+    note: str | None = None
     payment_method: ExpenseMethod | None = None
 
 
@@ -31,9 +53,11 @@ class ExpenseOut(BaseModel):
     shop_id: uuid.UUID
     amount: MoneyOut
     reason: str
+    category_id: uuid.UUID | None = None
+    category_name: str | None = None
+    note: str | None = None
     payment_method: ExpenseMethod = "cash"
     created_by: uuid.UUID | None
     created_at: dt.datetime
 
     model_config = {"from_attributes": True}
-

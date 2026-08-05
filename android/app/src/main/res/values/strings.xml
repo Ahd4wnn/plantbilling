@@ -72,6 +72,8 @@
     <string name="cart_close_cd">Close review</string>
     <string name="cart_remove_cd">Remove %1$s</string>
     <string name="cart_price">Price</string>
+    <string name="cart_qty">Qty</string>
+    <string name="cart_fill_lines">Enter a quantity and price for every item.</string>
     <string name="cart_add_item">Add item</string>
     <string name="cart_discount">Discount</string>
     <string name="discount_flat">₹ Flat</string>
@@ -85,6 +87,8 @@
     <string name="label_name">Name</string>
     <string name="cart_phone_required">Phone (required — money owed)</string>
     <string name="cart_phone_optional">Phone (for receipts)</string>
+    <!-- Returning-customer hint. %1$s = name (may be blank), %2$d = visit count. -->
+    <string name="cart_returning_customer">%1$sReturning customer · came %2$d time(s) before</string>
     <string name="cart_payment">Payment</string>
     <string name="pay_cash">Cash</string>
     <string name="pay_upi">UPI</string>
@@ -195,6 +199,13 @@
     <string name="expense_reason_others">Others</string>
     <string name="expense_paid_from">Paid from</string>
     <string name="expense_save">Save expense</string>
+    <!-- Expense categories -->
+    <string name="label_category">Category</string>
+    <string name="expense_select_category">Select a category</string>
+    <string name="expense_add_category">Add category</string>
+    <string name="expense_new_category_hint">New category name</string>
+    <string name="expense_no_categories">No categories yet — ask your manager to add some.</string>
+    <string name="label_remark_optional">Remark (optional)</string>
 
     <!-- Dues + settle -->
     <string name="dues_empty_title">No dues</string>
@@ -285,6 +296,7 @@
     </plurals>
     <string name="report_top_products">Top products</string>
     <string name="report_expenses_log">Expenses log</string>
+    <string name="report_expenses_by_category">Expenses by category</string>
     <string name="report_download">Download Excel report</string>
 
     <!-- Customers -->
@@ -531,6 +543,7 @@
     <string name="vm_bill_held">Bill held. Open “Held bills” to continue it later.</string>
     <string name="vm_walkin_customer">Walk-in customer</string>
     <string name="vm_due_phone_required">Enter the customer\'s phone number — it\'s required when there\'s a due (money owed).</string>
+    <string name="vm_fill_lines">Enter a quantity and price for every item before saving.</string>
     <string name="err_save_bill">Couldn\'t save the bill. Please try again.</string>
     <!-- Print phases -->
     <string name="vm_print_connecting">Connecting to printer…</string>

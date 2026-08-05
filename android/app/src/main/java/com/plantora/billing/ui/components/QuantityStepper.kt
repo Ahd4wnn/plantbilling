@@ -33,6 +33,67 @@ import com.plantora.billing.R
 import com.plantora.billing.ui.theme.Dimens
 
 /**
+ * String-valued stepper for the cart line: the quantity starts BLANK and stays
+ * blank until the operator types or taps +. The middle field shows [value] (which
+ * may be empty). +/- go through [onDecrement]/[onIncrement] (floored at 1 by the
+ * caller); free text goes through [onValueChange] (blank allowed).
+ */
+@Composable
+fun QuantityStepper(
+    value: String,
+    onValueChange: (String) -> Unit,
+    onDecrement: () -> Unit,
+    onIncrement: () -> Unit,
+    modifier: Modifier = Modifier,
+    minValue: Int = 1,
+) {
+    val current = value.toIntOrNull() ?: 0
+    Row(
+        modifier = modifier,
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(Dimens.sm),
+    ) {
+        FilledTonalIconButton(
+            onClick = onDecrement,
+            enabled = current > minValue,
+            modifier = Modifier.size(Dimens.minTouch),
+        ) {
+            Icon(Icons.Rounded.Remove, contentDescription = stringResource(R.string.cd_decrease_qty))
+        }
+        var field by remember { mutableStateOf(TextFieldValue(value, TextRange(value.length))) }
+        LaunchedEffect(value) {
+            if (value != field.text) field = TextFieldValue(value, TextRange(value.length))
+        }
+        OutlinedTextField(
+            value = field,
+            onValueChange = { input ->
+                val digits = input.text.filter { it.isDigit() }.take(7)
+                field = input.copy(text = digits, selection = TextRange(digits.length))
+                onValueChange(digits)
+            },
+            singleLine = true,
+            placeholder = { Text(stringResource(R.string.cart_qty), textAlign = TextAlign.Center) },
+            textStyle = MaterialTheme.typography.titleLarge.copy(textAlign = TextAlign.Center),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            shape = MaterialTheme.shapes.medium,
+            modifier = Modifier
+                .width(120.dp)
+                .onFocusChanged { focus ->
+                    if (focus.isFocused) {
+                        field = field.copy(selection = TextRange(0, field.text.length))
+                    }
+                },
+        )
+        FilledTonalIconButton(
+            onClick = onIncrement,
+            modifier = Modifier.size(Dimens.minTouch),
+        ) {
+            Icon(Icons.Rounded.Add, contentDescription = stringResource(R.string.cd_increase_qty))
+        }
+    }
+}
+
+/**
  * Large +/- quantity stepper with 48dp targets for older thumbs. When
  * [onQuantityChange] is supplied, the number in the middle becomes an editable
  * field so a big quantity (e.g. 100) can be typed instead of tapping + repeatedly.

@@ -147,7 +147,7 @@ fun SalesScreen(
                         isOwner = ui.isOwner,
                         cumulativeCashInHand = ui.cashInHandCumulative,
                         onAddExpense = viewModel::openCreateExpense,
-                        onEditExpense = { e -> viewModel.openEditExpense(e.id, e.amount, e.reason, e.paymentMethod) },
+                        onEditExpense = { e -> viewModel.openEditExpense(e.id, e.amount, e.categoryId, e.note, e.paymentMethod) },
                         onDeleteExpense = viewModel::deleteExpense,
                     )
                     ui.error != null -> Text(ui.error!!, color = MaterialTheme.colorScheme.error)
@@ -180,8 +180,12 @@ fun SalesScreen(
         ModalBottomSheet(onDismissRequest = viewModel::closeExpenseEditor, sheetState = sheetState) {
             ExpenseEditorSheet(
                 editor = editor,
+                categories = ui.expenseCategories,
+                canManage = ui.isOwner,
                 onAmount = viewModel::setExpenseAmount,
-                onReason = viewModel::setExpenseReason,
+                onCategory = viewModel::setExpenseCategory,
+                onAddCategory = viewModel::addExpenseCategory,
+                onNote = viewModel::setExpenseNote,
                 onMethod = viewModel::setExpenseMethod,
                 onSave = viewModel::saveExpense,
             )

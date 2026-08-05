@@ -6,10 +6,22 @@ export type PayMethod = "cash" | "upi" | "split" | "due";
 
 export interface CartLine {
   product_id: string;
+  // Per-unit, decimal string. Starts BLANK ("") on add — the operator enters the
+  // size-based price for every line (no saved-price prefill).
+  unit_price: string;
   product_name: string;
-  unit_price: string; // per-unit, decimal string — pre-filled from the product, editable per line
-  quantity: number;
+  // Starts BLANK (null) on a manual add. null means "not filled in yet" — the line
+  // stays in the cart but the bill can't be saved until it has a real quantity.
+  quantity: number | null;
   photo_url: string | null;
+}
+
+/** True once every line has a real quantity (≥1) and a non-empty price, so the
+ *  bill is safe to save. Blank lines keep Save disabled (they are never dropped). */
+export function allLinesFilled(lines: CartLine[]): boolean {
+  return lines.every(
+    (l) => l.quantity != null && l.quantity >= 1 && l.unit_price.trim() !== "",
+  );
 }
 
 /** Customer is entered fresh per bill and optional (blank name = no customer). */
@@ -31,9 +43,10 @@ interface BillingState {
   /** Generated when the user first attempts to save; reused for retries of THIS cart. */
   idempotencyKey: string | null;
 
-  /** Tap a product: add a line at its saved price (or +qty if already in the cart). */
+  /** Tap a product: add a BLANK line (or +qty if already in the cart, or when an
+   *  explicit quantity is supplied — scanner/quick-add). */
   addUnit: (p: Product, quantity?: number) => void;
-  setQuantity: (productId: string, quantity: number) => void;
+  setQuantity: (productId: string, quantity: number | null) => void;
   setLinePrice: (productId: string, unitPrice: string) => void;
   removeLine: (productId: string) => void;
   lineFor: (productId: string) => CartLine | undefined;
@@ -72,13 +85,15 @@ const initial = {
 export const useBilling = create<BillingState>((set, get) => ({
   ...initial,
 
-  addUnit: (p, quantity = 1) =>
+  addUnit: (p, quantity) =>
     set((s) => {
       const existing = s.lines.find((l) => l.product_id === p.id);
       if (existing) {
+        // Tap/scan again: bump the quantity. A blank (null) counts as 0.
+        const base = existing.quantity ?? 0;
         return {
           lines: s.lines.map((l) =>
-            l.product_id === p.id ? { ...l, quantity: l.quantity + quantity } : l,
+            l.product_id === p.id ? { ...l, quantity: base + (quantity ?? 1) } : l,
           ),
         };
       }
@@ -88,20 +103,20 @@ export const useBilling = create<BillingState>((set, get) => ({
           {
             product_id: p.id,
             product_name: p.name,
-            unit_price: p.retail_price, // pre-fill from the product's saved price
-            quantity,
+            unit_price: "", // blank — the operator enters the size-based price
+            // Blank on a plain add; honour an explicit quantity (scanner/quick-add).
+            quantity: quantity ?? null,
             photo_url: p.photo_url,
           },
         ],
       };
     }),
 
+  // Set a line's quantity. A blank field is null (not removed); the trash button is
+  // the only way to remove a line. Server still enforces qty ≥ 1 on save.
   setQuantity: (productId, quantity) =>
     set((s) => ({
-      lines:
-        quantity <= 0
-          ? s.lines.filter((l) => l.product_id !== productId)
-          : s.lines.map((l) => (l.product_id === productId ? { ...l, quantity } : l)),
+      lines: s.lines.map((l) => (l.product_id === productId ? { ...l, quantity } : l)),
     })),
 
   setLinePrice: (productId, unitPrice) =>

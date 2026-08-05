@@ -13,6 +13,7 @@ import com.plantora.billing.data.remote.friendlyError
 import com.plantora.billing.i18n.UiText
 import com.plantora.billing.domain.BillListEntry
 import com.plantora.billing.domain.DaySummary
+import com.plantora.billing.domain.ExpenseCategory
 import com.plantora.billing.domain.Money
 import com.plantora.billing.domain.Role
 import com.plantora.billing.domain.Salesperson
@@ -33,13 +34,15 @@ private const val PAGE = 20
 data class ExpenseEditor(
     val id: String? = null,
     val amount: String = "",
-    val reason: String = "",
+    /** Selected expense category id. Required to save (replaces free-text reason). */
+    val categoryId: String? = null,
+    val note: String = "",
     /** "cash" (out of the drawer) or "upi". */
     val paymentMethod: String = "cash",
     val saving: Boolean = false,
     val error: String? = null,
 ) {
-    val canSave: Boolean get() = Money.parse(amount).isPositive() && reason.isNotBlank() && !saving
+    val canSave: Boolean get() = Money.parse(amount).isPositive() && categoryId != null && !saving
 }
 
 /** A salesperson and their sales total for the selected day (leaderboard row). */
@@ -61,6 +64,8 @@ data class SalesUiState(
     val loadingMore: Boolean = false,
     val hasMore: Boolean = false,
     val expenseEditor: ExpenseEditor? = null,
+    /** The shop's expense categories, for the add/edit picker. */
+    val expenseCategories: List<ExpenseCategory> = emptyList(),
     val message: UiText? = null,
 ) {
     val isToday: Boolean get() = date == todayInShopZone()
@@ -159,23 +164,57 @@ class SalesViewModel @Inject constructor(
     fun selectStaff(id: String?) { _ui.update { it.copy(selectedStaffId = id) }; load() }
 
     // ── Expense editor ──
-    fun openCreateExpense() = _ui.update { it.copy(expenseEditor = ExpenseEditor()) }
-    fun openEditExpense(id: String, amount: Money, reason: String, paymentMethod: String) =
-        _ui.update { it.copy(expenseEditor = ExpenseEditor(id = id, amount = amount.toWire(), reason = reason, paymentMethod = paymentMethod)) }
+    fun openCreateExpense() {
+        _ui.update { it.copy(expenseEditor = ExpenseEditor()) }
+        loadExpenseCategories()
+    }
+    fun openEditExpense(id: String, amount: Money, categoryId: String?, note: String?, paymentMethod: String) {
+        _ui.update {
+            it.copy(expenseEditor = ExpenseEditor(id = id, amount = amount.toWire(), categoryId = categoryId, note = note.orEmpty(), paymentMethod = paymentMethod))
+        }
+        loadExpenseCategories()
+    }
     fun closeExpenseEditor() = _ui.update { it.copy(expenseEditor = null) }
     fun setExpenseAmount(v: String) = _ui.update { it.copy(expenseEditor = it.expenseEditor?.copy(amount = v, error = null)) }
-    fun setExpenseReason(v: String) = _ui.update { it.copy(expenseEditor = it.expenseEditor?.copy(reason = v, error = null)) }
+    fun setExpenseCategory(id: String?) = _ui.update { it.copy(expenseEditor = it.expenseEditor?.copy(categoryId = id, error = null)) }
+    fun setExpenseNote(v: String) = _ui.update { it.copy(expenseEditor = it.expenseEditor?.copy(note = v, error = null)) }
     fun setExpenseMethod(v: String) = _ui.update { it.copy(expenseEditor = it.expenseEditor?.copy(paymentMethod = v, error = null)) }
+
+    private fun loadExpenseCategories() {
+        viewModelScope.launch {
+            runCatching { expenseRepo.listCategories() }
+                .onSuccess { cats -> _ui.update { it.copy(expenseCategories = cats) } }
+        }
+    }
+
+    /** Manager-only: create a category and select it in the open editor. */
+    fun addExpenseCategory(name: String) {
+        if (name.isBlank()) return
+        viewModelScope.launch {
+            runCatching { expenseRepo.createCategory(name) }
+                .onSuccess { created ->
+                    _ui.update {
+                        it.copy(
+                            expenseCategories = (it.expenseCategories + created).sortedBy { c -> c.name.lowercase() },
+                            expenseEditor = it.expenseEditor?.copy(categoryId = created.id, error = null),
+                        )
+                    }
+                }
+                .onFailure { e -> _ui.update { it.copy(expenseEditor = it.expenseEditor?.copy(error = friendlyError(e))) } }
+        }
+    }
 
     fun saveExpense() {
         val editor = _ui.value.expenseEditor ?: return
         if (!editor.canSave) return
+        val categoryId = editor.categoryId ?: return
         _ui.update { it.copy(expenseEditor = editor.copy(saving = true, error = null)) }
         viewModelScope.launch {
             val amount = Money.parse(editor.amount)
+            val note = editor.note.trim().ifBlank { null }
             val result = runCatching {
-                if (editor.id != null) expenseRepo.update(editor.id, amount, editor.reason, editor.paymentMethod)
-                else expenseRepo.add(amount, editor.reason, editor.paymentMethod)
+                if (editor.id != null) expenseRepo.update(editor.id, amount, categoryId, note, editor.paymentMethod)
+                else expenseRepo.add(amount, categoryId, note, editor.paymentMethod)
             }
             result
                 .onSuccess { _ui.update { it.copy(expenseEditor = null) }; load() }

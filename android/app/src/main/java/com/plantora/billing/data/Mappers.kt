@@ -11,6 +11,7 @@ import com.plantora.billing.data.remote.dto.ProductDto
 import com.plantora.billing.domain.Bill
 import com.plantora.billing.domain.CategorySales
 import com.plantora.billing.domain.DetailedReport
+import com.plantora.billing.domain.ExpenseCategoryTotal
 import com.plantora.billing.domain.ProductSales
 import com.plantora.billing.domain.BillDetail
 import com.plantora.billing.domain.BillItem
@@ -68,6 +69,9 @@ fun ExpenseDto.toDomain() = Expense(
     id = id,
     amount = Money.parse(amount),
     reason = reason,
+    categoryId = categoryId,
+    categoryName = categoryName,
+    note = note,
     paymentMethod = paymentMethod,
     createdAt = createdAt,
 )
@@ -83,6 +87,7 @@ fun BillSummaryDto.toDomain() = DaySummary(
     cashExpenses = Money.parse(cashExpenses),
     upiExpenses = Money.parse(upiExpenses),
     labourTotal = Money.parse(labourTotal),
+    labourCash = Money.parse(labourCash),
     cashInHandRunning = Money.parse(cashInHandRunning),
     netSales = Money.parse(netSales),
     expenses = expenses.map { it.toDomain() },
@@ -113,6 +118,9 @@ fun DetailedReportDto.toDomain() = DetailedReport(
     totalExpenses = Money.parse(totalExpenses),
     netSales = Money.parse(netSales),
     expenses = expenses.map { it.toDomain() },
+    expensesByCategory = expensesByCategory.map {
+        ExpenseCategoryTotal(category = it.category, total = Money.parse(it.total), count = it.count)
+    },
     categories = categories.map {
         CategorySales(category = it.category?.takeIf { c -> c.isNotBlank() } ?: "Uncategorised", quantity = it.quantity, totalSales = Money.parse(it.totalSales))
     },

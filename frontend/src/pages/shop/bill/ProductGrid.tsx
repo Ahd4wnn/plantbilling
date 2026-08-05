@@ -118,8 +118,11 @@ export function ProductGrid({ products, onOpenScanner, onOpenQuickAdd }: Product
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {filtered.map((p) => {
             const line = lines.find((l) => l.product_id === p.id);
-            const qty = line?.quantity ?? 0;
-            const currentPrice = line?.unit_price ?? p.retail_price;
+            const inCart = line !== undefined;
+            // Blank while unfilled — no 0, no saved-price prefill.
+            const qtyValue = line?.quantity ?? null;
+            const qtyDisplay = qtyValue == null ? "" : String(qtyValue);
+            const currentPrice = line?.unit_price ?? "";
 
             // SKU is the first segment of the UUID or index
             const sku = p.id.split("-")[0]?.toUpperCase() || p.id.slice(0, 8).toUpperCase();
@@ -156,7 +159,7 @@ export function ProductGrid({ products, onOpenScanner, onOpenQuickAdd }: Product
 
                 {/* Bottom Section (Actions) */}
                 <div>
-                  {qty === 0 ? (
+                  {!inCart ? (
                     <button
                       type="button"
                       onClick={() => addUnit(p)}
@@ -173,7 +176,7 @@ export function ProductGrid({ products, onOpenScanner, onOpenQuickAdd }: Product
                       <div className="flex items-center gap-2">
                         <button
                           type="button"
-                          onClick={() => setQuantity(p.id, qty - 1)}
+                          onClick={() => setQuantity(p.id, Math.max(1, (qtyValue ?? 1) - 1))}
                           className="flex h-10 w-10 items-center justify-center rounded-full border border-border
                                      bg-white text-xl font-bold text-ink-soft hover:bg-surface-muted active:scale-95"
                           aria-label="Decrease quantity"
@@ -184,17 +187,23 @@ export function ProductGrid({ products, onOpenScanner, onOpenQuickAdd }: Product
                           type="text"
                           inputMode="numeric"
                           pattern="[0-9]*"
-                          value={qty}
+                          value={qtyDisplay}
+                          placeholder="Qty"
                           onChange={(e) => {
-                            const n = parseInt(e.target.value.replace(/[^0-9]/g, ""), 10);
-                            setQuantity(p.id, Number.isFinite(n) ? n : 0);
+                            const cleaned = e.target.value.replace(/[^0-9]/g, "");
+                            if (cleaned === "") {
+                              setQuantity(p.id, null); // blank stays blank, line kept
+                              return;
+                            }
+                            const n = parseInt(cleaned, 10);
+                            setQuantity(p.id, Number.isFinite(n) ? n : null);
                           }}
-                          className="h-10 w-12 rounded-xl border border-border text-center text-base font-semibold text-ink focus:outline-none"
+                          className="h-10 w-14 rounded-xl border border-border text-center text-base font-semibold text-ink placeholder:text-ink-soft/60 focus:outline-none"
                           aria-label="Quantity"
                         />
                         <button
                           type="button"
-                          onClick={() => setQuantity(p.id, qty + 1)}
+                          onClick={() => setQuantity(p.id, (qtyValue ?? 0) + 1)}
                           className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-500
                                      text-xl font-bold text-white hover:bg-emerald-600 active:scale-95"
                           aria-label="Increase quantity"

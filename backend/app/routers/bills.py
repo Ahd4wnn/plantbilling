@@ -46,6 +46,7 @@ from app.schemas.whatsapp import SendWhatsAppResult
 from app.schemas.report import (
     CategorySales,
     ProductSales,
+    ExpenseCategoryTotal,
     DetailedReportResponse,
     SendReportWhatsAppRequest,
 )
@@ -1068,6 +1069,22 @@ def _generate_report_data(
     total_expenses = sum((e.amount for e in expenses_rows), ZERO)
     net_sales = total_sales - total_expenses
 
+    # Group spend per category across the whole period — one "Petrol" line, not one
+    # per day. Category-backed rows group by the CURRENT category name (a later
+    # rename regroups history); legacy free-text rows group by their reason.
+    cat_totals: dict[str, list] = {}
+    for e in expenses_rows:
+        key = e.category_name if e.category_id is not None else (e.reason or "Uncategorized")
+        bucket = cat_totals.setdefault(key, [ZERO, 0])
+        bucket[0] += e.amount
+        bucket[1] += 1
+    expenses_by_category = [
+        ExpenseCategoryTotal(category=name, total=q2(amount), count=count)
+        for name, (amount, count) in sorted(
+            cat_totals.items(), key=lambda kv: kv[1][0], reverse=True
+        )
+    ]
+
     return DetailedReportResponse(
         start_date=date_from,
         end_date=date_to,
@@ -1080,6 +1097,7 @@ def _generate_report_data(
         total_expenses=q2(total_expenses),
         net_sales=q2(net_sales),
         expenses=expenses_rows,
+        expenses_by_category=expenses_by_category,
         categories=categories,
         top_products=top_products,
     )
@@ -1281,8 +1299,16 @@ def download_detailed_report(
     ]
 
     expenses_tab = [
-        [ist(exp.created_at), _user_email(db, exp.created_by) or "—", exp.reason, exp.amount]
+        [
+            ist(exp.created_at), _user_email(db, exp.created_by) or "—",
+            exp.category_name or exp.reason, exp.note or "", exp.amount,
+        ]
         for exp in report.expenses
+    ]
+
+    # Per-category totals: one row per category (all "Petrol" together).
+    expenses_by_category_tab = [
+        [c.category, c.count, c.total] for c in report.expenses_by_category
     ]
 
     # ── Labour payments in range (name/gender denormalized on each payment) ──
@@ -1360,6 +1386,7 @@ def download_detailed_report(
         customers=customers_tab,
         staff=staff_tab,
         expenses=expenses_tab,
+        expenses_by_category=expenses_by_category_tab,
         labour=labour_tab,
         attendance=attendance_tab,
         audit=audit_tab,

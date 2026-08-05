@@ -105,6 +105,7 @@ fun DetailedReportScreen(
                 if (report.trend.size >= 2) item { TrendCard(report) }
                 if (report.categories.isNotEmpty()) item { CategoryCard(report) }
                 if (report.topProducts.isNotEmpty()) item { TopProductsCard(report) }
+                if (report.expensesByCategory.isNotEmpty()) item { ExpensesByCategoryCard(report) }
                 if (report.expenses.isNotEmpty()) item { ExpensesLogCard(report) }
                 item {
                     SecondaryButton(
@@ -297,6 +298,20 @@ private fun TopProductsCard(report: DetailedReport) {
 }
 
 @Composable
+private fun ExpensesByCategoryCard(report: DetailedReport) {
+    PlantoraCard {
+        Text(stringResource(R.string.report_expenses_by_category), style = MaterialTheme.typography.titleMedium)
+        Spacer(Modifier.height(Dimens.sm))
+        report.expensesByCategory.forEach { c ->
+            Row(Modifier.fillMaxWidth().padding(vertical = Dimens.xs), verticalAlignment = Alignment.CenterVertically) {
+                Text(c.category, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+                Text("− " + c.total.format(), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.titleMedium)
+            }
+        }
+    }
+}
+
+@Composable
 private fun ExpensesLogCard(report: DetailedReport) {
     PlantoraCard {
         Text(stringResource(R.string.report_expenses_log), style = MaterialTheme.typography.titleMedium)
@@ -304,8 +319,12 @@ private fun ExpensesLogCard(report: DetailedReport) {
         report.expenses.forEach { e ->
             Row(Modifier.fillMaxWidth().padding(vertical = Dimens.xs)) {
                 Column(Modifier.weight(1f)) {
-                    Text(e.reason, style = MaterialTheme.typography.bodyLarge)
-                    Text(formatBillTime(e.createdAt), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(e.displayName, style = MaterialTheme.typography.bodyLarge)
+                    Text(
+                        (e.note?.let { "$it • " } ?: "") + formatBillTime(e.createdAt),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
                 Text("− " + e.amount.format(), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.titleMedium)
             }

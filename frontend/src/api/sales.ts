@@ -14,6 +14,7 @@ export interface BillSummary {
   cash_expenses: string;
   upi_expenses: string;
   labour_total: string;
+  labour_cash: string;
   cash_in_hand_running: string;
   net_sales: string;
   expenses: ExpenseRow[];
@@ -131,6 +132,12 @@ export interface ProductSales {
   total_sales: string;
 }
 
+export interface ExpenseCategoryTotal {
+  category: string;
+  total: string;
+  count: number;
+}
+
 export interface DetailedReportResponse {
   start_date: string;
   end_date: string;
@@ -143,6 +150,7 @@ export interface DetailedReportResponse {
   total_expenses: string;
   net_sales: string;
   expenses: ExpenseRow[];
+  expenses_by_category: ExpenseCategoryTotal[];
   categories: CategorySales[];
   top_products: ProductSales[];
 }

@@ -12,6 +12,13 @@ data class ProductSales(
     val totalSales: Money,
 )
 
+/** Total spend per expense category across the whole report period. */
+data class ExpenseCategoryTotal(
+    val category: String,
+    val total: Money,
+    val count: Int,
+)
+
 /** A point in the daily sales trend (client-bucketed from bills in range). */
 data class TrendPoint(
     val date: String,   // yyyy-MM-dd
@@ -30,6 +37,7 @@ data class DetailedReport(
     val totalExpenses: Money,
     val netSales: Money,
     val expenses: List<Expense>,
+    val expensesByCategory: List<ExpenseCategoryTotal>,
     val categories: List<CategorySales>,
     val topProducts: List<ProductSales>,
     /** Optional daily trend (empty for single-day reports). */

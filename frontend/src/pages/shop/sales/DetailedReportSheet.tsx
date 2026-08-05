@@ -473,6 +473,37 @@ export function DetailedReportSheet({ open, onClose, staffList, currentUserEmail
               )}
             </div>
 
+            {/* Expenses by Category — total spend per category across the period */}
+            <div className="space-y-2">
+              <h4 className="text-lg font-bold text-ink">Expenses by Category</h4>
+              {!report.expenses_by_category || report.expenses_by_category.length === 0 ? (
+                <p className="text-sm text-ink-soft italic">No expenses recorded during this period.</p>
+              ) : (
+                <div className="rounded-xl border border-border overflow-hidden bg-white shadow-sm">
+                  <table className="w-full text-left text-base border-collapse">
+                    <thead>
+                      <tr className="bg-slate-50 border-b border-border text-ink-soft font-bold">
+                        <th className="px-4 py-3">Category</th>
+                        <th className="px-4 py-3 text-center">Count</th>
+                        <th className="px-4 py-3 text-right">Total Spent</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border font-medium text-ink">
+                      {report.expenses_by_category.map((c, idx) => (
+                        <tr key={idx} className="hover:bg-slate-50/50">
+                          <td className="px-4 py-3">{c.category}</td>
+                          <td className="px-4 py-3 text-center text-ink-soft">{c.count}</td>
+                          <td className="px-4 py-3 text-right font-bold text-danger">
+                            − {formatINR(toPaise(c.total))}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
             {/* Detailed Expenses Log */}
             <div className="space-y-2">
               <h4 className="text-lg font-bold text-ink">Detailed Expenses Log</h4>
@@ -486,7 +517,7 @@ export function DetailedReportSheet({ open, onClose, staffList, currentUserEmail
                     <thead>
                       <tr className="bg-slate-50 border-b border-border text-ink-soft font-bold">
                         <th className="px-4 py-3">Date</th>
-                        <th className="px-4 py-3">Reason / Description</th>
+                        <th className="px-4 py-3">Category / Remark</th>
                         <th className="px-4 py-3 text-right">Amount</th>
                       </tr>
                     </thead>
@@ -501,7 +532,10 @@ export function DetailedReportSheet({ open, onClose, staffList, currentUserEmail
                               minute: "numeric",
                             }).format(new Date(exp.created_at))}
                           </td>
-                          <td className="px-4 py-3">{exp.reason}</td>
+                          <td className="px-4 py-3">
+                            <div className="font-semibold">{exp.category_name || exp.reason}</div>
+                            {exp.note ? <div className="text-xs text-ink-soft mt-0.5">{exp.note}</div> : null}
+                          </td>
                           <td className="px-4 py-3 text-right font-bold text-danger">
                             − ₹{parseFloat(exp.amount).toFixed(2)}
                           </td>

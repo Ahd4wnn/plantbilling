@@ -3,10 +3,23 @@ package com.plantora.billing.domain
 data class Expense(
     val id: String,
     val amount: Money,
+    /** Snapshot label (category name at create time, or legacy free text). */
     val reason: String,
+    val categoryId: String?,
+    val categoryName: String?,
+    val note: String?,
     /** How it was paid: "cash" (out of the drawer) or "upi". */
     val paymentMethod: String,
     val createdAt: String,
+) {
+    /** What to show as the expense's title. */
+    val displayName: String get() = categoryName ?: reason
+}
+
+/** A reusable, manager-curated expense category (e.g. "Petrol"). */
+data class ExpenseCategory(
+    val id: String,
+    val name: String,
 )
 
 /** A day's takings + cash book (shop timezone, computed server-side). */
@@ -22,15 +35,18 @@ data class DaySummary(
     val cashExpenses: Money,
     /** Expenses paid via UPI. */
     val upiExpenses: Money,
-    /** Labour paid this day — cash out of the drawer. */
+    /** Labour paid this day, all methods (for display). */
     val labourTotal: Money,
+    /** Labour paid IN CASH this day — the only part that lowers the drawer. */
+    val labourCash: Money,
     /** Running (all-time) cash in hand as of this day: baseline + every day's cash. */
     val cashInHandRunning: Money,
     val netSales: Money,
     val expenses: List<Expense>,
 ) {
-    /** Today-only cash left in the drawer (cash sales − cash expenses − labour paid). */
-    val cashInHandToday: Money get() = cashTotal - cashExpenses - labourTotal
+    /** Today-only cash left in the drawer (cash sales − cash expenses − labour paid IN
+     *  CASH). A UPI labour payment must not lower this — that was the bug. */
+    val cashInHandToday: Money get() = cashTotal - cashExpenses - labourCash
 }
 
 /** A compact bill row for the history list. */

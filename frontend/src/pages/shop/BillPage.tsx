@@ -76,26 +76,28 @@ export function BillPage() {
   }, []);
 
   const totals = useMemo(
-    () => computeTotals(lines.map((l) => ({ unitPrice: l.unit_price, quantity: l.quantity })), discountType, discountValue),
+    () => computeTotals(lines.map((l) => ({ unitPrice: l.unit_price, quantity: l.quantity ?? 0 })), discountType, discountValue),
     [lines, discountType, discountValue],
   );
 
   const cartQty = useMemo(() => {
     const m: Record<string, number> = {};
-    for (const l of lines) m[l.product_id] = l.quantity;
+    for (const l of lines) m[l.product_id] = l.quantity ?? 0;
     return m;
   }, [lines]);
 
-  const itemCount = useMemo(() => lines.reduce((n, l) => n + l.quantity, 0), [lines]);
+  const itemCount = useMemo(() => lines.reduce((n, l) => n + (l.quantity ?? 0), 0), [lines]);
 
   // ── Handlers ────────────────────────────────────────────────────────────────
   const handleCheckout = async () => {
     setSaving(true);
     setSaveError(null);
 
+    // canSave gates checkout, so every line has a real quantity by now; `?? 1`
+    // is a type-safety floor only.
     const items: BillItemPayload[] = lines.map((l) => ({
       product_id: l.product_id,
-      quantity: l.quantity,
+      quantity: l.quantity ?? 1,
       unit_price: fromPaise(toPaise(l.unit_price)),
     }));
 

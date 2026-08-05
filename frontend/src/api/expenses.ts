@@ -7,19 +7,49 @@ export interface ExpenseRow {
   shop_id: string;
   amount: string;
   reason: string;
+  category_id: string | null;
+  category_name: string | null;
+  note: string | null;
   payment_method: ExpenseMethod;
   created_by: string | null;
   created_at: string;
 }
 
+export interface ExpenseCategory {
+  id: string;
+  name: string;
+  created_at: string;
+}
+
+export async function listExpenseCategories(): Promise<ExpenseCategory[]> {
+  const { data } = await api.get<ExpenseCategory[]>("/expense-categories");
+  return data;
+}
+
+export async function createExpenseCategory(name: string): Promise<ExpenseCategory> {
+  const { data } = await api.post<ExpenseCategory>("/expense-categories", { name });
+  return data;
+}
+
+export async function renameExpenseCategory(id: string, name: string): Promise<ExpenseCategory> {
+  const { data } = await api.patch<ExpenseCategory>(`/expense-categories/${id}`, { name });
+  return data;
+}
+
+export async function deleteExpenseCategory(id: string): Promise<void> {
+  await api.delete(`/expense-categories/${id}`);
+}
+
 export async function createExpense(
   amount: string,
-  reason: string,
+  categoryId: string,
+  note: string | null,
   paymentMethod: ExpenseMethod = "cash",
 ): Promise<ExpenseRow> {
   const { data } = await api.post<ExpenseRow>("/expenses", {
     amount,
-    reason,
+    category_id: categoryId,
+    note: note?.trim() || null,
     payment_method: paymentMethod,
   });
   return data;
@@ -39,12 +69,14 @@ export async function deleteExpense(id: string): Promise<void> {
 export async function updateExpense(
   id: string,
   amount: string,
-  reason: string,
+  categoryId: string,
+  note: string | null,
   paymentMethod: ExpenseMethod = "cash",
 ): Promise<ExpenseRow> {
   const { data } = await api.patch<ExpenseRow>(`/expenses/${id}`, {
     amount,
-    reason,
+    category_id: categoryId,
+    note: note?.trim() || null,
     payment_method: paymentMethod,
   });
   return data;

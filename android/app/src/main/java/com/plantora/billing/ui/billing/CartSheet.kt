@@ -47,6 +47,7 @@ fun CartSheetContent(
     modifier: Modifier = Modifier,
     state: BillingUiState,
     onSetQuantity: (String, Int) -> Unit,
+    onSetQuantityText: (String, String) -> Unit,
     onSetUnitPrice: (String, String) -> Unit,
     onRemoveLine: (String) -> Unit,
     onSetDiscountType: (DiscountType) -> Unit,
@@ -129,16 +130,16 @@ fun CartSheetContent(
                     horizontalArrangement = Arrangement.spacedBy(Dimens.md),
                 ) {
                     com.plantora.billing.ui.components.NumberField(
-                        value = line.unitPrice.toInput(),
+                        value = line.priceInput,
                         onValueChange = { onSetUnitPrice(line.id, it) },
                         label = stringResource(R.string.cart_price),
                         modifier = Modifier.weight(1f),
                     )
                     QuantityStepper(
-                        quantity = line.quantity,
-                        onDecrement = { onSetQuantity(line.id, line.quantity - 1) },
-                        onIncrement = { onSetQuantity(line.id, line.quantity + 1) },
-                        onQuantityChange = { q -> onSetQuantity(line.id, q) },
+                        value = line.qtyInput,
+                        onValueChange = { onSetQuantityText(line.id, it) },
+                        onDecrement = { onSetQuantity(line.id, (line.qtyInput.toIntOrNull() ?: 0) - 1) },
+                        onIncrement = { onSetQuantity(line.id, (line.qtyInput.toIntOrNull() ?: 0) + 1) },
                     )
                 }
             }
@@ -205,6 +206,14 @@ fun CartSheetContent(
             label = if (hasDue) stringResource(R.string.cart_phone_required) else stringResource(R.string.cart_phone_optional),
             keyboardType = KeyboardType.Phone,
         )
+        state.returningCustomer?.let { rc ->
+            Spacer(Modifier.height(Dimens.xs))
+            Text(
+                stringResource(R.string.cart_returning_customer, rc.name?.let { "$it — " } ?: "", rc.visitCount),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.primary,
+            )
+        }
 
         Spacer(Modifier.height(Dimens.lg))
 
@@ -256,9 +265,17 @@ fun CartSheetContent(
         PrimaryButton(
             text = stringResource(R.string.cart_save, totals.total.format()),
             onClick = onCheckout,
-            enabled = !state.isCartEmpty,
+            enabled = state.allLinesFilled,
             loading = state.checkout == CheckoutPhase.SUBMITTING,
         )
+        if (!state.isCartEmpty && !state.allLinesFilled) {
+            Spacer(Modifier.height(Dimens.xs))
+            Text(
+                stringResource(R.string.cart_fill_lines),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
 
         // Remarks last (rarely used).
         Spacer(Modifier.height(Dimens.md))

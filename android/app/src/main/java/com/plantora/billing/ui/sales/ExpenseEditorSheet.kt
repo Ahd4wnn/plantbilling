@@ -1,47 +1,53 @@
 package com.plantora.billing.ui.sales
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.FilterChip
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import com.plantora.billing.R
+import com.plantora.billing.domain.ExpenseCategory
 import com.plantora.billing.ui.components.PlantoraTextField
 import com.plantora.billing.ui.components.PrimaryButton
 import com.plantora.billing.ui.theme.Dimens
 
-// Value stored in the entry stays English; the chip shows a localized label.
-private val QUICK_REASONS = listOf(
-    "Tea & Snacks" to R.string.expense_reason_tea,
-    "Soil & Pots" to R.string.expense_reason_soil,
-    "Electricity" to R.string.expense_reason_electricity,
-    "Labor Wages" to R.string.expense_reason_labor,
-    "Transport" to R.string.expense_reason_transport,
-    "Others" to R.string.expense_reason_others,
-)
-
-@OptIn(ExperimentalLayoutApi::class, androidx.compose.material3.ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ExpenseEditorSheet(
     editor: ExpenseEditor,
+    categories: List<ExpenseCategory>,
+    canManage: Boolean,
     onAmount: (String) -> Unit,
-    onReason: (String) -> Unit,
+    onCategory: (String?) -> Unit,
+    onAddCategory: (String) -> Unit,
+    onNote: (String) -> Unit,
     onMethod: (String) -> Unit,
     onSave: () -> Unit,
 ) {
@@ -60,13 +66,18 @@ fun ExpenseEditorSheet(
         Spacer(Modifier.height(Dimens.lg))
         PlantoraTextField(editor.amount, onAmount, label = stringResource(R.string.label_amount_rupees), keyboardType = KeyboardType.Decimal)
         Spacer(Modifier.height(Dimens.md))
-        PlantoraTextField(editor.reason, onReason, label = stringResource(R.string.label_reason))
-        Spacer(Modifier.height(Dimens.sm))
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(Dimens.sm)) {
-            QUICK_REASONS.forEach { (value, labelRes) ->
-                FilterChip(selected = editor.reason == value, onClick = { onReason(value) }, label = { Text(stringResource(labelRes)) })
-            }
-        }
+
+        CategorySelector(
+            categories = categories,
+            selectedId = editor.categoryId,
+            canManage = canManage,
+            onSelect = onCategory,
+            onAddCategory = onAddCategory,
+        )
+
+        Spacer(Modifier.height(Dimens.md))
+        PlantoraTextField(editor.note, onNote, label = stringResource(R.string.label_remark_optional))
+
         Spacer(Modifier.height(Dimens.lg))
         // How the money left the shop: cash comes out of the drawer, UPI out of
         // the day's UPI takings. Drives the day's Cash in Hand.
@@ -95,5 +106,80 @@ fun ExpenseEditorSheet(
             enabled = editor.canSave,
             loading = editor.saving,
         )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun CategorySelector(
+    categories: List<ExpenseCategory>,
+    selectedId: String?,
+    canManage: Boolean,
+    onSelect: (String?) -> Unit,
+    onAddCategory: (String) -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    var adding by remember { mutableStateOf(false) }
+    var newName by remember { mutableStateOf("") }
+
+    val selectedName = categories.find { it.id == selectedId }?.name ?: ""
+
+    ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = it }) {
+        OutlinedTextField(
+            value = selectedName,
+            onValueChange = {},
+            readOnly = true,
+            label = { Text(stringResource(R.string.label_category)) },
+            placeholder = { Text(stringResource(R.string.expense_select_category)) },
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+            modifier = Modifier
+                .fillMaxWidth()
+                .menuAnchor(),
+        )
+        ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            categories.forEach { cat ->
+                DropdownMenuItem(
+                    text = { Text(cat.name) },
+                    onClick = {
+                        onSelect(cat.id)
+                        expanded = false
+                    },
+                )
+            }
+        }
+    }
+
+    if (categories.isEmpty() && !canManage) {
+        Spacer(Modifier.height(Dimens.xs))
+        Text(
+            stringResource(R.string.expense_no_categories),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+
+    if (canManage) {
+        Spacer(Modifier.height(Dimens.sm))
+        if (!adding) {
+            OutlinedButton(onClick = { adding = true }) {
+                Text("+ " + stringResource(R.string.expense_add_category))
+            }
+        } else {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.weight(1f)) {
+                    PlantoraTextField(newName, { newName = it }, label = stringResource(R.string.expense_new_category_hint))
+                }
+                Spacer(Modifier.width(Dimens.sm))
+                PrimaryButton(
+                    text = stringResource(R.string.action_add),
+                    onClick = {
+                        onAddCategory(newName)
+                        newName = ""
+                        adding = false
+                    },
+                    enabled = newName.isNotBlank(),
+                )
+            }
+        }
     }
 }

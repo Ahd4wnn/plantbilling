@@ -231,6 +231,7 @@ fun BillScreen(viewModel: BillingViewModel = hiltViewModel()) {
                 modifier = Modifier.nestedScroll(blockSheetDismissDrag),
                 state = state,
                 onSetQuantity = viewModel::setQuantity,
+                onSetQuantityText = viewModel::setQuantityText,
                 onSetUnitPrice = viewModel::setUnitPrice,
                 onRemoveLine = viewModel::removeLine,
                 onSetDiscountType = viewModel::setDiscountType,

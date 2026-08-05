@@ -158,9 +158,10 @@ fun SummaryHero(
             summary.expenses.forEach { e ->
                 Row(Modifier.fillMaxWidth().padding(vertical = Dimens.xs), verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
-                        Text(e.reason, style = MaterialTheme.typography.bodyLarge)
+                        Text(e.displayName, style = MaterialTheme.typography.bodyLarge)
                         Text(
-                            formatBillTime(e.createdAt) + " • " + if (e.paymentMethod == "upi") stringResource(R.string.pay_upi) else stringResource(R.string.pay_cash),
+                            (e.note?.let { "$it • " } ?: "") +
+                                formatBillTime(e.createdAt) + " • " + if (e.paymentMethod == "upi") stringResource(R.string.pay_upi) else stringResource(R.string.pay_cash),
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )

@@ -6,7 +6,16 @@ import { useCashInHandCumulative } from "@/lib/cashInHand";
 import { Spinner } from "@/components/Spinner";
 import { Button } from "@/components/Button";
 import { DateSelector } from "./DateSelector";
-import { createExpense, deleteExpense, updateExpense, type ExpenseMethod, type ExpenseRow } from "@/api/expenses";
+import {
+  createExpense,
+  deleteExpense,
+  updateExpense,
+  listExpenseCategories,
+  createExpenseCategory,
+  type ExpenseMethod,
+  type ExpenseRow,
+  type ExpenseCategory,
+} from "@/api/expenses";
 import { BottomSheet } from "@/components/BottomSheet";
 import { TextInput } from "@/components/TextInput";
 import { friendlyError } from "@/api/client";
@@ -174,11 +183,13 @@ export function SummaryHero({
               <Stat label="Due" value={formatINR(toPaise(summary.due_total || "0"))} accent="due" />
               <Stat label="Labour" value={"− " + formatINR(toPaise(summary.labour_total || "0"))} accent="expense" />
               {(() => {
-                // Today's drawer = cash sales − cash expenses − labour paid.
+                // Today's drawer = cash sales − cash expenses − labour paid IN CASH.
+                // Only the cash part of labour lowers the drawer; a UPI labour
+                // payment must not (that was the bug — it used labour_total).
                 const todayPaise =
                   toPaise(summary.cash_total) -
                   toPaise(summary.cash_expenses || summary.total_expenses) -
-                  toPaise(summary.labour_total || "0");
+                  toPaise(summary.labour_cash || "0");
                 const runningPaise = toPaise(summary.cash_in_hand_running || "0");
                 const paise = cumulativeCash ? runningPaise : todayPaise;
                 return (
@@ -337,8 +348,9 @@ export function SummaryHero({
                         {summary.expenses.map((e) => (
                           <div key={e.id} className="py-2.5 flex items-center justify-between gap-3 text-sm">
                             <div className="min-w-0 flex-1">
-                              <div className="font-semibold text-ink truncate">{e.reason}</div>
+                              <div className="font-semibold text-ink truncate">{e.category_name || e.reason}</div>
                               <div className="text-xs text-ink-soft mt-0.5">
+                                {e.note ? <span className="truncate">{e.note} · </span> : null}
                                 {new Intl.DateTimeFormat("en-IN", {
                                   hour: "numeric",
                                   minute: "numeric",
@@ -384,6 +396,7 @@ export function SummaryHero({
 
       <CreateExpenseSheet
         open={expenseOpen}
+        canManage={isOwner}
         onClose={() => setExpenseOpen(false)}
         onCreated={() => {
           if (onExpenseAdded) onExpenseAdded();
@@ -392,6 +405,7 @@ export function SummaryHero({
 
       <EditExpenseSheet
         expense={editingExpense}
+        canManage={isOwner}
         onClose={() => setEditingExpense(null)}
         onCreated={() => {
           if (onExpenseAdded) onExpenseAdded();
@@ -422,15 +436,18 @@ function Stat({ label, value, accent }: { label: string; value: string; accent?:
 
 function CreateExpenseSheet({
   open,
+  canManage,
   onClose,
   onCreated,
 }: {
   open: boolean;
+  canManage: boolean;
   onClose: () => void;
   onCreated: () => void;
 }) {
   const [amount, setAmount] = useState("");
-  const [reason, setReason] = useState("");
+  const [categoryId, setCategoryId] = useState<string | null>(null);
+  const [note, setNote] = useState("");
   const [method, setMethod] = useState<ExpenseMethod>("cash");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -438,20 +455,21 @@ function CreateExpenseSheet({
   useEffect(() => {
     if (!open) return;
     setAmount("");
-    setReason("");
+    setCategoryId(null);
+    setNote("");
     setMethod("cash");
     setError(null);
   }, [open]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!amount.trim() || !reason.trim()) return;
+    if (!amount.trim() || !categoryId) return;
 
     setLoading(true);
     setError(null);
 
     try {
-      await createExpense(amount.trim(), reason.trim(), method);
+      await createExpense(amount.trim(), categoryId, note, method);
       onCreated();
       onClose();
     } catch (err) {
@@ -471,7 +489,7 @@ function CreateExpenseSheet({
           variant="primary"
           size="action"
           className="w-full font-bold"
-          disabled={!amount.trim() || !reason.trim() || loading}
+          disabled={!amount.trim() || !categoryId || loading}
           loading={loading}
           onClick={handleSubmit}
         >
@@ -497,37 +515,138 @@ function CreateExpenseSheet({
           required
         />
 
-        <TextInput
-          label="Reason / Description"
-          type="text"
-          placeholder="e.g. Soil bag purchase, electric bill"
-          value={reason}
-          onChange={(e) => setReason(e.target.value)}
+        <ExpenseCategoryPicker
+          value={categoryId}
+          onChange={setCategoryId}
+          canManage={canManage}
           disabled={loading}
-          required
-          autoComplete="off"
         />
 
-        <div className="flex flex-wrap gap-1.5 mt-1.5">
-          {["Tea & Snacks", "Soil & Pots", "Electricity", "Labor Wages", "Transport", "Others"].map((s) => (
-            <button
-              key={s}
-              type="button"
-              onClick={() => setReason(s)}
-              className={`px-2.5 py-1 rounded-full text-xs font-semibold border transition-all ${
-                reason === s
-                  ? "bg-primary-50 text-primary-700 border-primary-300 ring-2 ring-primary-600/10"
-                  : "bg-white text-ink-soft border-border hover:bg-slate-50"
-              }`}
-            >
-              {s}
-            </button>
-          ))}
-        </div>
+        <TextInput
+          label="Remark (optional)"
+          type="text"
+          placeholder="e.g. scooter fill, meter #3"
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+          disabled={loading}
+          autoComplete="off"
+        />
 
         <PaidFromToggle value={method} onChange={setMethod} disabled={loading} />
       </form>
     </BottomSheet>
+  );
+}
+
+/** Category dropdown backed by the shop's list. Managers (canManage) get an inline
+ *  "Add new" to create a category on the spot; salespeople can only pick. */
+function ExpenseCategoryPicker({
+  value,
+  onChange,
+  canManage,
+  disabled,
+}: {
+  value: string | null;
+  onChange: (id: string | null) => void;
+  canManage: boolean;
+  disabled?: boolean;
+}) {
+  const [cats, setCats] = useState<ExpenseCategory[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [adding, setAdding] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [addErr, setAddErr] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const list = await listExpenseCategories();
+        if (!cancelled) setCats(list);
+      } catch {
+        /* leave empty; picker stays usable once categories exist */
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const addCategory = async () => {
+    const name = newName.trim();
+    if (!name) return;
+    setAddErr(null);
+    try {
+      const created = await createExpenseCategory(name);
+      setCats((prev) => [...prev, created].sort((a, b) => a.name.localeCompare(b.name)));
+      onChange(created.id);
+      setNewName("");
+      setAdding(false);
+    } catch (e) {
+      setAddErr(friendlyError(e, "Couldn't add category."));
+    }
+  };
+
+  return (
+    <div>
+      <p className="mb-1.5 text-sm font-semibold text-ink-soft">Category</p>
+      <div className="flex gap-2">
+        <select
+          value={value ?? ""}
+          onChange={(e) => onChange(e.target.value || null)}
+          disabled={disabled || loading}
+          className="field flex-1"
+          aria-label="Expense category"
+        >
+          <option value="" disabled>
+            {loading ? "Loading…" : "Select a category"}
+          </option>
+          {cats.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.name}
+            </option>
+          ))}
+        </select>
+        {canManage && (
+          <button
+            type="button"
+            onClick={() => setAdding((v) => !v)}
+            disabled={disabled}
+            className="shrink-0 rounded-control border border-border bg-white px-3 font-bold text-primary-700 hover:bg-slate-50"
+          >
+            + Add
+          </button>
+        )}
+      </div>
+
+      {adding && canManage && (
+        <div className="mt-2 flex gap-2">
+          <input
+            type="text"
+            value={newName}
+            onChange={(e) => setNewName(e.target.value)}
+            placeholder="New category name"
+            className="field flex-1"
+            aria-label="New category name"
+            autoComplete="off"
+          />
+          <button
+            type="button"
+            onClick={addCategory}
+            disabled={!newName.trim()}
+            className="shrink-0 rounded-control bg-primary-600 px-4 font-bold text-white hover:bg-primary-700 disabled:opacity-50"
+          >
+            Add
+          </button>
+        </div>
+      )}
+      {addErr && <p className="mt-1 text-sm font-semibold text-danger">{addErr}</p>}
+      {!loading && cats.length === 0 && !canManage && (
+        <p className="mt-1 text-sm text-ink-soft">No categories yet — ask your manager to add some.</p>
+      )}
+    </div>
   );
 }
 
@@ -567,15 +686,18 @@ function PaidFromToggle({
 
 function EditExpenseSheet({
   expense,
+  canManage,
   onClose,
   onCreated,
 }: {
   expense: ExpenseRow | null;
+  canManage: boolean;
   onClose: () => void;
   onCreated: () => void;
 }) {
   const [amount, setAmount] = useState("");
-  const [reason, setReason] = useState("");
+  const [categoryId, setCategoryId] = useState<string | null>(null);
+  const [note, setNote] = useState("");
   const [method, setMethod] = useState<ExpenseMethod>("cash");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -583,20 +705,21 @@ function EditExpenseSheet({
   useEffect(() => {
     if (!expense) return;
     setAmount(parseFloat(expense.amount).toFixed(2));
-    setReason(expense.reason);
+    setCategoryId(expense.category_id);
+    setNote(expense.note ?? "");
     setMethod(expense.payment_method ?? "cash");
     setError(null);
   }, [expense]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!expense || !amount.trim() || !reason.trim()) return;
+    if (!expense || !amount.trim() || !categoryId) return;
 
     setLoading(true);
     setError(null);
 
     try {
-      await updateExpense(expense.id, amount.trim(), reason.trim(), method);
+      await updateExpense(expense.id, amount.trim(), categoryId, note, method);
       onCreated();
       onClose();
     } catch (err) {
@@ -616,7 +739,7 @@ function EditExpenseSheet({
           variant="primary"
           size="action"
           className="w-full font-bold"
-          disabled={!amount.trim() || !reason.trim() || loading}
+          disabled={!amount.trim() || !categoryId || loading}
           loading={loading}
           onClick={handleSubmit}
         >
@@ -642,33 +765,24 @@ function EditExpenseSheet({
           required
         />
 
-        <TextInput
-          label="Reason / Description"
-          type="text"
-          placeholder="e.g. Soil bag purchase, electric bill"
-          value={reason}
-          onChange={(e) => setReason(e.target.value)}
+        {/* A legacy expense may have no category — the picker starts unselected and
+            the manager must choose one to save. */}
+        <ExpenseCategoryPicker
+          value={categoryId}
+          onChange={setCategoryId}
+          canManage={canManage}
           disabled={loading}
-          required
-          autoComplete="off"
         />
 
-        <div className="flex flex-wrap gap-1.5 mt-1.5">
-          {["Tea & Snacks", "Soil & Pots", "Electricity", "Labor Wages", "Transport", "Others"].map((s) => (
-            <button
-              key={s}
-              type="button"
-              onClick={() => setReason(s)}
-              className={`px-2.5 py-1 rounded-full text-xs font-semibold border transition-all ${
-                reason === s
-                  ? "bg-primary-50 text-primary-700 border-primary-300 ring-2 ring-primary-600/10"
-                  : "bg-white text-ink-soft border-border hover:bg-slate-50"
-              }`}
-            >
-              {s}
-            </button>
-          ))}
-        </div>
+        <TextInput
+          label="Remark (optional)"
+          type="text"
+          placeholder="e.g. scooter fill, meter #3"
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+          disabled={loading}
+          autoComplete="off"
+        />
 
         <PaidFromToggle value={method} onChange={setMethod} disabled={loading} />
       </form>

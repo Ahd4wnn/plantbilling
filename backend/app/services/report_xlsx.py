@@ -225,6 +225,7 @@ def build_report_workbook(
     customers: Sequence[Sequence[Any]],
     staff: Sequence[Sequence[Any]],
     expenses: Sequence[Sequence[Any]],
+    expenses_by_category: Sequence[Sequence[Any]] = (),
     labour: Sequence[Sequence[Any]] = (),
     attendance: Sequence[Sequence[Any]] = (),
     audit: Sequence[Sequence[Any]] = (),
@@ -257,9 +258,12 @@ def build_report_workbook(
             ("Staff", "text", 28), ("Bills", "int", 9), ("Total Sales", "money", 16),
             ("Cash", "money", 14), ("UPI", "money", 14), ("Due", "money", 14),
         ], staff, "(no bills in this period)"),
+        ("Expenses by Category", [
+            ("Category", "text", 30), ("Count", "int", 9), ("Total", "money", 16),
+        ], expenses_by_category, "(no expenses in this period)"),
         ("Expenses", [
             ("Date & Time", "text", 18), ("Recorded By", "text", 26),
-            ("Reason", "wraptext", 40), ("Amount", "money", 15),
+            ("Category", "text", 26), ("Remark", "wraptext", 34), ("Amount", "money", 15),
         ], expenses, "(no expenses in this period)"),
         ("Labour Payments", [
             ("Date & Time", "text", 18), ("Labourer", "text", 22), ("Gender", "text", 9),

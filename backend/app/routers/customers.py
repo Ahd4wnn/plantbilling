@@ -9,13 +9,14 @@ import datetime as dt
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import or_, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from app.auth.dependencies import get_db, require_shop_staff, require_manager_or_admin, require_shop_or_admin
+from app.models.bill import Bill
 from app.models.customer import Customer
 from app.models.user import User
-from app.schemas.customer import CustomerCreate, CustomerOut
+from app.schemas.customer import CustomerCreate, CustomerLookupOut, CustomerOut
 from app.services.whatsapp.eligibility import apply_phone_consent
 
 router = APIRouter(prefix="/customers", tags=["customers"])
@@ -33,6 +34,46 @@ def list_customers(
         stmt = stmt.where(or_(Customer.name.ilike(like), Customer.phone.ilike(like)))
     stmt = stmt.order_by(Customer.name.asc())
     return list(db.execute(stmt).scalars())
+
+
+@router.get("/lookup", response_model=CustomerLookupOut)
+def lookup_customer(
+    db: Session = Depends(get_db),
+    _user: User = Depends(require_shop_staff),
+    phone: str = Query(..., description="Exactly 10 digits"),
+) -> CustomerLookupOut:
+    """Returning-customer hint for the billing screen: given a 10-digit phone, how
+    many bills this shop has for that number, and the most recent name used.
+
+    RLS scopes the join to the caller's shop — a number that only exists at another
+    shop reads as not found. Never affects saving a bill.
+    """
+    digits = "".join(ch for ch in phone if ch.isdigit())
+    if len(digits) != 10:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Phone number must be exactly 10 digits",
+        )
+
+    base = (
+        select(Bill.id, Customer.name, Bill.created_at)
+        .join(Customer, Customer.id == Bill.customer_id)
+        .where(Customer.phone == digits)
+    )
+    visit_count = db.execute(
+        select(func.count()).select_from(base.subquery())
+    ).scalar_one()
+    if not visit_count:
+        return CustomerLookupOut(found=False, name=None, visit_count=0)
+
+    latest_name = db.execute(
+        base.order_by(Bill.created_at.desc()).limit(1)
+    ).first()
+    return CustomerLookupOut(
+        found=True,
+        name=latest_name.name if latest_name else None,
+        visit_count=int(visit_count),
+    )
 
 
 @router.get("/download")

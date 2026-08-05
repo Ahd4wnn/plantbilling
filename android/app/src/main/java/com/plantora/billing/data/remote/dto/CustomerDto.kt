@@ -17,3 +17,10 @@ data class CustomerCreateDto(
     val name: String,
     val phone: String? = null,
 )
+
+@Serializable
+data class CustomerLookupDto(
+    val found: Boolean = false,
+    val name: String? = null,
+    @SerialName("visit_count") val visitCount: Int = 0,
+)

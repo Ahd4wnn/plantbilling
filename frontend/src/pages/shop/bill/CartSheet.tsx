@@ -2,7 +2,7 @@ import { BottomSheet } from "@/components/BottomSheet";
 import { Button } from "@/components/Button";
 import { formatINR, toPaise } from "@/lib/money";
 import type { Totals } from "@/lib/money";
-import { useBilling } from "@/store/billing";
+import { useBilling, allLinesFilled } from "@/store/billing";
 import { CartForm } from "./CartForm";
 
 interface CartSheetProps {
@@ -21,7 +21,8 @@ export function CartSheet({ open, onClose, totals, onCheckout, saving, errorMsg 
   const sumPaise = toPaise(cash) + toPaise(upi) + toPaise(due);
   const balanced = sumPaise === totals.totalPaise;
   const phoneValid = !customer.phone.trim() || customer.phone.replace(/\D/g, "").length === 10;
-  const canSave = lines.length > 0 && payMethod !== null && balanced && !saving && phoneValid;
+  const linesFilled = allLinesFilled(lines);
+  const canSave = lines.length > 0 && linesFilled && payMethod !== null && balanced && !saving && phoneValid;
 
   return (
     <BottomSheet
@@ -46,7 +47,12 @@ export function CartSheet({ open, onClose, totals, onCheckout, saving, errorMsg 
           >
             Save Bill · {formatINR(totals.totalPaise)}
           </Button>
-          {!balanced && lines.length > 0 && payMethod !== null && (
+          {!linesFilled && lines.length > 0 && (
+            <p className="text-center text-base font-semibold text-ink-soft">
+              Enter a quantity and price for every item.
+            </p>
+          )}
+          {linesFilled && !balanced && lines.length > 0 && payMethod !== null && (
             <p className="text-center text-base font-semibold text-ink-soft">
               Payments must add up to {formatINR(totals.totalPaise)}.
             </p>

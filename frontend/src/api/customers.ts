@@ -9,6 +9,20 @@ export interface ShopCustomer {
   created_at: string;
 }
 
+export interface CustomerLookup {
+  found: boolean;
+  name: string | null;
+  visit_count: number;
+}
+
+/** Returning-customer hint for the billing screen. Scoped to this shop by RLS. */
+export async function lookupCustomer(phone: string): Promise<CustomerLookup> {
+  const { data } = await api.get<CustomerLookup>("/customers/lookup", {
+    params: { phone },
+  });
+  return data;
+}
+
 export async function fetchShopCustomers(q?: string): Promise<ShopCustomer[]> {
   const query: Record<string, string> = {};
   if (q) query.q = q;
