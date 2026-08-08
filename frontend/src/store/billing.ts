@@ -103,7 +103,9 @@ export const useBilling = create<BillingState>((set, get) => ({
           {
             product_id: p.id,
             product_name: p.name,
-            unit_price: "", // blank — the operator enters the size-based price
+            // Pre-fill the product's saved price (the common case, still editable per
+            // line for size-based pricing); blank only when the product has no price.
+            unit_price: Number(p.retail_price) > 0 ? p.retail_price : "",
             // Blank on a plain add; honour an explicit quantity (scanner/quick-add).
             quantity: quantity ?? null,
             photo_url: p.photo_url,

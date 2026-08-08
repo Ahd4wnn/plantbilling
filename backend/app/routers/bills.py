@@ -1074,7 +1074,10 @@ def _generate_report_data(
     # rename regroups history); legacy free-text rows group by their reason.
     cat_totals: dict[str, list] = {}
     for e in expenses_rows:
-        key = e.category_name if e.category_id is not None else (e.reason or "Uncategorized")
+        # Prefer the CURRENT category name (regroups on rename); fall back to the
+        # snapshot `reason` if the category row is unreadable/absent so this can
+        # never yield a NULL group key (which would 500 the whole report).
+        key = e.category_name or e.reason or "Uncategorized"
         bucket = cat_totals.setdefault(key, [ZERO, 0])
         bucket[0] += e.amount
         bucket[1] += 1

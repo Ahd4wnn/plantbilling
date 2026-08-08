@@ -25,12 +25,10 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -67,7 +65,6 @@ fun SalesScreen(
 ) {
     val ui by viewModel.ui.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     // Refresh every time the Sales tab is shown so a bill just made on the Bill tab
     // (or a deleted/edited bill) appears immediately, despite saved nav state.
@@ -79,6 +76,26 @@ fun SalesScreen(
     val ctx = androidx.compose.ui.platform.LocalContext.current
     LaunchedEffect(ui.message) {
         ui.message?.let { snackbar.showSnackbar(it.resolve(ctx)); viewModel.dismissMessage() }
+    }
+
+    // Recording/editing an expense takes over the whole screen — a dedicated page, not
+    // a bottom sheet. The old sheet hosted a dropdown popup that broke the picker and
+    // hid the day summary; a full page with plain chips avoids that entirely. Closing
+    // it re-enters this composable, whose resume effect reloads the summary.
+    ui.expenseEditor?.let { editor ->
+        ExpenseEditorScreen(
+            editor = editor,
+            categories = ui.expenseCategories,
+            canManage = ui.isOwner,
+            onAmount = viewModel::setExpenseAmount,
+            onCategory = viewModel::setExpenseCategory,
+            onAddCategory = viewModel::addExpenseCategory,
+            onNote = viewModel::setExpenseNote,
+            onMethod = viewModel::setExpenseMethod,
+            onSave = viewModel::saveExpense,
+            onBack = viewModel::closeExpenseEditor,
+        )
+        return
     }
 
     Scaffold(
@@ -173,22 +190,6 @@ fun SalesScreen(
                     )
                 }
             }
-        }
-    }
-
-    ui.expenseEditor?.let { editor ->
-        ModalBottomSheet(onDismissRequest = viewModel::closeExpenseEditor, sheetState = sheetState) {
-            ExpenseEditorSheet(
-                editor = editor,
-                categories = ui.expenseCategories,
-                canManage = ui.isOwner,
-                onAmount = viewModel::setExpenseAmount,
-                onCategory = viewModel::setExpenseCategory,
-                onAddCategory = viewModel::addExpenseCategory,
-                onNote = viewModel::setExpenseNote,
-                onMethod = viewModel::setExpenseMethod,
-                onSave = viewModel::saveExpense,
-            )
         }
     }
 }

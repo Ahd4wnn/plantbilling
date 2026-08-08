@@ -25,6 +25,7 @@ import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
@@ -115,42 +116,48 @@ fun BillScreen(viewModel: BillingViewModel = hiltViewModel()) {
     Scaffold(
         snackbarHost = { SnackbarHost(snackbar) },
         contentWindowInsets = androidx.compose.foundation.layout.WindowInsets(0, 0, 0, 0),
+        // Quick-add is a small round button in the corner so the product grid keeps
+        // its full height (the old full-width bar ate a lot of visible catalogue).
+        floatingActionButton = {
+            FloatingActionButton(
+                onClick = viewModel::openQuickAdd,
+                containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+            ) {
+                Icon(Icons.Rounded.Add, contentDescription = stringResource(R.string.bill_quick_add))
+            }
+        },
         bottomBar = {
-            // imePadding lifts the whole action bar (Cart, Held bills, Quick add)
-            // above the keyboard when the product search field is focused. The app
-            // is edge-to-edge, so the window doesn't resize for the IME — the inset
-            // must be consumed here, mirroring every other screen. Zero when closed.
-            Surface(tonalElevation = 2.dp, shadowElevation = 8.dp, modifier = Modifier.imePadding()) {
-                Column(Modifier.fillMaxWidth().padding(horizontal = Dimens.screenPadding, vertical = Dimens.md)) {
-                    AnimatedVisibility(
-                        visible = !state.isCartEmpty,
-                        enter = slideInVertically { it },
-                        exit = slideOutVertically { it },
-                    ) {
-                        Column {
-                            CartBar(
-                                itemCount = state.itemCount,
-                                totalLabel = state.totals.total.format(),
-                                onClick = viewModel::openReview,
+            // imePadding lifts the action bar (Cart, Held bills) above the keyboard
+            // when the product search field is focused. The app is edge-to-edge, so
+            // the window doesn't resize for the IME — the inset must be consumed here,
+            // mirroring every other screen. Shown only when there's something to show.
+            if (!state.isCartEmpty || heldBills.isNotEmpty()) {
+                Surface(tonalElevation = 2.dp, shadowElevation = 8.dp, modifier = Modifier.imePadding()) {
+                    Column(Modifier.fillMaxWidth().padding(horizontal = Dimens.screenPadding, vertical = Dimens.md)) {
+                        AnimatedVisibility(
+                            visible = !state.isCartEmpty,
+                            enter = slideInVertically { it },
+                            exit = slideOutVertically { it },
+                        ) {
+                            Column {
+                                CartBar(
+                                    itemCount = state.itemCount,
+                                    totalLabel = state.totals.total.format(),
+                                    onClick = viewModel::openReview,
+                                )
+                                if (heldBills.isNotEmpty()) Spacer(Modifier.height(Dimens.sm))
+                            }
+                        }
+                        if (heldBills.isNotEmpty()) {
+                            com.plantora.billing.ui.components.SecondaryButton(
+                                text = stringResource(R.string.bill_held_count, heldBills.size),
+                                onClick = { showHeld = true },
+                                leadingIcon = Icons.Rounded.Pause,
+                                modifier = Modifier.fillMaxWidth(),
                             )
-                            Spacer(Modifier.height(Dimens.sm))
                         }
                     }
-                    if (heldBills.isNotEmpty()) {
-                        com.plantora.billing.ui.components.SecondaryButton(
-                            text = stringResource(R.string.bill_held_count, heldBills.size),
-                            onClick = { showHeld = true },
-                            leadingIcon = Icons.Rounded.Pause,
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                        Spacer(Modifier.height(Dimens.sm))
-                    }
-                    com.plantora.billing.ui.components.SecondaryButton(
-                        text = stringResource(R.string.bill_quick_add),
-                        onClick = viewModel::openQuickAdd,
-                        leadingIcon = Icons.Rounded.Add,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
                 }
             }
         },

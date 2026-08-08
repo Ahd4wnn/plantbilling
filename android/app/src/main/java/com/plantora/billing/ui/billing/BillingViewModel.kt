@@ -206,14 +206,15 @@ class BillingViewModel @Inject constructor(
     fun addProduct(product: Product) = addLine(product, quantity = null)
 
     /** Adds a line. [quantity] null → BLANK qty (manual tap/scan); a value seeds it
-     *  (quick-add, resume). The price always starts blank — the operator enters the
-     *  size-based price for every line. */
+     *  (quick-add, resume). The price PRE-FILLS from the product's saved price (the
+     *  common case), and is editable per line for size-based pricing; it's blank only
+     *  when the product has no price (₹0), forcing a deliberate entry. */
     private fun addLine(product: Product, quantity: Int?) = _ui.update { state ->
         val line = CartLine(
             id = UUID.randomUUID().toString(),
             product = product,
             qtyInput = quantity?.takeIf { it >= 1 }?.toString().orEmpty(),
-            priceInput = "",
+            priceInput = product.retailPrice.takeIf { it.isPositive() }?.toInput() ?: "",
         )
         // Open the review on every add; also clear the search box so the next
         // product is searched from empty (no leftover "rose" to backspace).
