@@ -51,6 +51,7 @@ private fun BillItemOutDto.toDomain() = BillItem(
 
 fun BillOutDto.toDomain() = Bill(
     id = id,
+    billNo = billNo,
     subtotal = Money.parse(subtotal),
     discountType = DiscountType.from(discountType),
     discountValue = Money.parse(discountValue),
@@ -95,6 +96,7 @@ fun BillSummaryDto.toDomain() = DaySummary(
 
 fun BillListItemDto.toDomain() = BillListEntry(
     id = id,
+    billNo = billNo,
     createdAt = createdAt,
     total = Money.parse(total),
     dueAmount = Money.parse(dueAmount),
@@ -131,6 +133,7 @@ fun DetailedReportDto.toDomain() = DetailedReport(
 
 fun BillDetailDto.toDomain() = BillDetail(
     id = id,
+    billNo = billNo,
     shopName = shopName,
     businessName = businessName,
     businessAddress = businessAddress,

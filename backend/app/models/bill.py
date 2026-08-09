@@ -25,6 +25,11 @@ class Bill(Base):
         ForeignKey("customers.id", ondelete="SET NULL"),
         nullable=True,
     )
+    # Human-facing, per-shop bill number (1, 2, 3 …), shown as 0001, 0002 …
+    # Allocated at checkout from shops.next_bill_seq. NULL for legacy bills created
+    # before sequential numbering shipped (they fall back to the UUID fragment).
+    # Unique per shop (partial unique index ux_bills_shop_seq).
+    bill_seq: Mapped[int | None] = mapped_column(Integer, nullable=True)
     bill_type: Mapped[str] = mapped_column(Text, nullable=False)  # 'retail' | 'wholesale'
     subtotal: Mapped[decimal.Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     discount_type: Mapped[str] = mapped_column(

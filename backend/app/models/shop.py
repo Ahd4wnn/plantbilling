@@ -4,7 +4,7 @@ import datetime as dt
 import decimal
 import uuid
 
-from sqlalchemy import Boolean, Numeric, Text, text
+from sqlalchemy import Boolean, Integer, Numeric, Text, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -33,6 +33,12 @@ class Shop(Base):
     # a8b2c3d4e5f6 migration.
     cash_in_hand_base: Mapped[decimal.Decimal] = mapped_column(
         Numeric(12, 2), nullable=False, server_default=text("0")
+    )
+
+    # Per-shop counter for human-facing bill numbers. Allocated atomically at
+    # checkout (UPDATE … RETURNING) so concurrent bills never share a number.
+    next_bill_seq: Mapped[int] = mapped_column(
+        Integer, nullable=False, server_default=text("1")
     )
 
     settings: Mapped[dict] = mapped_column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))

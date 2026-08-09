@@ -54,6 +54,7 @@ data class BillItemOutDto(
 @Serializable
 data class BillOutDto(
     val id: String,
+    @SerialName("bill_no") val billNo: String? = null,
     @SerialName("bill_type") val billType: String,
     val subtotal: String,
     @SerialName("discount_type") val discountType: String,
@@ -77,6 +78,7 @@ data class BillOutDto(
 @Serializable
 data class BillDetailDto(
     val id: String,
+    @SerialName("bill_no") val billNo: String? = null,
     @SerialName("shop_name") val shopName: String? = null,
     @SerialName("business_name") val businessName: String? = null,
     @SerialName("business_address") val businessAddress: String? = null,
@@ -105,6 +107,7 @@ data class BillDetailDto(
 @Serializable
 data class BillListItemDto(
     val id: String,
+    @SerialName("bill_no") val billNo: String? = null,
     @SerialName("created_at") val createdAt: String,
     @SerialName("bill_type") val billType: String,
     val total: String,

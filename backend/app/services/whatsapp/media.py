@@ -273,7 +273,12 @@ def generate_invoice_pdf(
         # ── METADATA & CUSTOMER ROW ───────────────────────────────────────────
         # Left side: Invoice details
         date_ist = bill.created_at.astimezone(SHOP_TZ).strftime("%d-%b-%Y %I:%M %p")
-        invoice_id_short = str(bill.id).split("-")[0].upper()
+        # Prefer the human-facing per-shop bill number (0001…); fall back to the
+        # UUID fragment for legacy bills with no assigned number.
+        invoice_id_short = (
+            f"{bill.bill_seq:04d}" if getattr(bill, "bill_seq", None) is not None
+            else str(bill.id).split("-")[0].upper()
+        )
         
         # Determine payment method label
         pm = "Cash"

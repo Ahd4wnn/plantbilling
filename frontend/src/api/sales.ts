@@ -22,6 +22,8 @@ export interface BillSummary {
 
 export interface BillListItem {
   id: string;
+  /** Human-facing per-shop bill number, e.g. "0001". Null for legacy bills. */
+  bill_no: string | null;
   created_at: string;
   total: string;
   due_amount: string;
@@ -51,6 +53,8 @@ export interface BillDetailItem {
 
 export interface BillDetail {
   id: string;
+  /** Human-facing per-shop bill number, e.g. "0001". Null for legacy bills. */
+  bill_no: string | null;
   shop_name: string | null;
   business_name: string | null;
   business_address: string | null;

@@ -43,6 +43,8 @@ export interface BillItemOut {
 
 export interface BillOut {
   id: string;
+  /** Human-facing per-shop bill number, e.g. "0001". Null for legacy bills. */
+  bill_no: string | null;
   bill_type: "retail" | "wholesale";
   subtotal: string;
   discount_type: "flat" | "percent";

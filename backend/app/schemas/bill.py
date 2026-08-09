@@ -84,6 +84,9 @@ class BillItemOut(BaseModel):
 
 class BillOut(BaseModel):
     id: uuid.UUID
+    # Human-facing per-shop bill number, e.g. "0001". None for legacy bills with
+    # no assigned number (the client falls back to the UUID fragment).
+    bill_no: str | None = None
     bill_type: str
     subtotal: MoneyOut
     discount_type: str
@@ -147,6 +150,7 @@ class BillListItem(BaseModel):
     """A compact history row."""
 
     id: uuid.UUID
+    bill_no: str | None = None
     created_at: dt.datetime
     bill_type: str
     total: MoneyOut
@@ -173,6 +177,7 @@ class BillDetailOut(BaseModel):
     """A complete, self-contained bill for the detail / reprint surface."""
 
     id: uuid.UUID
+    bill_no: str | None = None
     shop_name: str | None = None
     business_name: str | None = None
     business_address: str | None = None

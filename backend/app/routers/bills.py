@@ -18,7 +18,7 @@ from decimal import ROUND_HALF_UP, Decimal
 from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
-from sqlalchemy import func, select
+from sqlalchemy import func, select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -96,6 +96,13 @@ def _http422(message: str) -> HTTPException:
     return HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=message)
 
 
+def _bill_no(bill: Bill) -> str | None:
+    """The human-facing per-shop bill number, zero-padded to 4 digits (0001,
+    0002 … and naturally wider past 9999). None for legacy bills that were never
+    assigned a number — the client then falls back to the UUID fragment."""
+    return f"{bill.bill_seq:04d}" if bill.bill_seq is not None else None
+
+
 def _serialize(
     bill: Bill,
     items: list[BillItem],
@@ -106,6 +113,7 @@ def _serialize(
 ) -> BillOut:
     return BillOut(
         id=bill.id,
+        bill_no=_bill_no(bill),
         bill_type=bill.bill_type,
         subtotal=bill.subtotal,
         discount_type=bill.discount_type,
@@ -346,6 +354,21 @@ async def create_bill(
                 bill.customer_id = new_c.id
                 customer_name = new_c.name
 
+            # Allocate the per-shop bill number atomically. The UPDATE … RETURNING
+            # row-locks the shop row, so concurrent checkouts for the same shop are
+            # serialized and can never share a number — no retry loop needed. Doing
+            # it inside this savepoint means an idempotency-key race (caught below)
+            # rolls the counter increment back too, so a losing attempt burns no
+            # number. Runs as the RLS app role: the shops policy permits updating
+            # the caller's own shop (id = current_shop_id).
+            bill.bill_seq = db.execute(
+                text(
+                    "UPDATE shops SET next_bill_seq = next_bill_seq + 1 "
+                    "WHERE id = :sid RETURNING next_bill_seq - 1"
+                ),
+                {"sid": owner.shop_id},
+            ).scalar_one()
+
             db.add(bill)
             db.flush()  # assign bill.id
             for ci in computed_items:
@@ -525,6 +548,7 @@ def list_bills(
     stmt = (
         select(
             Bill.id,
+            Bill.bill_seq,
             Bill.created_at,
             Bill.bill_type,
             Bill.total,
@@ -585,6 +609,7 @@ def list_bills(
     items = [
         BillListItem(
             id=r.id,
+            bill_no=f"{r.bill_seq:04d}" if r.bill_seq is not None else None,
             created_at=r.created_at,
             bill_type=r.bill_type,
             total=r.total,
@@ -633,6 +658,7 @@ def get_bill(
 
     return BillDetailOut(
         id=bill.id,
+        bill_no=_bill_no(bill),
         shop_name=shop.name if shop else None,
         business_name=(shop.business_name or shop.name) if shop else None,
         business_address=shop.business_address if shop else None,
@@ -804,6 +830,7 @@ def update_bill(
 
     return BillDetailOut(
         id=bill.id,
+        bill_no=_bill_no(bill),
         shop_name=shop.name if shop else None,
         business_name=(shop.business_name or shop.name) if shop else None,
         business_address=shop.business_address if shop else None,
@@ -1223,6 +1250,11 @@ def download_detailed_report(
     def short_id(bid) -> str:
         return str(bid).split("-")[0].upper() if bid else "—"
 
+    def bill_ref(b) -> str:
+        # Prefer the human-facing per-shop number; fall back to the UUID fragment
+        # for legacy bills that were never assigned one.
+        return f"{b.bill_seq:04d}" if b.bill_seq is not None else short_id(b.id)
+
     def ist(dtv) -> str:
         return dtv.astimezone(SHOP_TZ).strftime("%Y-%m-%d %H:%M") if dtv else ""
 
@@ -1251,7 +1283,7 @@ def download_detailed_report(
 
     bills_tab = [
         [
-            short_id(b.id), ist(b.created_at), r.staff or "—",
+            bill_ref(b), ist(b.created_at), r.staff or "—",
             r.cname or "Walk-in", r.cphone or "—", items_summary(b.id),
             b.subtotal, b.discount_amount, b.total,
             b.cash_amount, b.upi_amount, b.due_amount,
@@ -1263,7 +1295,7 @@ def download_detailed_report(
     ]
 
     line_items_tab = [
-        [short_id(b.id), ist(b.created_at), it.product_name, it.unit_price, it.quantity, it.line_total]
+        [bill_ref(b), ist(b.created_at), it.product_name, it.unit_price, it.quantity, it.line_total]
         for r in bill_rows
         for b in (r.Bill,)
         for it in items_by_bill.get(b.id, [])
@@ -1499,6 +1531,7 @@ def get_public_bill(
 
         return BillDetailOut(
             id=bill.id,
+            bill_no=_bill_no(bill),
             shop_name=shop.name if shop else None,
             business_name=(shop.business_name or shop.name) if shop else None,
             business_address=shop.business_address if shop else None,

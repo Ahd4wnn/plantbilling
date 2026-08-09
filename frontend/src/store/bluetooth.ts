@@ -147,7 +147,7 @@ export function compileEscPosReceipt(bill: BillDetail, autoCut: boolean): Uint8A
 
   // 3. Metadata (Left align)
   addBytes([0x1b, 0x61, 0x00]); // Left
-  addText(`Bill Ref : #${bill.id.slice(0, 8).toUpperCase()}\n`);
+  addText(`Bill Ref : #${bill.bill_no ?? bill.id.slice(0, 8).toUpperCase()}\n`);
   
   const when = new Date(bill.created_at);
   const timeLabel = isNaN(when.getTime())

@@ -102,7 +102,7 @@ class ReceiptRenderer(private val dotsWide: Int) {
         bill.businessPhone?.trim()?.takeIf { it.isNotBlank() }?.let { add(Para("Contact: $it", pSmall, center = true)) }
         add(Divider())
 
-        add(Para("Bill: #${bill.id.take(8).uppercase()}", pSmall, center = false))
+        add(Para("Bill: #${bill.billNo ?: bill.id.take(8).uppercase()}", pSmall, center = false))
         add(Para("Date: ${formatReceiptDateTime(bill.createdAt)}", pSmall, center = false))
         bill.salespersonEmail?.let { add(Para("Staff: $it", pSmall, center = false)) }
         bill.customerName?.let { name ->

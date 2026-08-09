@@ -128,7 +128,10 @@ async def send_whatsapp_invoice_process(db: Session, bill: Bill) -> None:
 
         # 4. Meta Upload & Delivery
         client = WhatsAppCloudClient()
-        bill_id_short = str(bill.id).split("-")[0].upper()
+        bill_id_short = (
+            f"{bill.bill_seq:04d}" if getattr(bill, "bill_seq", None) is not None
+            else str(bill.id).split("-")[0].upper()
+        )
         filename = f"invoice_{bill_id_short}.pdf"
 
         # Step 4a: Upload PDF to get media_id

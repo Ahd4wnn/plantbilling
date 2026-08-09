@@ -34,7 +34,7 @@ export function BillReceipt({ bill }: { bill: BillDetail }) {
           </p>
         )}
         <div className="mt-2 flex items-center justify-center gap-2">
-          <span className="text-sm font-mono text-ink-soft">#{bill.id.slice(0, 8).toUpperCase()}</span>
+          <span className="text-sm font-mono text-ink-soft">#{bill.bill_no ?? bill.id.slice(0, 8).toUpperCase()}</span>
         </div>
       </div>
 

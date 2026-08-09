@@ -82,7 +82,7 @@ export function SuccessView({ bill, onNewBill, customerPhone }: SuccessViewProps
   const timeLabel = isNaN(when.getTime())
     ? ""
     : when.toLocaleString("en-IN", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" });
-  const billRef = `#${bill.id.slice(0, 8).toUpperCase()}`;
+  const billRef = bill.bill_no ? `#${bill.bill_no}` : `#${bill.id.slice(0, 8).toUpperCase()}`;
 
   return (
     <div className="flex flex-col items-center pt-6 text-center">

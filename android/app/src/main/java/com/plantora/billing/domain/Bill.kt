@@ -34,6 +34,8 @@ data class BillItem(
 /** The created-bill result (server-authoritative totals). */
 data class Bill(
     val id: String,
+    /** Human-facing per-shop bill number ("0001"); null for legacy bills. */
+    val billNo: String?,
     val subtotal: Money,
     val discountType: DiscountType,
     val discountValue: Money,
@@ -51,6 +53,8 @@ data class Bill(
 /** A complete, self-contained bill for the detail / receipt / reprint surface. */
 data class BillDetail(
     val id: String,
+    /** Human-facing per-shop bill number ("0001"); null for legacy bills. */
+    val billNo: String?,
     val shopName: String?,
     val businessName: String?,
     val businessAddress: String?,

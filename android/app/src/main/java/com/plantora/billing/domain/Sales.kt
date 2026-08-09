@@ -52,6 +52,8 @@ data class DaySummary(
 /** A compact bill row for the history list. */
 data class BillListEntry(
     val id: String,
+    /** Human-facing per-shop bill number ("0001"); null for legacy bills. */
+    val billNo: String? = null,
     val createdAt: String,
     val total: Money,
     val dueAmount: Money,
