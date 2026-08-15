@@ -116,47 +116,56 @@ fun BillScreen(viewModel: BillingViewModel = hiltViewModel()) {
     Scaffold(
         snackbarHost = { SnackbarHost(snackbar) },
         contentWindowInsets = androidx.compose.foundation.layout.WindowInsets(0, 0, 0, 0),
-        // Quick-add is a small round button in the corner so the product grid keeps
-        // its full height (the old full-width bar ate a lot of visible catalogue).
+        // Both the review (Cart) and Quick-add are small round buttons in the corner
+        // so the product grid keeps its full height (the old full-width bars ate a lot
+        // of visible catalogue). Cart sits above Quick-add; its item count is a badge
+        // and the running total shows inside the review sheet.
         floatingActionButton = {
-            FloatingActionButton(
-                onClick = viewModel::openQuickAdd,
-                containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+            Column(
+                horizontalAlignment = Alignment.End,
+                verticalArrangement = Arrangement.spacedBy(Dimens.sm),
             ) {
-                Icon(Icons.Rounded.Add, contentDescription = stringResource(R.string.bill_quick_add))
+                AnimatedVisibility(
+                    visible = !state.isCartEmpty,
+                    enter = slideInVertically { it },
+                    exit = slideOutVertically { it },
+                ) {
+                    FloatingActionButton(
+                        onClick = viewModel::openReview,
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary,
+                    ) {
+                        BadgedBox(badge = { Badge { Text("${state.itemCount}") } }) {
+                            Icon(
+                                Icons.Rounded.ShoppingCart,
+                                contentDescription = stringResource(R.string.bill_review_pay),
+                            )
+                        }
+                    }
+                }
+                FloatingActionButton(
+                    onClick = viewModel::openQuickAdd,
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                ) {
+                    Icon(Icons.Rounded.Add, contentDescription = stringResource(R.string.bill_quick_add))
+                }
             }
         },
         bottomBar = {
-            // imePadding lifts the action bar (Cart, Held bills) above the keyboard
-            // when the product search field is focused. The app is edge-to-edge, so
-            // the window doesn't resize for the IME — the inset must be consumed here,
-            // mirroring every other screen. Shown only when there's something to show.
-            if (!state.isCartEmpty || heldBills.isNotEmpty()) {
+            // imePadding lifts the Held-bills button above the keyboard when the product
+            // search field is focused. The app is edge-to-edge, so the window doesn't
+            // resize for the IME — the inset must be consumed here, mirroring every other
+            // screen. (Review/Cart is now a corner FAB, not part of this bar.)
+            if (heldBills.isNotEmpty()) {
                 Surface(tonalElevation = 2.dp, shadowElevation = 8.dp, modifier = Modifier.imePadding()) {
                     Column(Modifier.fillMaxWidth().padding(horizontal = Dimens.screenPadding, vertical = Dimens.md)) {
-                        AnimatedVisibility(
-                            visible = !state.isCartEmpty,
-                            enter = slideInVertically { it },
-                            exit = slideOutVertically { it },
-                        ) {
-                            Column {
-                                CartBar(
-                                    itemCount = state.itemCount,
-                                    totalLabel = state.totals.total.format(),
-                                    onClick = viewModel::openReview,
-                                )
-                                if (heldBills.isNotEmpty()) Spacer(Modifier.height(Dimens.sm))
-                            }
-                        }
-                        if (heldBills.isNotEmpty()) {
-                            com.plantora.billing.ui.components.SecondaryButton(
-                                text = stringResource(R.string.bill_held_count, heldBills.size),
-                                onClick = { showHeld = true },
-                                leadingIcon = Icons.Rounded.Pause,
-                                modifier = Modifier.fillMaxWidth(),
-                            )
-                        }
+                        com.plantora.billing.ui.components.SecondaryButton(
+                            text = stringResource(R.string.bill_held_count, heldBills.size),
+                            onClick = { showHeld = true },
+                            leadingIcon = Icons.Rounded.Pause,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
                     }
                 }
             }
@@ -333,37 +342,6 @@ private fun HeldBillsSheet(
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
-        }
-    }
-}
-
-@Composable
-private fun CartBar(itemCount: Int, totalLabel: String, onClick: () -> Unit) {
-    Surface(
-        color = MaterialTheme.colorScheme.primary,
-        shadowElevation = 8.dp,
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(Dimens.lg),
-        shape = MaterialTheme.shapes.large,
-        onClick = onClick,
-    ) {
-        Row(
-            Modifier
-                .fillMaxWidth()
-                .padding(horizontal = Dimens.lg, vertical = Dimens.md),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            BadgedBox(badge = { Badge { Text("$itemCount") } }) {
-                Icon(Icons.Rounded.ShoppingCart, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimary)
-            }
-            Text(
-                stringResource(R.string.bill_review_pay),
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onPrimary,
-                modifier = Modifier.weight(1f).padding(start = Dimens.sm),
-            )
-            Text(totalLabel, style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onPrimary)
         }
     }
 }

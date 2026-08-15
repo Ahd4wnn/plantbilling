@@ -66,9 +66,13 @@ data class SalesUiState(
     val expenseEditor: ExpenseEditor? = null,
     /** The shop's expense categories, for the add/edit picker. */
     val expenseCategories: List<ExpenseCategory> = emptyList(),
+    /** Bill-number search box (digits only). Non-blank → the list shows search results
+     *  across all history instead of the selected day. */
+    val searchNo: String = "",
     val message: UiText? = null,
 ) {
     val isToday: Boolean get() = date == todayInShopZone()
+    val isSearching: Boolean get() = searchNo.isNotBlank()
     /** Selected salesperson's email, or null for "all staff" (localized in the UI). */
     val selectedStaffEmail: String?
         get() = staff.find { it.id == selectedStaffId }?.email
@@ -127,6 +131,9 @@ class SalesViewModel @Inject constructor(
     }
 
     fun load() {
+        // A bill-number search owns the list while it's active; the tab's resume refresh
+        // must not wipe it. The search results are (re)driven by setSearchNo instead.
+        if (_ui.value.isSearching) { runSearch(); return }
         val date = _ui.value.date.toApiDate()
         val staff = _ui.value.selectedStaffId
         _ui.update { it.copy(summaryLoading = true, billsLoading = true, error = null) }
@@ -143,9 +150,28 @@ class SalesViewModel @Inject constructor(
         refreshLeaderboard()
     }
 
+    /** Bill-number search: type digits to find a bill across all history; blank clears. */
+    fun setSearchNo(v: String) {
+        val digits = v.filter { it.isDigit() }.take(9)
+        _ui.update { it.copy(searchNo = digits) }
+        if (digits.isBlank()) load() else runSearch()
+    }
+
+    private fun runSearch() {
+        val query = _ui.value.searchNo
+        val no = query.toIntOrNull()
+        _ui.update { it.copy(billsLoading = true, hasMore = false, error = null) }
+        viewModelScope.launch {
+            runCatching { billRepo.list(date = null, createdBy = null, billNo = no, limit = PAGE, offset = 0) }
+                // Ignore a stale response if the query moved on while we were fetching.
+                .onSuccess { p -> if (_ui.value.searchNo == query) _ui.update { it.copy(billsLoading = false, bills = p.items, hasMore = false) } }
+                .onFailure { e -> if (_ui.value.searchNo == query) _ui.update { it.copy(billsLoading = false, error = friendlyError(e)) } }
+        }
+    }
+
     fun loadMore() {
         val state = _ui.value
-        if (state.loadingMore || !state.hasMore) return
+        if (state.isSearching || state.loadingMore || !state.hasMore) return
         _ui.update { it.copy(loadingMore = true) }
         viewModelScope.launch {
             runCatching { billRepo.list(date = state.date.toApiDate(), createdBy = state.selectedStaffId, limit = PAGE, offset = state.bills.size) }

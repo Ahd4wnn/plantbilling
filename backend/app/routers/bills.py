@@ -538,6 +538,7 @@ def list_bills(
     created_by: uuid.UUID | None = Query(default=None, description="Filter by salesperson user ID"),
     is_edited: bool | None = Query(default=None, description="Filter by whether the bill was edited"),
     has_due: bool | None = Query(default=None, description="Only bills with money still owed (due > 0)"),
+    bill_no: int | None = Query(default=None, description="Find a bill by its per-shop number (searches all dates)"),
     shop_id: uuid.UUID | None = Query(default=None, description="Restrict to a shop (admin only)"),
     limit: int = Query(default=20, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
@@ -562,10 +563,15 @@ def list_bills(
         .outerjoin(Customer, Customer.id == Bill.customer_id)
         .order_by(Bill.created_at.desc(), Bill.id.desc())
     )
-    if date_from is not None:
-        stmt = stmt.where(Bill.created_at >= _ist_day_bounds_utc(date_from)[0])
-    if date_to is not None:
-        stmt = stmt.where(Bill.created_at < _ist_day_bounds_utc(date_to)[1])
+    # A bill-number lookup searches the whole shop's history, so it ignores any
+    # day filter (RLS still scopes to the caller's shop). Otherwise apply the range.
+    if bill_no is not None:
+        stmt = stmt.where(Bill.bill_seq == bill_no)
+    else:
+        if date_from is not None:
+            stmt = stmt.where(Bill.created_at >= _ist_day_bounds_utc(date_from)[0])
+        if date_to is not None:
+            stmt = stmt.where(Bill.created_at < _ist_day_bounds_utc(date_to)[1])
     if bill_type is not None:
         stmt = stmt.where(Bill.bill_type == bill_type)
     if customer_id is not None:

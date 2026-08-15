@@ -448,12 +448,7 @@ private fun OwnerShopScreen(
                 // Expense breakdown for the period so the owner can see where money went.
                 if (r.expenses.isNotEmpty()) {
                     item { SectionHeader(stringResource(R.string.label_expenses)) }
-                    items(r.expenses, key = { it.id }) { e ->
-                        Row(Modifier.fillMaxWidth().padding(vertical = Dimens.xs), verticalAlignment = Alignment.CenterVertically) {
-                            Text(e.reason, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
-                            MoneyText(e.amount, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.error)
-                        }
-                    }
+                    items(r.expenses, key = { it.id }) { e -> OwnerExpenseRow(e) }
                 }
                 if (r.topProducts.isNotEmpty()) {
                     item { SectionHeader(stringResource(R.string.report_top_products)) }
@@ -617,6 +612,42 @@ private fun OwnerLabourerDetailSheet(detail: LabourerDetail) {
                     MoneyText(p.totalAmount, style = MaterialTheme.typography.titleMedium)
                 }
             }
+        }
+    }
+}
+
+/**
+ * One expense in the owner's shop view. Always shows category + date/time + amount;
+ * tapping the row reveals its remarks (the note) and how it was paid.
+ */
+@Composable
+private fun OwnerExpenseRow(e: com.plantora.billing.domain.Expense) {
+    var expanded by remember { mutableStateOf(false) }
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .clickable { expanded = !expanded }
+            .padding(vertical = Dimens.xs),
+    ) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(e.displayName, style = MaterialTheme.typography.bodyLarge)
+                Text(
+                    formatBillTime(e.createdAt) + " • " + ownerMethodLabel(e.paymentMethod),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            MoneyText(e.amount, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.error)
+        }
+        if (expanded) {
+            Text(
+                e.note?.takeIf { it.isNotBlank() }?.let { stringResource(R.string.own_expense_remarks, it) }
+                    ?: stringResource(R.string.own_expense_no_remarks),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = Dimens.xs),
+            )
         }
     }
 }

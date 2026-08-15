@@ -144,6 +144,10 @@
     <string name="sales_approve">Approve due collections</string>
     <string name="sales_bills">Bills</string>
     <string name="sales_no_bills">No bills on this day.</string>
+    <string name="sales_search_bill_no">Search bill no.</string>
+    <string name="sales_no_bill_found">No bill found with that number.</string>
+    <string name="sales_search_results">Search results</string>
+    <string name="cd_clear_search">Clear search</string>
     <string name="action_loading">Loading…</string>
     <string name="sales_load_more">Load more</string>
     <string name="sales_view_by_staff">View by staff</string>
@@ -460,6 +464,8 @@
     <string name="own_week">Week</string>
     <string name="own_month">Month</string>
     <string name="own_sales_by_shop">Sales by shop</string>
+    <string name="own_expense_remarks">Remarks: %1$s</string>
+    <string name="own_expense_no_remarks">No remarks</string>
     <plurals name="own_shop_bills">
         <item quantity="one">%1$d bill</item>
         <item quantity="other">%1$d bills</item>

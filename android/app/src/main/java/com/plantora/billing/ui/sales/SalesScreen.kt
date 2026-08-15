@@ -1,6 +1,7 @@
 package com.plantora.billing.ui.sales
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -16,8 +17,10 @@ import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.AccountBalanceWallet
 import androidx.compose.material.icons.rounded.BarChart
 import androidx.compose.material.icons.rounded.EmojiEvents
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Group
 import androidx.compose.material.icons.rounded.ReceiptLong
+import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.TaskAlt
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -25,6 +28,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -40,6 +44,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -110,71 +115,89 @@ fun SalesScreen(
             item {
                 Text(stringResource(R.string.nav_sales), style = MaterialTheme.typography.headlineLarge)
             }
-            item {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Dimens.sm)) {
-                    SecondaryButton(
-                        text = stringResource(R.string.sales_dues),
-                        onClick = onOpenDues,
-                        leadingIcon = Icons.Rounded.AccountBalanceWallet,
-                        modifier = Modifier.weight(1f),
-                    )
-                    SecondaryButton(
-                        text = stringResource(R.string.sales_reports),
-                        onClick = onOpenReport,
-                        leadingIcon = Icons.Rounded.BarChart,
-                        modifier = Modifier.weight(1f),
-                    )
-                }
-            }
+            item { BillSearchField(value = ui.searchNo, onValue = viewModel::setSearchNo) }
 
-            // Managers approve salesperson due-collections before they close.
-            if (canApprove) {
+            // The day summary, staff views and date picker only make sense when browsing
+            // a day — a bill-number search spans all history, so hide them then.
+            if (!ui.isSearching) {
                 item {
-                    SecondaryButton(
-                        text = stringResource(R.string.sales_approve),
-                        onClick = onOpenApprovals,
-                        leadingIcon = Icons.Rounded.TaskAlt,
-                        modifier = Modifier.fillMaxWidth(),
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Dimens.sm)) {
+                        SecondaryButton(
+                            text = stringResource(R.string.sales_dues),
+                            onClick = onOpenDues,
+                            leadingIcon = Icons.Rounded.AccountBalanceWallet,
+                            modifier = Modifier.weight(1f),
+                        )
+                        SecondaryButton(
+                            text = stringResource(R.string.sales_reports),
+                            onClick = onOpenReport,
+                            leadingIcon = Icons.Rounded.BarChart,
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
+                }
+
+                // Managers approve salesperson due-collections before they close.
+                if (canApprove) {
+                    item {
+                        SecondaryButton(
+                            text = stringResource(R.string.sales_approve),
+                            onClick = onOpenApprovals,
+                            leadingIcon = Icons.Rounded.TaskAlt,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
+                }
+
+                if (ui.isOwner) {
+                    item { StaffFilter(ui) { id -> viewModel.selectStaff(id) } }
+                    if (ui.staffSales.isNotEmpty()) {
+                        item { StaffLeaderboard(ui.staffSales) }
+                    }
+                }
+
+                item {
+                    DateSelector(
+                        date = ui.date,
+                        canGoNext = !ui.isToday,
+                        onPrev = viewModel::goToPreviousDay,
+                        onNext = viewModel::goToNextDay,
+                        onPick = viewModel::changeDate,
                     )
                 }
-            }
 
-            if (ui.isOwner) {
-                item { StaffFilter(ui) { id -> viewModel.selectStaff(id) } }
-                if (ui.staffSales.isNotEmpty()) {
-                    item { StaffLeaderboard(ui.staffSales) }
+                item {
+                    when {
+                        ui.summaryLoading -> LoadingState(Modifier.fillMaxWidth().padding(Dimens.xl))
+                        ui.summary != null -> SummaryHero(
+                            summary = ui.summary!!,
+                            isOwner = ui.isOwner,
+                            cumulativeCashInHand = ui.cashInHandCumulative,
+                            onAddExpense = viewModel::openCreateExpense,
+                            onEditExpense = { e -> viewModel.openEditExpense(e.id, e.amount, e.categoryId, e.note, e.paymentMethod) },
+                            onDeleteExpense = viewModel::deleteExpense,
+                        )
+                        ui.error != null -> Text(ui.error!!, color = MaterialTheme.colorScheme.error)
+                    }
                 }
             }
 
             item {
-                DateSelector(
-                    date = ui.date,
-                    canGoNext = !ui.isToday,
-                    onPrev = viewModel::goToPreviousDay,
-                    onNext = viewModel::goToNextDay,
-                    onPick = viewModel::changeDate,
+                Text(
+                    stringResource(if (ui.isSearching) R.string.sales_search_results else R.string.sales_bills),
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.padding(top = Dimens.sm),
                 )
             }
 
-            item {
-                when {
-                    ui.summaryLoading -> LoadingState(Modifier.fillMaxWidth().padding(Dimens.xl))
-                    ui.summary != null -> SummaryHero(
-                        summary = ui.summary!!,
-                        isOwner = ui.isOwner,
-                        cumulativeCashInHand = ui.cashInHandCumulative,
-                        onAddExpense = viewModel::openCreateExpense,
-                        onEditExpense = { e -> viewModel.openEditExpense(e.id, e.amount, e.categoryId, e.note, e.paymentMethod) },
-                        onDeleteExpense = viewModel::deleteExpense,
-                    )
-                    ui.error != null -> Text(ui.error!!, color = MaterialTheme.colorScheme.error)
-                }
-            }
-
-            item { Text(stringResource(R.string.sales_bills), style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = Dimens.sm)) }
-
             if (ui.bills.isEmpty() && !ui.billsLoading) {
-                item { Text(stringResource(R.string.sales_no_bills), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                item {
+                    Text(
+                        stringResource(if (ui.isSearching) R.string.sales_no_bill_found else R.string.sales_no_bills),
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
 
             items(ui.bills, key = { it.id }) { bill ->
@@ -192,6 +215,27 @@ fun SalesScreen(
             }
         }
     }
+}
+
+@Composable
+private fun BillSearchField(value: String, onValue: (String) -> Unit) {
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValue,
+        placeholder = { Text(stringResource(R.string.sales_search_bill_no)) },
+        leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null) },
+        trailingIcon = {
+            if (value.isNotEmpty()) {
+                IconButton(onClick = { onValue("") }) {
+                    Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.cd_clear_search))
+                }
+            }
+        },
+        singleLine = true,
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+        shape = MaterialTheme.shapes.medium,
+        modifier = Modifier.fillMaxWidth(),
+    )
 }
 
 @Composable
@@ -271,7 +315,11 @@ private fun BillRow(bill: BillListEntry, onClick: () -> Unit) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(Icons.Rounded.ReceiptLong, contentDescription = null, tint = MaterialTheme.colorScheme.outline)
             Column(Modifier.weight(1f).padding(horizontal = Dimens.md)) {
-                Text(bill.customerName ?: stringResource(R.string.bill_walkin), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                Text(
+                    (bill.billNo?.let { "#$it  " } ?: "") + (bill.customerName ?: stringResource(R.string.bill_walkin)),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                )
                 Text(
                     "${formatBillTime(bill.createdAt)} • ${pluralStringResource(R.plurals.item_count, bill.itemCount, bill.itemCount)} • ${com.plantora.billing.ui.components.paymentLabel(bill.paymentMethod)}" +
                         if (bill.isEdited) " • " + stringResource(R.string.status_edited) else "",

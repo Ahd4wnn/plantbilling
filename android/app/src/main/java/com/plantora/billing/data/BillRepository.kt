@@ -64,8 +64,10 @@ class BillRepository @Inject constructor(
     suspend fun summary(date: String? = null, createdBy: String? = null): DaySummary =
         api.summary(date, createdBy).toDomain()
 
-    suspend fun list(date: String?, createdBy: String? = null, limit: Int = 20, offset: Int = 0): BillPage {
-        val dto = api.list(dateFrom = date, dateTo = date, createdBy = createdBy, limit = limit, offset = offset)
+    suspend fun list(date: String?, createdBy: String? = null, billNo: Int? = null, limit: Int = 20, offset: Int = 0): BillPage {
+        // A bill-number search spans all dates (the server ignores the day range), so
+        // don't pin it to a single day.
+        val dto = api.list(dateFrom = date, dateTo = date, createdBy = createdBy, billNo = billNo, limit = limit, offset = offset)
         return BillPage(
             items = dto.items.map { it.toDomain() },
             offset = dto.offset,
