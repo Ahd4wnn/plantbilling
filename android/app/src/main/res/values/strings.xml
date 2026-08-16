@@ -22,6 +22,13 @@
     <string name="login_password">Password</string>
     <string name="login_submit">Sign in</string>
     <string name="login_footer">Accounts are created by your PlantBill admin.</string>
+    <string name="login_saved_title">Choose an account</string>
+    <string name="login_use_another">Log into another account</string>
+    <string name="login_back_to_saved">Back to saved logins</string>
+    <string name="login_remove_account">Remove account</string>
+    <string name="login_account_options">Account options</string>
+    <string name="login_session_expired">Please sign in again</string>
+    <string name="role_admin">Admin</string>
 
     <!-- More / Settings -->
     <string name="more_role">Role: %1$s</string>

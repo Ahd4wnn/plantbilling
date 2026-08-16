@@ -2,6 +2,7 @@ package com.plantora.billing.ui.login
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
@@ -18,7 +19,15 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.MoreVert
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.material3.MaterialTheme
@@ -26,17 +35,26 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.plantora.billing.R
+import com.plantora.billing.data.local.SavedAccount
+import com.plantora.billing.domain.Role
+import com.plantora.billing.ui.components.PlantoraCard
 import com.plantora.billing.ui.components.PlantoraTextField
 import com.plantora.billing.ui.components.PrimaryButton
+import com.plantora.billing.ui.components.SecondaryButton
 import com.plantora.billing.ui.theme.Dimens
 
 @Composable
@@ -55,15 +73,10 @@ fun LoginScreen(viewModel: LoginViewModel = hiltViewModel()) {
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            // Use the launcher FOREGROUND (a PNG). The adaptive icon mipmaps
-            // (ic_launcher / ic_launcher_round) resolve to an XML adaptive-icon on
-            // Android 8+, which Compose's painterResource cannot render — it throws
-            // "Only VectorDrawables and rasterized asset types are supported",
-            // crashing the app on launch. The foreground is PNG-only, so it's safe.
-            //
-            // The foreground is a white leaf/receipt on transparent, so on the light
-            // login background it's invisible. Sit it on the brand-green tile (the
-            // same #37974F as the launcher background) so the mark reads clearly.
+            // Use the launcher FOREGROUND (a PNG). The adaptive icon mipmaps resolve to
+            // an XML adaptive-icon on Android 8+, which Compose's painterResource cannot
+            // render (it throws for non-raster assets), crashing on launch. The white
+            // mark sits on the brand-green tile so it reads on the light background.
             Box(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier
@@ -72,7 +85,7 @@ fun LoginScreen(viewModel: LoginViewModel = hiltViewModel()) {
                     .background(Color(0xFF37974F)),
             ) {
                 Image(
-                    painter = painterResource(id = com.plantora.billing.R.mipmap.ic_launcher_foreground),
+                    painter = painterResource(id = R.mipmap.ic_launcher_foreground),
                     contentDescription = "PlantBill",
                     modifier = Modifier.size(132.dp),
                 )
@@ -84,7 +97,7 @@ fun LoginScreen(viewModel: LoginViewModel = hiltViewModel()) {
                 color = MaterialTheme.colorScheme.onBackground,
             )
             Text(
-                stringResource(com.plantora.billing.R.string.login_subtitle),
+                stringResource(R.string.login_subtitle),
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
@@ -92,48 +105,25 @@ fun LoginScreen(viewModel: LoginViewModel = hiltViewModel()) {
 
             Spacer(Modifier.height(Dimens.xxl))
 
-            PlantoraTextField(
-                value = ui.email,
-                onValueChange = viewModel::onEmailChange,
-                label = stringResource(com.plantora.billing.R.string.login_email),
-                placeholder = "you@example.com",
-                keyboardType = KeyboardType.Email,
-                enabled = !ui.submitting,
-            )
-            Spacer(Modifier.height(Dimens.md))
-            PlantoraTextField(
-                value = ui.password,
-                onValueChange = viewModel::onPasswordChange,
-                label = stringResource(com.plantora.billing.R.string.login_password),
-                isPassword = true,
-                enabled = !ui.submitting,
-                errorText = ui.error?.resolve(loginCtx),
-            )
-
-            Spacer(Modifier.height(Dimens.xl))
-
-            PrimaryButton(
-                text = stringResource(com.plantora.billing.R.string.login_submit),
-                onClick = viewModel::submit,
-                enabled = ui.canSubmit,
-                loading = ui.submitting,
-                modifier = Modifier.fillMaxWidth(),
-            )
+            if (ui.formVisible) {
+                LoginForm(ui = ui, viewModel = viewModel)
+            } else {
+                AccountPicker(ui = ui, viewModel = viewModel)
+            }
 
             Spacer(Modifier.height(Dimens.xl))
             Text(
-                stringResource(com.plantora.billing.R.string.login_footer),
+                stringResource(R.string.login_footer),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
             )
 
-            // "Interested in the product?" contact block — for prospective shops who
-            // land on the login screen (there is no public sign-up). Phone taps to
-            // dial; email taps to compose.
+            // "Interested in the product?" contact block — for prospective shops who land
+            // on the login screen (there is no public sign-up). Phone dials; email composes.
             Spacer(Modifier.height(Dimens.xl))
             Text(
-                stringResource(com.plantora.billing.R.string.login_interested),
+                stringResource(R.string.login_interested),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
@@ -175,4 +165,149 @@ fun LoginScreen(viewModel: LoginViewModel = hiltViewModel()) {
             Spacer(Modifier.height(Dimens.xl))
         }
     }
+}
+
+@Composable
+private fun AccountPicker(ui: LoginUiState, viewModel: LoginViewModel) {
+    Text(
+        stringResource(R.string.login_saved_title),
+        style = MaterialTheme.typography.titleMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.fillMaxWidth(),
+        textAlign = TextAlign.Center,
+    )
+    Spacer(Modifier.height(Dimens.md))
+    ui.savedAccounts.forEach { account ->
+        AccountRow(
+            account = account,
+            loading = ui.switchingEmail == account.email,
+            enabled = ui.switchingEmail == null,
+            onClick = { viewModel.selectAccount(account.email) },
+            onRemove = { viewModel.removeAccount(account.email) },
+        )
+        Spacer(Modifier.height(Dimens.sm))
+    }
+    Spacer(Modifier.height(Dimens.sm))
+    SecondaryButton(
+        text = stringResource(R.string.login_use_another),
+        onClick = viewModel::showLoginForm,
+        modifier = Modifier.fillMaxWidth(),
+    )
+}
+
+@Composable
+private fun AccountRow(
+    account: SavedAccount,
+    loading: Boolean,
+    enabled: Boolean,
+    onClick: () -> Unit,
+    onRemove: () -> Unit,
+) {
+    var menuOpen by remember { mutableStateOf(false) }
+    PlantoraCard(modifier = Modifier.clickable(enabled = enabled, onClick = onClick)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .size(44.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.primary),
+            ) {
+                Text(
+                    initialsOf(account.displayName),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onPrimary,
+                )
+            }
+            Column(Modifier.weight(1f).padding(horizontal = Dimens.md)) {
+                Text(
+                    account.displayName,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                Text(
+                    account.email + " • " + roleLabel(Role.from(account.role)),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            if (loading) {
+                CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
+            } else {
+                Box {
+                    IconButton(onClick = { menuOpen = true }, enabled = enabled) {
+                        Icon(Icons.Rounded.MoreVert, contentDescription = stringResource(R.string.login_account_options))
+                    }
+                    DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.login_remove_account), color = MaterialTheme.colorScheme.error) },
+                            onClick = { menuOpen = false; onRemove() },
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun LoginForm(ui: LoginUiState, viewModel: LoginViewModel) {
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    PlantoraTextField(
+        value = ui.email,
+        onValueChange = viewModel::onEmailChange,
+        label = stringResource(R.string.login_email),
+        placeholder = "you@example.com",
+        keyboardType = KeyboardType.Email,
+        enabled = !ui.submitting,
+    )
+    Spacer(Modifier.height(Dimens.md))
+    PlantoraTextField(
+        value = ui.password,
+        onValueChange = viewModel::onPasswordChange,
+        label = stringResource(R.string.login_password),
+        isPassword = true,
+        enabled = !ui.submitting,
+        errorText = ui.error?.resolve(ctx),
+    )
+
+    Spacer(Modifier.height(Dimens.xl))
+
+    PrimaryButton(
+        text = stringResource(R.string.login_submit),
+        onClick = viewModel::submit,
+        enabled = ui.canSubmit,
+        loading = ui.submitting,
+        modifier = Modifier.fillMaxWidth(),
+    )
+
+    // Only offer "back to saved logins" when there are actually saved accounts.
+    if (ui.savedAccounts.isNotEmpty()) {
+        Spacer(Modifier.height(Dimens.md))
+        SecondaryButton(
+            text = stringResource(R.string.login_back_to_saved),
+            onClick = viewModel::showSavedAccounts,
+            modifier = Modifier.fillMaxWidth(),
+        )
+    }
+}
+
+/** Up to two initials from the account's display name, for the avatar. */
+private fun initialsOf(name: String): String {
+    val parts = name.trim().split(" ", "\t").filter { it.isNotBlank() }
+    return when {
+        parts.isEmpty() -> "?"
+        parts.size == 1 -> parts[0].take(2).uppercase()
+        else -> (parts[0].take(1) + parts[1].take(1)).uppercase()
+    }
+}
+
+@Composable
+private fun roleLabel(role: Role): String = when (role) {
+    Role.OWNER -> stringResource(R.string.own_role_owner)
+    Role.MANAGER -> stringResource(R.string.own_role_manager)
+    Role.SALESPERSON -> stringResource(R.string.own_role_salesperson)
+    Role.ADMIN -> stringResource(R.string.role_admin)
+    Role.UNKNOWN -> ""
 }

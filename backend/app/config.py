@@ -48,7 +48,10 @@ class Settings(BaseSettings):
     # JWT / auth.
     JWT_SECRET: str
     JWT_ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 720
+    # 1 year: shop devices are personal, so a login stays valid until the user
+    # explicitly logs out (the app also keeps saved logins). Bounds a leaked
+    # token's lifetime to a year since there's no server-side revocation.
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 525600
 
     # Bootstrap admin (used only by scripts/create_admin.py).
     BOOTSTRAP_ADMIN_EMAIL: EmailStr
