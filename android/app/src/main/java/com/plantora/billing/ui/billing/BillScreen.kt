@@ -121,9 +121,13 @@ fun BillScreen(viewModel: BillingViewModel = hiltViewModel()) {
         // of visible catalogue). Cart sits above Quick-add; its item count is a badge
         // and the running total shows inside the review sheet.
         floatingActionButton = {
+            // imePadding lifts both corner FABs above the keyboard when a line's price
+            // or quantity field is focused — the app is edge-to-edge so the window
+            // doesn't resize for the IME, mirroring the Held-bills bottom bar below.
             Column(
                 horizontalAlignment = Alignment.End,
                 verticalArrangement = Arrangement.spacedBy(Dimens.sm),
+                modifier = Modifier.imePadding(),
             ) {
                 AnimatedVisibility(
                     visible = !state.isCartEmpty,

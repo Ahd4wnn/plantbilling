@@ -57,9 +57,18 @@ class AuthInterceptor @Inject constructor(
 }
 
 /**
- * On a 401, clear the session token so the app re-routes to Login (the
- * SessionRepository's auth-state flow observes the cleared token). Mirrors the
- * web app's onUnauthorized behaviour.
+ * On a 401 for an authenticated request, drop the active session so the app
+ * re-routes to Login (the SessionRepository's auth-state flow observes it).
+ *
+ * We only drop the ACTIVE pointer — the saved account keeps its token — so a
+ * transient 401 (a deploy window, brief clock skew) is recoverable: tapping the
+ * account retries `/auth/me` with the stored token and, if that succeeds, logs
+ * straight back in with no password. Only a genuinely dead token (the retry also
+ * 401s) falls through to the password prompt.
+ *
+ * A 401 from `/auth/login` is skipped entirely: there it means "wrong password on
+ * a login attempt", not "the active session's token died" — clearing on it would
+ * wrongly log out whatever account is currently active.
  */
 @Singleton
 class UnauthorizedInterceptor @Inject constructor(
@@ -67,9 +76,10 @@ class UnauthorizedInterceptor @Inject constructor(
     private val authEvents: AuthEventBus,
 ) : Interceptor {
     override fun intercept(chain: Interceptor.Chain): Response {
-        val response = chain.proceed(chain.request())
-        if (response.code == 401) {
-            tokenStore.clear()
+        val request = chain.request()
+        val response = chain.proceed(request)
+        if (response.code == 401 && !request.url.encodedPath.endsWith("/auth/login")) {
+            tokenStore.clearActive()
             authEvents.notifyUnauthorized()
         }
         return response

@@ -177,19 +177,12 @@ class TokenStore @Inject constructor(
         persist()
     }
 
-    /** Interceptor 401 hook: the active token is invalid → strip it (keep the entry
-     *  so the user can re-enter their password) and drop the active pointer. */
+    /** Back-compat alias for [clearActive]. We deliberately KEEP the saved token on a
+     *  401 (only drop the active pointer): a transient 401 is then recoverable in one
+     *  tap by retrying, and only a genuinely dead token ends at the password prompt.
+     *  Nothing zeroes a stored token anymore. */
     @Synchronized
-    fun clear() {
-        ensureLoaded()
-        val email = activeEmail
-        if (email != null) {
-            _accounts.value = _accounts.value.map { if (it.email == email) it.copy(token = "") else it }
-        }
-        activeEmail = null
-        legacyToken = null
-        persist()
-    }
+    fun clear() = clearActive()
 
     private companion object {
         const val KEY_ACCOUNTS = "accounts_json"
