@@ -177,6 +177,8 @@
     <string name="products_delete_msg">Remove \"%1$s\" from your catalog? Past bills are unaffected.</string>
     <string name="action_delete">Delete</string>
     <string name="product_delete_cd">Delete %1$s</string>
+    <string name="products_view_list_cd">Show as a list</string>
+    <string name="products_view_blocks_cd">Show as blocks</string>
     <string name="cat_uncategorised">Uncategorised</string>
     <string name="label_inactive">Inactive</string>
     <string name="bulk_desc">Add many products at once from a spreadsheet, then attach photos by file name.</string>
@@ -529,6 +531,9 @@
     <string name="vm_saved_downloads">Saved to Downloads: %1$s</string>
     <string name="err_generic">Something went wrong. Please try again.</string>
     <string name="err_network">Can\'t reach the server. Check your internet connection.</string>
+    <string name="err_timeout">This is taking too long. Please check your connection and try again.</string>
+    <string name="err_upload_too_large">That photo is too large to upload. Please try a different photo.</string>
+    <string name="err_photo_unreadable">This photo can\'t be opened on this phone. Please take a new photo with the camera.</string>
     <!-- Borrowings -->
     <string name="vm_borrow_added">Borrowing added.</string>
     <string name="vm_borrow_repaid">Repayment recorded.</string>

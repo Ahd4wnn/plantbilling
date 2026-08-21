@@ -112,6 +112,25 @@ sudo nginx -t && sudo systemctl reload nginx
 # sudo rsync -a --delete dist/ /var/www/<web-root>/
 ```
 
+### 3.6 Nginx upload limit (required for product photos)
+
+Nginx caps request bodies at **1 MB by default**, which silently shadows the backend's own
+5 MB image limit: a photo over 1 MB is rejected by the proxy with an HTML `413` that never
+reaches FastAPI, so the app can only show a generic error. The server block must raise it:
+
+```nginx
+client_max_body_size 10m;
+```
+
+```bash
+sudo nano /etc/nginx/sites-available/<plantbill-site>   # add inside server { … }
+sudo nginx -t && sudo systemctl reload nginx
+grep -r client_max_body_size /etc/nginx/                # confirm it's set
+```
+
+The app compresses photos to a few hundred KB before uploading, so 10m is headroom, not a
+target. Check this first whenever shops report image-upload failures.
+
 ---
 
 ## 4. Verifying the database (against the RIGHT cluster)

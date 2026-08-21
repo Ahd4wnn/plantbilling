@@ -2,6 +2,7 @@ package com.plantora.billing.ui.sales
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -109,31 +110,36 @@ fun SummaryHero(
         HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f))
         Spacer(Modifier.height(Dimens.lg))
 
-        // Donut + legend
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            DonutChart(
-                slices = buildList {
-                    if (sales > 0f) add(DonutSlice(sales, SalesColor))
-                    if (expenses > 0f) add(DonutSlice(expenses, ExpenseColor))
-                },
-                diameter = 168.dp,
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(stringResource(R.string.summary_net), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text(
-                        netStr,
-                        style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = netColor,
-                        maxLines = 1,
-                        softWrap = false,
-                    )
+        // Donut + legend. The ring is capped at half the card width so the legend
+        // beside it always has room — on a narrow phone a fixed 168dp squeezed the
+        // amounts into an ellipsis.
+        BoxWithConstraints(Modifier.fillMaxWidth()) {
+            val donutSize = minOf(168.dp, maxWidth * 0.5f)
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                DonutChart(
+                    slices = buildList {
+                        if (sales > 0f) add(DonutSlice(sales, SalesColor))
+                        if (expenses > 0f) add(DonutSlice(expenses, ExpenseColor))
+                    },
+                    diameter = donutSize,
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(stringResource(R.string.summary_net), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(
+                            netStr,
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = netColor,
+                            maxLines = 1,
+                            softWrap = false,
+                        )
+                    }
                 }
-            }
-            Spacer(Modifier.size(Dimens.lg))
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(Dimens.sm)) {
-                LegendRow(SalesColor, stringResource(R.string.label_sales), summary.totalSales)
-                LegendRow(ExpenseColor, stringResource(R.string.label_expenses), summary.totalExpenses)
+                Spacer(Modifier.size(Dimens.lg))
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(Dimens.sm)) {
+                    LegendRow(SalesColor, stringResource(R.string.label_sales), summary.totalSales)
+                    LegendRow(ExpenseColor, stringResource(R.string.label_expenses), summary.totalExpenses)
+                }
             }
         }
 

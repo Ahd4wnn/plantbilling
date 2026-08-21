@@ -59,6 +59,8 @@ import com.plantora.billing.ui.billing.voice.VoiceSearchButton
 import com.plantora.billing.ui.components.EmptyState
 import com.plantora.billing.ui.components.ErrorState
 import com.plantora.billing.ui.components.LoadingState
+import com.plantora.billing.ui.components.ProductCatalog
+import com.plantora.billing.ui.components.ProductViewToggle
 import com.plantora.billing.ui.theme.Dimens
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -196,24 +198,32 @@ fun BillScreen(viewModel: BillingViewModel = hiltViewModel()) {
                     .padding(top = Dimens.sm),
             )
 
-            LazyRow(
-                contentPadding = PaddingValues(horizontal = Dimens.screenPadding, vertical = Dimens.sm),
-                horizontalArrangement = Arrangement.spacedBy(Dimens.sm),
-            ) {
-                item {
-                    FilterChip(
-                        selected = state.categoryFilter == null,
-                        onClick = { viewModel.setCategoryFilter(null) },
-                        label = { Text(stringResource(R.string.filter_all)) },
-                    )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                LazyRow(
+                    modifier = Modifier.weight(1f),
+                    contentPadding = PaddingValues(horizontal = Dimens.screenPadding, vertical = Dimens.sm),
+                    horizontalArrangement = Arrangement.spacedBy(Dimens.sm),
+                ) {
+                    item {
+                        FilterChip(
+                            selected = state.categoryFilter == null,
+                            onClick = { viewModel.setCategoryFilter(null) },
+                            label = { Text(stringResource(R.string.filter_all)) },
+                        )
+                    }
+                    items(state.categories) { cat ->
+                        FilterChip(
+                            selected = state.categoryFilter == cat,
+                            onClick = { viewModel.setCategoryFilter(cat) },
+                            label = { Text(cat) },
+                        )
+                    }
                 }
-                items(state.categories) { cat ->
-                    FilterChip(
-                        selected = state.categoryFilter == cat,
-                        onClick = { viewModel.setCategoryFilter(cat) },
-                        label = { Text(cat) },
-                    )
-                }
+                ProductViewToggle(
+                    mode = state.productViewMode,
+                    onChange = viewModel::setProductViewMode,
+                    modifier = Modifier.padding(end = Dimens.sm),
+                )
             }
 
             when {
@@ -230,9 +240,11 @@ fun BillScreen(viewModel: BillingViewModel = hiltViewModel()) {
                         stringResource(R.string.bill_no_products_hint)
                     else stringResource(R.string.bill_no_products_search, state.query),
                 )
-                else -> ProductGrid(
+                else -> ProductCatalog(
                     products = state.filteredProducts,
-                    onAdd = viewModel::addProduct,
+                    viewMode = state.productViewMode,
+                    onClick = viewModel::addProduct,
+                    addable = true,
                     modifier = Modifier.weight(1f),
                 )
             }

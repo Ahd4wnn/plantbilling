@@ -4,6 +4,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -24,6 +25,10 @@ data class DonutSlice(val value: Float, val color: Color)
 /**
  * Animated donut (ring) chart. Slices sweep in on first composition. The center
  * is a free content slot (e.g. net income). Empty data renders a soft track.
+ *
+ * [diameter] is a maximum, not a fixed size: on a narrow phone the ring shrinks to
+ * fit rather than pushing its neighbours (the Sales legend) off the screen. The
+ * stroke scales with it so the ring keeps its proportions.
  */
 @Composable
 fun DonutChart(
@@ -33,6 +38,19 @@ fun DonutChart(
     strokeWidth: Dp = 22.dp,
     trackColor: Color = Color(0xFFE2E8F0),
     center: @Composable () -> Unit = {},
+) = BoxWithConstraints(modifier) {
+    val resolved = if (constraints.hasBoundedWidth) diameter.coerceAtMost(maxWidth) else diameter
+    val stroke = strokeWidth * (resolved / diameter).coerceAtMost(1f)
+    DonutChartContent(slices, resolved, stroke, trackColor, center)
+}
+
+@Composable
+private fun DonutChartContent(
+    slices: List<DonutSlice>,
+    diameter: Dp,
+    strokeWidth: Dp,
+    trackColor: Color,
+    center: @Composable () -> Unit,
 ) {
     val total = slices.sumOf { it.value.toDouble() }.toFloat()
     var play by remember { mutableStateOf(false) }
@@ -43,7 +61,7 @@ fun DonutChart(
         label = "donutSweep",
     )
 
-    Box(modifier = modifier.size(diameter), contentAlignment = Alignment.Center) {
+    Box(modifier = Modifier.size(diameter), contentAlignment = Alignment.Center) {
         Canvas(modifier = Modifier.size(diameter)) {
             val sw = strokeWidth.toPx()
             val inset = sw / 2

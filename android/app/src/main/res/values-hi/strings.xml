@@ -160,6 +160,8 @@
     <string name="products_delete_msg">\"%1$s\" को अपनी सूची से हटाएँ? पुराने बिलों पर असर नहीं पड़ेगा।</string>
     <string name="action_delete">हटाएँ</string>
     <string name="product_delete_cd">%1$s हटाएँ</string>
+    <string name="products_view_list_cd">सूची में दिखाएँ</string>
+    <string name="products_view_blocks_cd">ब्लॉक में दिखाएँ</string>
     <string name="cat_uncategorised">बिना श्रेणी</string>
     <string name="label_inactive">निष्क्रिय</string>
     <string name="bulk_desc">एक स्प्रेडशीट से एक साथ कई सामान जोड़ें, फिर फ़ाइल नाम से फ़ोटो जोड़ें।</string>
@@ -493,6 +495,9 @@
     <string name="vm_saved_downloads">डाउनलोड में सहेजा गया: %1$s</string>
     <string name="err_generic">कुछ गड़बड़ हो गई. कृपया फिर से कोशिश करें.</string>
     <string name="err_network">सर्वर तक नहीं पहुँच पा रहे. अपना इंटरनेट कनेक्शन जाँचें.</string>
+    <string name="err_timeout">इसमें बहुत समय लग रहा है। अपना कनेक्शन जाँचकर फिर कोशिश करें।</string>
+    <string name="err_upload_too_large">यह फ़ोटो अपलोड करने के लिए बहुत बड़ी है। कोई दूसरी फ़ोटो चुनें।</string>
+    <string name="err_photo_unreadable">यह फ़ोटो इस फ़ोन पर नहीं खुल सकती। कैमरे से नई फ़ोटो लें।</string>
     <string name="vm_borrow_added">उधार जोड़ा गया.</string>
     <string name="vm_borrow_repaid">चुकौती दर्ज की गई.</string>
     <string name="vm_worker_removed">कर्मचारी हटाया गया.</string>

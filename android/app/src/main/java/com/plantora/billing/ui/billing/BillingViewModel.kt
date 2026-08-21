@@ -17,6 +17,8 @@ import com.plantora.billing.domain.CustomerLookup
 import com.plantora.billing.domain.DiscountType
 import com.plantora.billing.domain.Money
 import com.plantora.billing.domain.Product
+import com.plantora.billing.domain.ProductViewMode
+import com.plantora.billing.data.local.AppPreferences
 import com.plantora.billing.i18n.UiText
 import com.plantora.billing.print.PrinterController
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -67,6 +69,8 @@ data class BillingUiState(
     // Surviving process death alongside the cart means a returning user never
     // gets a spurious open, and an add always opens it.
     val showReview: Boolean = false,
+    /** Blocks or compact list for the picker; persisted per device. */
+    val productViewMode: ProductViewMode = ProductViewMode.GRID,
 ) {
     val discountValue: Money get() = Money.parse(discountInput.ifBlank { "0" })
     val totals: CartTotals get() = CartMath.totals(lines, discountType, discountValue)
@@ -106,6 +110,7 @@ class BillingViewModel @Inject constructor(
     private val customerRepo: CustomerRepository,
     private val printer: PrinterController,
     private val heldStore: HeldBillStore,
+    private val prefs: AppPreferences,
     session: com.plantora.billing.data.SessionRepository,
 ) : ViewModel() {
 
@@ -128,6 +133,13 @@ class BillingViewModel @Inject constructor(
             _ui.update { it.copy(businessUpi = u.businessUpi, businessName = u.displayShop) }
         }
         loadProducts()
+        viewModelScope.launch {
+            prefs.productViewMode.collect { mode -> _ui.update { it.copy(productViewMode = mode) } }
+        }
+    }
+
+    fun setProductViewMode(mode: ProductViewMode) {
+        viewModelScope.launch { prefs.setProductViewMode(mode) }
     }
 
     fun loadProducts() {

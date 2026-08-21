@@ -32,8 +32,9 @@ import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
-    // Apply the in-app language choice before the UI is built. Picking a new
-    // language in More recreates the activity, which re-runs this.
+    // Apply the in-app language choice and pin the display metrics (font scale,
+    // display size, bold text) before the UI is built. Picking a new language in
+    // More recreates the activity, which re-runs this.
     override fun attachBaseContext(newBase: Context) {
         super.attachBaseContext(LocaleManager.wrap(newBase))
     }
@@ -42,9 +43,9 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            // Pin the font scale to 1.0 so a phone's system "large font" accessibility
-            // setting can't blow up our layout (clipped buttons, overflowing amounts).
-            // The UI is already sized large for elderly users; we control legibility.
+            // Second line of defence behind LocaleManager.wrap, which already pins the
+            // font scale on the Configuration. Cheap, and covers any Context that
+            // reaches composition without going through attachBaseContext.
             val base = LocalDensity.current
             CompositionLocalProvider(
                 LocalDensity provides Density(density = base.density, fontScale = 1f),

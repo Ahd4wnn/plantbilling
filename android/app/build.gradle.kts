@@ -28,8 +28,8 @@ android {
         applicationId = "com.plantora.billing"
         minSdk = 24
         targetSdk = 36
-        versionCode = 39
-        versionName = "0.1.38"
+        versionCode = 40
+        versionName = "0.1.39"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         // Default backend: the hosted production API. Overridable at runtime in
@@ -140,6 +140,7 @@ dependencies {
 
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.androidx.security.crypto)
+    implementation(libs.androidx.exifinterface)
     implementation(libs.coil.compose)
     implementation(libs.acra.http)
     implementation(libs.acra.toast)

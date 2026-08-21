@@ -160,6 +160,8 @@
     <string name="products_delete_msg">\"%1$s\" നിങ്ങളുടെ പട്ടികയിൽ നിന്ന് നീക്കണോ? പഴയ ബില്ലുകളെ ബാധിക്കില്ല.</string>
     <string name="action_delete">ഇല്ലാതാക്കുക</string>
     <string name="product_delete_cd">%1$s ഇല്ലാതാക്കുക</string>
+    <string name="products_view_list_cd">പട്ടികയായി കാണിക്കുക</string>
+    <string name="products_view_blocks_cd">ബ്ലോക്കുകളായി കാണിക്കുക</string>
     <string name="cat_uncategorised">വിഭാഗമില്ലാത്തവ</string>
     <string name="label_inactive">നിഷ്‌ക്രിയം</string>
     <string name="bulk_desc">ഒരു സ്‌പ്രെഡ്‌ഷീറ്റിൽ നിന്ന് ഒരുമിച്ച് ഒട്ടേറെ സാധനങ്ങൾ ചേർക്കുക, പിന്നെ ഫയൽ പേര് വഴി ഫോട്ടോകൾ ചേർക്കുക.</string>
@@ -493,6 +495,9 @@
     <string name="vm_saved_downloads">ഡൗൺലോഡ്‌സിൽ സേവ് ചെയ്തു: %1$s</string>
     <string name="err_generic">എന്തോ കുഴപ്പം സംഭവിച്ചു. വീണ്ടും ശ്രമിക്കുക.</string>
     <string name="err_network">സെർവറിൽ എത്താൻ കഴിയുന്നില്ല. നിങ്ങളുടെ ഇന്റർനെറ്റ് കണക്ഷൻ പരിശോധിക്കുക.</string>
+    <string name="err_timeout">ഇത് വളരെ സമയമെടുക്കുന്നു. നിങ്ങളുടെ കണക്ഷൻ പരിശോധിച്ച് വീണ്ടും ശ്രമിക്കുക.</string>
+    <string name="err_upload_too_large">ഈ ഫോട്ടോ അപ്‌ലോഡ് ചെയ്യാൻ കഴിയാത്തത്ര വലുതാണ്. മറ്റൊരു ഫോട്ടോ ശ്രമിക്കുക.</string>
+    <string name="err_photo_unreadable">ഈ ഫോൺ ഈ ഫോട്ടോ തുറക്കാൻ കഴിയുന്നില്ല. ക്യാമറ ഉപയോഗിച്ച് പുതിയ ഫോട്ടോ എടുക്കുക.</string>
     <string name="vm_borrow_added">കടം ചേർത്തു.</string>
     <string name="vm_borrow_repaid">തിരിച്ചടവ് രേഖപ്പെടുത്തി.</string>
     <string name="vm_worker_removed">ജോലിക്കാരനെ നീക്കം ചെയ്തു.</string>

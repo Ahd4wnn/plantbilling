@@ -99,7 +99,13 @@ class ReviewSheetFreezeTest {
             LocalDensity provides Density(density = base.density, fontScale = 1f),
         ) {
             PlantoraTheme {
-                ProductGrid(products = state.products, onAdd = { }, modifier = Modifier.fillMaxSize())
+                com.plantora.billing.ui.components.ProductCatalog(
+                    products = state.products,
+                    viewMode = com.plantora.billing.domain.ProductViewMode.GRID,
+                    onClick = { },
+                    addable = true,
+                    modifier = Modifier.fillMaxSize(),
+                )
                 if (show.value) ReviewSheet(state)
             }
         }

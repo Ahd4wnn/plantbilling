@@ -9,6 +9,7 @@ import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.plantora.billing.BuildConfig
+import com.plantora.billing.domain.ProductViewMode
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -58,12 +59,26 @@ class AppPreferences @Inject constructor(
         store.edit { it[KEY_CIH_CUMULATIVE] = enabled }
     }
 
+    // Blocks vs list for the product catalogue. One key shared by the Bill picker
+    // and the Products tab, so the two screens agree. Unreadable values fall back
+    // to blocks rather than throwing — a preference is never worth a crash.
+    val productViewMode: Flow<ProductViewMode> = store.data.map { prefs ->
+        prefs[KEY_PRODUCT_VIEW]
+            ?.let { runCatching { ProductViewMode.valueOf(it) }.getOrNull() }
+            ?: ProductViewMode.GRID
+    }
+
+    suspend fun setProductViewMode(mode: ProductViewMode) {
+        store.edit { it[KEY_PRODUCT_VIEW] = mode.name }
+    }
+
     private companion object {
         val KEY_BASE_URL = stringPreferencesKey("base_url")
         val KEY_PRINTER_MAC = stringPreferencesKey("printer_mac")
         val KEY_PAPER_WIDTH = intPreferencesKey("paper_width_chars")
         val KEY_AUTO_CUT = booleanPreferencesKey("auto_cut")
         val KEY_CIH_CUMULATIVE = booleanPreferencesKey("cash_in_hand_cumulative")
+        val KEY_PRODUCT_VIEW = stringPreferencesKey("product_view_mode")
     }
 }
 

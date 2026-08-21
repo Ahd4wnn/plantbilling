@@ -11,6 +11,9 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonObject
 import retrofit2.HttpException
 import java.io.IOException
+// SocketTimeoutException (per-read/write) and OkHttp's callTimeout failure both
+// extend InterruptedIOException, so one branch catches every kind of "too slow".
+import java.io.InterruptedIOException
 
 private val errorJson = Json { ignoreUnknownKeys = true }
 
@@ -22,14 +25,14 @@ private val errorJson = Json { ignoreUnknownKeys = true }
 fun friendlyError(
     error: Throwable,
     fallback: String = "Something went wrong. Please try again.",
-): String = when (error) {
-    is IOException -> if (BuildConfig.DEBUG) {
+): String = when {
+    BuildConfig.DEBUG && error is IOException ->
         // Debug-only: surface the real cause (TLS/DNS/timeout) to diagnose.
         "Can't reach the server. [${error.javaClass.simpleName}: ${error.message}]"
-    } else {
-        "Can't reach the server. Check your internet connection."
-    }
-    is HttpException -> parseDetail(error) ?: fallback
+    error is InterruptedIOException ->
+        "This is taking too long. Please check your connection and try again."
+    error is IOException -> "Can't reach the server. Check your internet connection."
+    error is HttpException -> parseDetail(error) ?: oversizeMessage(error) ?: fallback
     else -> fallback
 }
 
@@ -44,15 +47,31 @@ fun friendlyError(
     context: Context,
     error: Throwable,
     @StringRes fallback: Int = R.string.err_generic,
-): String = when (error) {
-    is IOException -> if (BuildConfig.DEBUG) {
+): String = when {
+    BuildConfig.DEBUG && error is IOException ->
         "Can't reach the server. [${error.javaClass.simpleName}: ${error.message}]"
-    } else {
-        context.getString(R.string.err_network)
-    }
-    is HttpException -> parseDetail(error) ?: context.getString(fallback)
+    error is InterruptedIOException -> context.getString(R.string.err_timeout)
+    error is IOException -> context.getString(R.string.err_network)
+    error is HttpException ->
+        parseDetail(error)
+            ?: error.takeIf { it.code() == HTTP_PAYLOAD_TOO_LARGE }?.let { context.getString(R.string.err_upload_too_large) }
+            ?: context.getString(fallback)
     else -> context.getString(fallback)
 }
+
+/**
+ * A 413 that carried no JSON `detail` came from the reverse proxy, not from us —
+ * its body is HTML, so [parseDetail] finds nothing and the user would otherwise
+ * get the useless generic message. Name the real problem instead.
+ */
+private fun oversizeMessage(error: HttpException): String? =
+    if (error.code() == HTTP_PAYLOAD_TOO_LARGE) {
+        "That photo is too large to upload. Please try a different photo."
+    } else {
+        null
+    }
+
+private const val HTTP_PAYLOAD_TOO_LARGE = 413
 
 private fun parseDetail(error: HttpException): String? {
     val raw = error.response()?.errorBody()?.string()?.takeIf { it.isNotBlank() } ?: return null

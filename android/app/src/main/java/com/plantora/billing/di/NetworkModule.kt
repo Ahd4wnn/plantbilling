@@ -55,6 +55,11 @@ object NetworkModule {
             .connectTimeout(20, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)
             .writeTimeout(30, TimeUnit.SECONDS)
+            // The per-write timeout above only bounds a single socket write, so a
+            // photo upload trickling over weak mobile data could hang indefinitely.
+            // This is the total budget for a call, after which the user gets a
+            // "taking too long" message instead of a spinner that never ends.
+            .callTimeout(120, TimeUnit.SECONDS)
             .build()
     }
 

@@ -1,12 +1,17 @@
 package com.plantora.billing.ui.products
 
+import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.plantora.billing.R
+import com.plantora.billing.data.ImageCompressor
+import com.plantora.billing.data.ImageReadException
 import com.plantora.billing.data.ProductRepository
 import com.plantora.billing.data.remote.friendlyError
 import com.plantora.billing.domain.Money
 import com.plantora.billing.domain.Product
+import com.plantora.billing.domain.ProductViewMode
+import com.plantora.billing.data.local.AppPreferences
 import com.plantora.billing.i18n.UiText
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -25,7 +30,7 @@ data class ProductFormState(
     val isActive: Boolean = true,
     val photoUrl: String? = null,
     val saving: Boolean = false,
-    val error: String? = null,
+    val error: UiText? = null,
 ) {
     val isEdit: Boolean get() = id != null
     // Price may be ₹0 (e.g. a free giveaway plant) — only a blank or negative
@@ -44,6 +49,8 @@ data class ProductsUiState(
     val message: UiText? = null,
     val bulkSheet: Boolean = false,
     val bulkBusy: Boolean = false,
+    /** Blocks or compact list; the same per-device setting the Bill picker uses. */
+    val viewMode: ProductViewMode = ProductViewMode.GRID,
 ) {
     val categories: List<String>
         get() = products.mapNotNull { it.category?.takeIf { c -> c.isNotBlank() } }.distinct().sorted()
@@ -57,12 +64,23 @@ data class ProductsUiState(
 @HiltViewModel
 class ProductsViewModel @Inject constructor(
     private val repo: ProductRepository,
+    private val prefs: AppPreferences,
+    private val compressor: ImageCompressor,
 ) : ViewModel() {
 
     private val _ui = MutableStateFlow(ProductsUiState())
     val ui: StateFlow<ProductsUiState> = _ui.asStateFlow()
 
-    init { load() }
+    init {
+        load()
+        viewModelScope.launch {
+            prefs.productViewMode.collect { mode -> _ui.update { it.copy(viewMode = mode) } }
+        }
+    }
+
+    fun setViewMode(mode: ProductViewMode) {
+        viewModelScope.launch { prefs.setProductViewMode(mode) }
+    }
 
     fun load() {
         _ui.update { it.copy(loading = true, error = null) }
@@ -116,7 +134,7 @@ class ProductsViewModel @Inject constructor(
             }
             result
                 .onSuccess { _ui.update { it.copy(form = null, message = UiText.res(if (form.isEdit) R.string.vm_saved else R.string.vm_product_added)) }; load() }
-                .onFailure { e -> updateForm { it.copy(saving = false, error = friendlyError(e)) } }
+                .onFailure { e -> updateForm { it.copy(saving = false, error = UiText.err(e, R.string.err_generic)) } }
         }
     }
 
@@ -128,15 +146,30 @@ class ProductsViewModel @Inject constructor(
         }
     }
 
-    fun uploadImage(productId: String, bytes: ByteArray, fileName: String, mime: String) {
+    /**
+     * Shrink the picked photo, then upload it. Compression happens off the main
+     * thread inside [ImageCompressor]; it is what keeps the request small enough
+     * to survive the server's size cap and a weak mobile connection.
+     */
+    fun uploadImage(productId: String, uri: Uri) {
         updateForm { it.copy(saving = true, error = null) }
         viewModelScope.launch {
-            runCatching { repo.uploadImage(productId, bytes, fileName, mime) }
+            runCatching {
+                val image = compressor.compress(uri)
+                repo.uploadImage(productId, image.bytes, image.fileName, image.mimeType)
+            }
                 .onSuccess { updated ->
                     updateForm { it.copy(saving = false, photoUrl = updated.photoUrl) }
                     load()
                 }
-                .onFailure { e -> updateForm { it.copy(saving = false, error = friendlyError(e)) } }
+                .onFailure { e ->
+                    val message = if (e is ImageReadException) {
+                        UiText.res(R.string.err_photo_unreadable)
+                    } else {
+                        UiText.err(e, R.string.err_generic)
+                    }
+                    updateForm { it.copy(saving = false, error = message) }
+                }
         }
     }
 

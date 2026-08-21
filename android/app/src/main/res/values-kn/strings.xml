@@ -160,6 +160,8 @@
     <string name="products_delete_msg">\"%1$s\" ಅನ್ನು ನಿಮ್ಮ ಪಟ್ಟಿಯಿಂದ ತೆಗೆಯಬೇಕೇ? ಹಳೆಯ ಬಿಲ್‌ಗಳ ಮೇಲೆ ಪರಿಣಾಮ ಇಲ್ಲ.</string>
     <string name="action_delete">ಅಳಿಸಿ</string>
     <string name="product_delete_cd">%1$s ಅಳಿಸಿ</string>
+    <string name="products_view_list_cd">ಪಟ್ಟಿಯಾಗಿ ತೋರಿಸಿ</string>
+    <string name="products_view_blocks_cd">ಬ್ಲಾಕ್‌ಗಳಾಗಿ ತೋರಿಸಿ</string>
     <string name="cat_uncategorised">ವರ್ಗವಿಲ್ಲದವು</string>
     <string name="label_inactive">ನಿಷ್ಕ್ರಿಯ</string>
     <string name="bulk_desc">ಸ್ಪ್ರೆಡ್‌ಶೀಟ್‌ನಿಂದ ಒಟ್ಟಿಗೆ ಹಲವು ಸರಕುಗಳನ್ನು ಸೇರಿಸಿ, ನಂತರ ಫೈಲ್ ಹೆಸರಿನ ಮೂಲಕ ಫೋಟೋಗಳನ್ನು ಲಗತ್ತಿಸಿ.</string>
@@ -493,6 +495,9 @@
     <string name="vm_saved_downloads">ಡೌನ್‌ಲೋಡ್‌ಗಳಲ್ಲಿ ಉಳಿಸಲಾಗಿದೆ: %1$s</string>
     <string name="err_generic">ಏನೋ ತಪ್ಪಾಗಿದೆ. ದಯವಿಟ್ಟು ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.</string>
     <string name="err_network">ಸರ್ವರ್ ತಲುಪಲು ಸಾಧ್ಯವಾಗುತ್ತಿಲ್ಲ. ನಿಮ್ಮ ಇಂಟರ್ನೆಟ್ ಸಂಪರ್ಕವನ್ನು ಪರಿಶೀಲಿಸಿ.</string>
+    <string name="err_timeout">ಇದು ಬಹಳ ಸಮಯ ತೆಗೆದುಕೊಳ್ಳುತ್ತಿದೆ. ನಿಮ್ಮ ಸಂಪರ್ಕವನ್ನು ಪರಿಶೀಲಿಸಿ ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.</string>
+    <string name="err_upload_too_large">ಈ ಫೋಟೋ ಅಪ್‌ಲೋಡ್ ಮಾಡಲು ತುಂಬಾ ದೊಡ್ಡದಾಗಿದೆ. ಬೇರೆ ಫೋಟೋ ಪ್ರಯತ್ನಿಸಿ.</string>
+    <string name="err_photo_unreadable">ಈ ಫೋಟೋವನ್ನು ಈ ಫೋನ್‌ನಲ್ಲಿ ತೆರೆಯಲಾಗುತ್ತಿಲ್ಲ. ಕ್ಯಾಮೆರಾದಿಂದ ಹೊಸ ಫೋಟೋ ತೆಗೆಯಿರಿ.</string>
     <string name="vm_borrow_added">ಸಾಲ ಸೇರಿಸಲಾಗಿದೆ.</string>
     <string name="vm_borrow_repaid">ಮರುಪಾವತಿ ದಾಖಲಿಸಲಾಗಿದೆ.</string>
     <string name="vm_worker_removed">ಕೆಲಸಗಾರನನ್ನು ತೆಗೆದುಹಾಕಲಾಗಿದೆ.</string>

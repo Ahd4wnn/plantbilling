@@ -1,7 +1,6 @@
 package com.plantora.billing.ui.products
 
 import android.net.Uri
-import android.provider.OpenableColumns
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
@@ -27,12 +26,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.plantora.billing.R
+import com.plantora.billing.i18n.asString
 import com.plantora.billing.ui.components.PlantoraTextField
 import com.plantora.billing.ui.components.PrimaryButton
 import com.plantora.billing.ui.components.SecondaryButton
@@ -44,17 +43,12 @@ fun ProductFormSheet(
     form: ProductFormState,
     onUpdate: ((ProductFormState) -> ProductFormState) -> Unit,
     onSave: () -> Unit,
-    onPickImage: (bytes: ByteArray, fileName: String, mime: String) -> Unit,
+    onPickImage: (Uri) -> Unit,
 ) {
-    val context = LocalContext.current
+    // Hand the Uri straight to the ViewModel: reading and re-encoding a 12MP photo
+    // is far too slow to do here on the main thread (it used to risk an ANR).
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
-        if (uri != null) {
-            val resolver = context.contentResolver
-            val mime = resolver.getType(uri) ?: "image/jpeg"
-            val name = queryDisplayName(resolver, uri) ?: "photo.jpg"
-            val bytes = resolver.openInputStream(uri)?.use { it.readBytes() }
-            if (bytes != null) onPickImage(bytes, name, mime)
-        }
+        if (uri != null) onPickImage(uri)
     }
 
     Column(
@@ -124,7 +118,7 @@ fun ProductFormSheet(
 
         form.error?.let {
             Spacer(Modifier.height(Dimens.md))
-            Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium)
+            Text(it.asString(), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium)
         }
 
         Spacer(Modifier.height(Dimens.xl))
@@ -134,14 +128,5 @@ fun ProductFormSheet(
             enabled = form.canSave,
             loading = form.saving,
         )
-    }
-}
-
-private fun queryDisplayName(resolver: android.content.ContentResolver, uri: Uri): String? {
-    return resolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { c ->
-        if (c.moveToFirst()) {
-            val idx = c.getColumnIndex(OpenableColumns.DISPLAY_NAME)
-            if (idx >= 0) c.getString(idx) else null
-        } else null
     }
 }

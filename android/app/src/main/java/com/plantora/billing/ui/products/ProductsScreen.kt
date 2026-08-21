@@ -1,7 +1,5 @@
 package com.plantora.billing.ui.products
 
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -9,13 +7,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
-import androidx.compose.material.icons.rounded.DeleteOutline
 import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.Image
 import androidx.compose.material.icons.rounded.LocalFlorist
@@ -25,7 +20,6 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
@@ -44,19 +38,17 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import coil.compose.AsyncImage
 import com.plantora.billing.R
 import com.plantora.billing.domain.Product
 import com.plantora.billing.ui.components.EmptyState
 import com.plantora.billing.ui.components.ErrorState
 import com.plantora.billing.ui.components.LoadingState
-import com.plantora.billing.ui.components.MoneyText
+import com.plantora.billing.ui.components.ProductCatalog
+import com.plantora.billing.ui.components.ProductViewToggle
 import com.plantora.billing.ui.theme.Dimens
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -117,31 +109,39 @@ fun ProductsScreen(
                 modifier = Modifier.fillMaxWidth().padding(Dimens.screenPadding),
             )
 
-            LazyRow(
-                contentPadding = PaddingValues(horizontal = Dimens.screenPadding),
-                horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(Dimens.sm),
-            ) {
-                item {
-                    FilterChip(
-                        selected = ui.categoryFilter == null,
-                        onClick = { viewModel.setCategoryFilter(null) },
-                        label = { Text(stringResource(R.string.filter_all)) },
-                    )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                LazyRow(
+                    modifier = Modifier.weight(1f),
+                    contentPadding = PaddingValues(horizontal = Dimens.screenPadding),
+                    horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(Dimens.sm),
+                ) {
+                    item {
+                        FilterChip(
+                            selected = ui.categoryFilter == null,
+                            onClick = { viewModel.setCategoryFilter(null) },
+                            label = { Text(stringResource(R.string.filter_all)) },
+                        )
+                    }
+                    items(ui.categories) { cat ->
+                        FilterChip(
+                            selected = ui.categoryFilter == cat,
+                            onClick = { viewModel.setCategoryFilter(cat) },
+                            label = { Text(cat) },
+                        )
+                    }
+                    item {
+                        FilterChip(
+                            selected = ui.showInactive,
+                            onClick = { viewModel.toggleShowInactive() },
+                            label = { Text(stringResource(R.string.products_include_inactive)) },
+                        )
+                    }
                 }
-                items(ui.categories) { cat ->
-                    FilterChip(
-                        selected = ui.categoryFilter == cat,
-                        onClick = { viewModel.setCategoryFilter(cat) },
-                        label = { Text(cat) },
-                    )
-                }
-                item {
-                    FilterChip(
-                        selected = ui.showInactive,
-                        onClick = { viewModel.toggleShowInactive() },
-                        label = { Text(stringResource(R.string.products_include_inactive)) },
-                    )
-                }
+                ProductViewToggle(
+                    mode = ui.viewMode,
+                    onChange = viewModel::setViewMode,
+                    modifier = Modifier.padding(end = Dimens.sm),
+                )
             }
 
             when {
@@ -152,18 +152,21 @@ fun ProductsScreen(
                     title = stringResource(R.string.products_empty_title),
                     message = stringResource(R.string.products_empty_msg),
                 )
-                else -> LazyColumn(
-                    contentPadding = PaddingValues(Dimens.screenPadding),
-                    verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(Dimens.md),
-                ) {
-                    items(ui.visibleProducts, key = { it.id }) { product ->
-                        ProductRow(
-                            product = product,
-                            canManage = canManage,
-                            onClick = { if (canManage) viewModel.openEdit(product) },
-                            onDelete = { pendingDelete = product },
-                        )
-                    }
+                else -> {
+                    val uncategorised = stringResource(R.string.cat_uncategorised)
+                    val inactive = stringResource(R.string.label_inactive)
+                    ProductCatalog(
+                        products = ui.visibleProducts,
+                        viewMode = ui.viewMode,
+                        onClick = { if (canManage) viewModel.openEdit(it) },
+                        secondaryLine = { p ->
+                            buildString {
+                                append(p.category ?: uncategorised)
+                                if (!p.isActive) append(" • $inactive")
+                            }
+                        },
+                        onDelete = if (canManage) ({ pendingDelete = it }) else null,
+                    )
                 }
             }
         }
@@ -175,9 +178,7 @@ fun ProductsScreen(
                 form = form,
                 onUpdate = viewModel::updateForm,
                 onSave = viewModel::save,
-                onPickImage = { bytes, name, mime ->
-                    form.id?.let { viewModel.uploadImage(it, bytes, name, mime) }
-                },
+                onPickImage = { uri -> form.id?.let { viewModel.uploadImage(it, uri) } },
             )
         }
     }
@@ -254,58 +255,3 @@ private fun BulkImportSheet(
     }
 }
 
-@Composable
-private fun ProductRow(product: Product, canManage: Boolean, onClick: () -> Unit, onDelete: () -> Unit) {
-    Surface(
-        shape = MaterialTheme.shapes.large,
-        color = MaterialTheme.colorScheme.surface,
-        tonalElevation = 1.dp,
-        shadowElevation = 1.dp,
-        modifier = Modifier
-            .fillMaxWidth()
-            .then(if (canManage) Modifier.clickable(onClick = onClick) else Modifier),
-    ) {
-        Row(Modifier.padding(Dimens.md), verticalAlignment = Alignment.CenterVertically) {
-            Surface(
-                shape = MaterialTheme.shapes.medium,
-                color = MaterialTheme.colorScheme.surfaceVariant,
-                modifier = Modifier.size(56.dp),
-            ) {
-                if (product.photoUrl != null) {
-                    AsyncImage(
-                        model = product.photoUrl,
-                        contentDescription = null,
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.size(56.dp),
-                    )
-                } else {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(Icons.Rounded.LocalFlorist, contentDescription = null, tint = MaterialTheme.colorScheme.outline)
-                    }
-                }
-            }
-            Column(Modifier.weight(1f).padding(horizontal = Dimens.md)) {
-                Text(
-                    product.name,
-                    style = MaterialTheme.typography.titleMedium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Text(
-                    buildString {
-                        append(product.category ?: stringResource(R.string.cat_uncategorised))
-                        if (!product.isActive) append(" • " + stringResource(R.string.label_inactive))
-                    },
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            MoneyText(product.retailPrice, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
-            if (canManage) {
-                IconButton(onClick = onDelete) {
-                    Icon(Icons.Rounded.DeleteOutline, contentDescription = stringResource(R.string.product_delete_cd, product.name))
-                }
-            }
-        }
-    }
-}
