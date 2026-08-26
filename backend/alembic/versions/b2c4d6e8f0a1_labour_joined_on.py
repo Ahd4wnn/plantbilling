@@ -27,6 +27,13 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
+    # `labourers` is under FORCE ROW LEVEL SECURITY, which applies to the
+    # privileged migration role too. The DDL below bypasses RLS, but the backfill
+    # is DML: without an admin GUC the policy matches zero rows, the UPDATE
+    # silently does nothing, and SET NOT NULL then fails on the nulls it left.
+    # Same trap (and same fix) as a1b2c3d4e5f6's role-rename UPDATE.
+    op.execute("SELECT set_config('app.user_role', 'admin', true);")
+
     op.execute("ALTER TABLE labourers ADD COLUMN joined_on DATE;")
     op.execute(
         "UPDATE labourers SET joined_on = "

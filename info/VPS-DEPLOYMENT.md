@@ -76,12 +76,28 @@ git log --oneline -3              # confirm the expected commit is on top
 ```
 
 ### 3.2 Back up the database (always, before migrating)
+
+**`plantora_admin` must have BYPASSRLS or the dump silently comes out empty** —
+see §8.5. One-time fix, as a superuser on the 5544 cluster:
+
 ```bash
-# Dump the APP database on port 5544 (not the socket cluster):
-pg_dump "$(grep DATABASE_URL_ADMIN /var/www/plantbill/backend/.env | cut -d= -f2- | sed 's#postgresql+psycopg#postgresql#')" \
-  | gzip > ~/plantora-backup-$(date +%F-%H%M).sql.gz
-ls -lh ~/plantora-backup-*.sql.gz
+sudo -u postgres psql -p 5544 -d plantora -c "ALTER ROLE plantora_admin BYPASSRLS;"
 ```
+
+Then dump the APP database on port 5544 (not the socket cluster). `set -o pipefail`
+matters: without it the exit status comes from `gzip`, which succeeds even when
+`pg_dump` failed.
+
+```bash
+set -o pipefail
+pg_dump "$(grep DATABASE_URL_ADMIN /var/www/plantbill/backend/.env | cut -d= -f2- | sed 's#postgresql+psycopg#postgresql#')" \
+  | gzip > ~/plantora-backup-$(date +%F-%H%M).sql.gz \
+  && echo "BACKUP OK" || echo "BACKUP FAILED — DO NOT MIGRATE"
+ls -lh ~/plantora-backup-*.sql.gz | tail -3
+```
+
+A healthy backup is **over a megabyte**. A ~2.6 KB file is a failed dump with
+nothing in it.
 
 ### 3.3 Backend deps + migration
 ```bash
@@ -241,3 +257,18 @@ gunzip -c ~/plantora-backup-YYYY-MM-DD-HHMM.sql.gz | \
    migration failed.
 3. **`pg_tables` has no `forcerowsecurity`.** Use `pg_class.relforcerowsecurity` /
    `pg_class.relrowsecurity` to check RLS.
+4. **FORCE RLS applies to the migration role too.** DDL bypasses RLS, but any
+   backfill `UPDATE` in a migration silently matches **zero rows** unless the
+   transaction sets an admin GUC first:
+   ```python
+   op.execute("SELECT set_config('app.user_role', 'admin', true);")
+   ```
+   Without it the backfill quietly does nothing and a following `SET NOT NULL`
+   blows up on the nulls it left behind. Bitten by `a1b2c3d4e5f6` and again by
+   `b2c4d6e8f0a1`. **Any migration that writes rows needs this line.**
+5. **`pg_dump` fails on RLS tables and the failure is easy to miss.** It sets
+   `row_security = off`, and a role subject to FORCE RLS then errors with
+   *"query would be affected by row-level security policy"*. `gzip` still writes
+   a file, so you get a **~2.6 KB backup that contains no data** and a zero exit
+   status is never checked. Dump as a role that can bypass RLS (see §2.1) and
+   always check the size — a real backup is over a megabyte.
