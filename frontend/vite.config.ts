@@ -3,8 +3,10 @@ import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
 import path from "node:path";
 
-// Brand green used for the PWA theme/splash. Keep in sync with tailwind primary-600.
-const BRAND_GREEN = "#1F7A4D";
+// Brand colour for the PWA theme/splash (Android's task-switcher tint and the
+// install splash background). Keep in sync with tailwind primary-600 and with
+// Brand.Orange in the Android app's ui/theme/Color.kt.
+const BRAND = "#F05B01";
 
 export default defineConfig({
   resolve: {
@@ -23,8 +25,8 @@ export default defineConfig({
         name: "PlantBill",
         short_name: "PlantBill",
         description: "Simple billing for plant shops.",
-        theme_color: BRAND_GREEN,
-        background_color: BRAND_GREEN,
+        theme_color: BRAND,
+        background_color: BRAND,
         display: "standalone",
         orientation: "portrait",
         start_url: "/",

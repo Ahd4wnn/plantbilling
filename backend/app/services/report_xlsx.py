@@ -5,7 +5,7 @@ polished, multi-tab workbook: a Summary landing tab plus one tab each for
 bills, line items, customers, staff, expenses and the edit/delete log.
 
 Design goals (kept deliberately professional, brand-consistent):
-- Brand-orange header bands (#C2410C) with white bold headers, matching the app.
+- Brand-orange header bands (#F05B01) with white bold headers, matching the app.
 - Money stored as REAL NUMBERS with an Indian ₹ format ("₹#,##,##0.00") so Excel
   can sum/sort/filter — no "INR 123.00" text like the old CSV, and no mojibake
   (xlsx stores the ₹ in XML, unlike CSV which needs a BOM and still guesses).
@@ -29,12 +29,12 @@ from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.worksheet import Worksheet
 
 # ── Brand palette ───────────────────────────────────────────────────────────
-# Must track Brand.Orange in android/.../ui/theme/Color.kt. To go back to the
-# original botanical green, swap in the values in the trailing comments.
-BRAND = "C2410C"          # deep orange (matches the app + launcher icon)   [green: 2E6F40]
-BRAND_DARK = "9A3412"     # deeper orange for the title band                [green: 1E4D2B]
-BAND = "FDEBE0"           # pale orange zebra stripe                        [green: EAF3EC]
-GRID = "EFD9CC"           # soft grid line                                  [green: D8E2DA]
+# Must track Brand.Orange in android/.../ui/theme/Color.kt. The trailing comments
+# carry the previous palettes, to paste back if the brand ever reverts.
+BRAND = "F05B01"          # brand orange (matches the app + launcher icon)  [green: 2E6F40]
+BRAND_DARK = "C24700"     # deeper orange for the title band                [green: 1E4D2B]
+BAND = "FEF0E6"           # pale orange zebra stripe                        [green: EAF3EC]
+GRID = "F2DECF"           # soft grid line                                  [green: D8E2DA]
 TEXT_DARK = "2E1A12"      # near-black warm-tinted body text                [green: 1A2E22]
 MUTED = "6B5A50"          # secondary labels                                [green: 5B6B60]
 
@@ -61,7 +61,7 @@ _KPI_FONT = Font(name="Calibri", size=13, bold=True, color=BRAND_DARK)
 _HEADER_FILL = PatternFill("solid", fgColor=BRAND)
 _TITLE_FILL = PatternFill("solid", fgColor=BRAND_DARK)
 _BAND_FILL = PatternFill("solid", fgColor=BAND)
-_KPI_FILL = PatternFill("solid", fgColor="FEF6F1")
+_KPI_FILL = PatternFill("solid", fgColor="FFF8F3")
 
 _thin = Side(style="thin", color=GRID)
 _BORDER = Border(left=_thin, right=_thin, top=_thin, bottom=_thin)
@@ -166,7 +166,7 @@ def _build_summary_tab(ws: Worksheet, meta: dict, kpis: list[tuple[str, Any, str
     # Title band (B2:C4)
     ws.merge_cells("B2:C2")
     t = ws.cell(row=2, column=2, value="PLANTBILL")
-    t.font = Font(name="Calibri", size=10, bold=True, color="F5C9AE")
+    t.font = Font(name="Calibri", size=10, bold=True, color="FFD2B3")
     t.alignment = _LEFT
     ws.merge_cells("B3:C3")
     t2 = ws.cell(row=3, column=2, value="Sales Report")

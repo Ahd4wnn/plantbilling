@@ -2,9 +2,9 @@
 <resources>
     <!-- Pre-Compose brand colour (splash + status bar before Compose draws).
          Must match Brand.Orange.primary / .primaryDark in ui/theme/Color.kt.
-         Botanical green, if it ever comes back: #2E7D46 / #1F5C32 / #37974F. -->
-    <color name="plantora_brand">#C2410C</color>
-    <color name="plantora_brand_dark">#9A3412</color>
+         Alternatives: DeepOrange #C2410C / #9A3412, Green #2E7D46 / #1F5C32. -->
+    <color name="plantora_brand">#F05B01</color>
+    <color name="plantora_brand_dark">#C24700</color>
     <color name="plantora_surface">#FBFAF7</color>
-    <color name="ic_launcher_background">#C2410C</color>
+    <color name="ic_launcher_background">#F05B01</color>
 </resources>

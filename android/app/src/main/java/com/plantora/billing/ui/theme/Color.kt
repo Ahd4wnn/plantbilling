@@ -26,8 +26,22 @@ sealed interface Brand {
     val onContainer: Color
     val accent: Color
 
-    /** Deep orange. White on #C2410C is 4.9:1. */
+    /**
+     * The brand orange. White on #F05B01 is 3.4:1 — that clears WCAG AA for LARGE
+     * text only, so anything white-on-brand must stay big and bold, and small
+     * brand-coloured text on white (prices, links) sits below AA at this shade.
+     * [primaryDark] is 5.0:1 and is the safe choice wherever that matters.
+     */
     data object Orange : Brand {
+        override val primary = Color(0xFFF05B01)
+        override val primaryDark = Color(0xFFC24700)
+        override val container = Color(0xFFFFE3D0)
+        override val onContainer = Color(0xFF451900)
+        override val accent = Color(0xFFFF8534)
+    }
+
+    /** The previous, deeper orange. White on #C2410C is 4.9:1 (AA at any size). */
+    data object DeepOrange : Brand {
         override val primary = Color(0xFFC2410C)
         override val primaryDark = Color(0xFF9A3412)
         override val container = Color(0xFFFFE0CC)
@@ -45,7 +59,10 @@ sealed interface Brand {
     }
 }
 
-/** The live brand. Set this to [Brand.Green] to go back to botanical green. */
+/**
+ * The live brand. Swap for [Brand.DeepOrange] (higher contrast, same family) or
+ * [Brand.Green] (the original botanical identity) — nothing else needs editing.
+ */
 val ACTIVE_BRAND: Brand = Brand.Orange
 
 val BrandPrimary = ACTIVE_BRAND.primary

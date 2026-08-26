@@ -1,12 +1,12 @@
 import SwiftUI
 
-/// Deep-orange, Apple/Stripe-calm palette. All colors are asset-catalog
+/// Orange, Apple/Stripe-calm palette. All colors are asset-catalog
 /// backed (Assets.xcassets) with light/dark variants baked in.
 ///
 /// The two brand entries are still *named* green — the asset names are load-
 /// bearing strings used across every view, and renaming them can't be verified
-/// without a Mac to build on. Only their values changed (#C2410C light /
-/// #F97316 dark), matching Brand.Orange in the Android app's ui/theme/Color.kt.
+/// without a Mac to build on. Only their values changed (#F05B01 light /
+/// #FF8534 dark), matching Brand.Orange in the Android app's ui/theme/Color.kt.
 enum PlantbillColor {
     /// The brand colour. Orange despite the name — see the note above.
     static let green = Color("PlantbillGreen")

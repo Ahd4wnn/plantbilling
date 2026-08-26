@@ -6,7 +6,7 @@ import type { Config } from "tailwindcss";
  * Aesthetic: Apple's calm + Stripe's clarity, scaled up for older eyes & thumbs.
  * - Legibility over delicacy: 17px base, medium+ weights, high contrast.
  * - Obvious affordances: solid buttons, 48px min / 56px primary tap targets.
- * - Calm deep-orange brand system.
+ * - Calm orange brand system.
  *
  * These tokens are the single source of truth for every later screen.
  */
@@ -20,24 +20,23 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // Confident deep orange. 600 (#C2410C) is the primary action fill —
-        // white text on it is ~4.9:1, clearing WCAG AA for normal text (the old
-        // green fill only cleared it for large text). The brighter mids (400–500)
-        // power accents, active states, and key numbers.
-        // Botanical green, if it ever comes back: 50 #EAF8F0 / 100 #CDEFDC /
-        // 200 #9FE0BD / 300 #66CD98 / 400 #2FB375 / 500 #159B61 / 600 #138A56 /
-        // 700 #0E6E44 / 800 #0B5636 / 900 #083E27.
+        // The brand orange. 600 (#F05B01) is the primary action fill; white on it
+        // is ~3.4:1, which clears WCAG AA for LARGE text only — so keep white-on-
+        // brand labels bold and >=19px, and use 700 for brand-coloured body text
+        // sitting on a light background (5.0:1).
+        // Previous palettes, to paste back: deep orange 600 #C2410C / 700 #9A3412;
+        // botanical green 600 #138A56 / 700 #0E6E44.
         primary: {
-          50: "#FEF4EE",
-          100: "#FDE4D3",
-          200: "#FAC6A6",
-          300: "#F5A26F",
-          400: "#EF7A3C",
-          500: "#E25A17",
-          600: "#C2410C", // primary action fill
-          700: "#9A3412", // hover / pressed / active borders / shadow tint
-          800: "#7C2D12",
-          900: "#5C220E",
+          50: "#FFF4EC",
+          100: "#FFE3D0",
+          200: "#FFC29A",
+          300: "#FF9D60",
+          400: "#FB7C2B",
+          500: "#F05B01", // brand
+          600: "#F05B01", // primary action fill
+          700: "#C24700", // hover / pressed / active borders / accessible brand text
+          800: "#973700",
+          900: "#6B2700",
         },
         // Text & surfaces. Near-black ink for primary text (never light gray).
         ink: {
@@ -103,8 +102,8 @@ const config: Config = {
         card: "0 1px 3px rgba(20,30,24,0.06), 0 10px 26px -8px rgba(20,30,24,0.12)",
         "card-lg": "0 6px 16px rgba(20,30,24,0.09), 0 24px 48px -16px rgba(20,30,24,0.18)",
         // Brand-tinted lift so the primary action feels alive and floating.
-        btn: "0 2px 4px rgba(154,52,18,0.18), 0 8px 20px -6px rgba(154,52,18,0.34)",
-        focus: "0 0 0 4px rgba(194,65,12,0.25)",
+        btn: "0 2px 4px rgba(194,71,0,0.18), 0 8px 20px -6px rgba(194,71,0,0.34)",
+        focus: "0 0 0 4px rgba(240,91,1,0.25)",
       },
       minHeight: {
         tap: "48px", // minimum interactive height
