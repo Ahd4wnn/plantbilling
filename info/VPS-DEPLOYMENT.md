@@ -25,20 +25,37 @@ Keep this file up to date whenever server paths, service names, or ports change.
 | Web server | Nginx (reverse proxy + serves the built frontend) |
 | Git remote on VPS (`origin`) | `https://github.com/Ahd4wnn/plantbilling.git` (branch `main`) |
 
-### Database — IMPORTANT: there are TWO Postgres instances
+### Database — `backend/.env` IS THE SOURCE OF TRUTH
 
-The app and Alembic use the cluster on **port 5544**. A separate default cluster
-answers on the local socket (5432) via `sudo -u postgres psql`. **They are different
-databases.** Verifying tables with `sudo -u postgres psql -d plantora` will look at the
-WRONG database and show nothing. Always verify against the app DB (5544).
+Read the connection details out of `.env` rather than trusting this table.
+Everything below was verified against the live VPS on **2026-08-26**:
 
 | Thing | Value |
 |---|---|
-| App/Alembic DB port | **5544** |
-| Database name | `plantora` |
-| Admin role (migrations) | `plantora_admin` |
-| App role (runtime, RLS-enforced, NO BYPASSRLS) | `plantora_app` |
-| Connection strings | `backend/.env` → `DATABASE_URL_ADMIN`, `DATABASE_URL_APP` (both `...@localhost:5544/plantora`) |
+| App/Alembic DB port | **5432** (the default cluster, on the standard socket) |
+| Database name | **`plantbill`** |
+| Admin role (migrations) | **`plantbill_admin`** |
+| App role (runtime, RLS-enforced, NO BYPASSRLS) | `plantbill_app` |
+| Connection strings | `backend/.env` → `DATABASE_URL_ADMIN`, `DATABASE_URL_APP` |
+
+Print them any time with:
+
+```bash
+python3 - <<'PY'
+import urllib.parse
+for key in ("DATABASE_URL_ADMIN", "DATABASE_URL_APP"):
+    line = [l for l in open('/var/www/plantbill/backend/.env') if l.startswith(key)][0]
+    u = urllib.parse.urlparse(line.split('=', 1)[1].strip())
+    print(f"{key:20} role={u.username} port={u.port} db={u.path.lstrip('/')}")
+PY
+```
+
+> **Earlier versions of this file claimed the app DB was `plantora` on port 5544,
+> with a second cluster on 5432.** That is wrong — there is no 5544 cluster on this
+> server (`/var/run/postgresql/.s.PGSQL.5544` does not exist), and it sent a whole
+> deploy's worth of `psql`/`ALTER ROLE` commands at a database that isn't there,
+> each failing in a way that was easy to scroll past. `sudo -u postgres psql -d
+> plantbill` (no `-p`) reaches the real database.
 
 Never commit `.env` or DB passwords.
 
@@ -77,23 +94,24 @@ git log --oneline -3              # confirm the expected commit is on top
 
 ### 3.2 Back up the database (always, before migrating)
 
-**`plantora_admin` must have BYPASSRLS or the dump silently comes out empty** —
-see §8.5. One-time fix, as a superuser on the 5544 cluster:
+**`plantbill_admin` must have BYPASSRLS or the dump silently comes out empty** —
+see §8.5. One-time fix, as a superuser:
 
 ```bash
-sudo -u postgres psql -p 5544 -d plantora -c "ALTER ROLE plantora_admin BYPASSRLS;"
+sudo -u postgres psql -d plantbill -c "ALTER ROLE plantbill_admin BYPASSRLS;"
+sudo -u postgres psql -d plantbill -c "SELECT rolname, rolbypassrls FROM pg_roles WHERE rolname = 'plantbill_admin';"
 ```
 
-Then dump the APP database on port 5544 (not the socket cluster). `set -o pipefail`
+Then dump the app database (connection details always from `.env`). `set -o pipefail`
 matters: without it the exit status comes from `gzip`, which succeeds even when
 `pg_dump` failed.
 
 ```bash
 set -o pipefail
 pg_dump "$(grep DATABASE_URL_ADMIN /var/www/plantbill/backend/.env | cut -d= -f2- | sed 's#postgresql+psycopg#postgresql#')" \
-  | gzip > ~/plantora-backup-$(date +%F-%H%M).sql.gz \
+  | gzip > ~/plantbill-backup-$(date +%F-%H%M).sql.gz \
   && echo "BACKUP OK" || echo "BACKUP FAILED — DO NOT MIGRATE"
-ls -lh ~/plantora-backup-*.sql.gz | tail -3
+ls -lh ~/plantbill-backup-*.sql.gz | tail -3
 ```
 
 A healthy backup is **over a megabyte**. A ~2.6 KB file is a failed dump with
@@ -149,10 +167,9 @@ target. Check this first whenever shops report image-upload failures.
 
 ---
 
-## 4. Verifying the database (against the RIGHT cluster)
+## 4. Verifying the database
 
-`pg_tables` has **no** `forcerowsecurity` column — that lives in `pg_class`. And you must
-query the **5544** DB, not the socket cluster.
+`pg_tables` has **no** `forcerowsecurity` column — that lives in `pg_class`.
 
 Easiest: use the app's own engine (guaranteed same DB the app uses):
 ```bash
@@ -167,7 +184,7 @@ with engine.connect() as c:
 "
 ```
 
-Check tables + RLS flags directly (connect on 5544 via the .env URL):
+Check tables + RLS flags directly (connect via the .env URL):
 ```bash
 psql "$(grep DATABASE_URL_ADMIN /var/www/plantbill/backend/.env | cut -d= -f2- | sed 's#postgresql+psycopg#postgresql#')" \
   -c "SELECT relname, relrowsecurity AS rls, relforcerowsecurity AS force
@@ -175,8 +192,8 @@ psql "$(grep DATABASE_URL_ADMIN /var/www/plantbill/backend/.env | cut -d= -f2- |
 # Expect both rows: rls = t, force = t
 ```
 
-> Do NOT verify with `sudo -u postgres psql -d plantora` — that hits the 5432 cluster and
-> will falsely report the tables as missing.
+> The database is named `plantbill`, not `plantora`. `sudo -u postgres psql -d plantbill`
+> reaches it; a wrong `-d` or a stray `-p 5544` fails in ways that are easy to miss.
 
 ---
 
@@ -195,7 +212,7 @@ cd frontend && npm ci && npm run build && sudo systemctl reload nginx
 
 Restore the whole DB from a dump (last resort):
 ```bash
-gunzip -c ~/plantora-backup-YYYY-MM-DD-HHMM.sql.gz | \
+gunzip -c ~/plantbill-backup-YYYY-MM-DD-HHMM.sql.gz | \
   psql "$(grep DATABASE_URL_ADMIN /var/www/plantbill/backend/.env | cut -d= -f2- | sed 's#postgresql+psycopg#postgresql#')"
 ```
 
@@ -205,9 +222,9 @@ gunzip -c ~/plantora-backup-YYYY-MM-DD-HHMM.sql.gz | \
 
 - Migrations live in `backend/alembic/versions/`. Applied by hand ONLY via
   `alembic upgrade head` — never edit the DB schema directly.
-- Alembic records the current revision in the `alembic_version` table **in the 5544 DB**.
-  If `alembic current` shows a revision but the tables seem missing, you're almost
-  certainly inspecting the wrong cluster (see §4), not a failed migration.
+- Alembic records the current revision in the `alembic_version` table. If `alembic current`
+  shows a revision but the tables seem missing, you're almost certainly inspecting the
+  wrong database (see §4), not looking at a failed migration.
 
 ### Recent deploys
 | Revision | What it adds |
@@ -252,9 +269,11 @@ gunzip -c ~/plantora-backup-YYYY-MM-DD-HHMM.sql.gz | \
 
 1. **Two git remotes.** Push to `plantbill` (= `Ahd4wnn/plantbilling`), the repo the VPS
    pulls from. A push to the other remote leaves the VPS stuck on the old commit.
-2. **Two Postgres clusters.** The app is on **5544**; `sudo -u postgres psql` is on 5432.
-   Verify against 5544 (use the app engine or the `.env` URL), or you'll think a good
-   migration failed.
+2. **Never trust remembered DB coordinates — read `.env`.** This file previously
+   documented the app DB as `plantora` on port 5544. It is actually **`plantbill` on
+   5432**, and no 5544 cluster exists. Commands aimed at the phantom cluster fail with
+   a socket error that scrolls past in a wall of output, so you think you ran something
+   you didn't. Print the real values (see §1) before any `psql` or `ALTER ROLE`.
 3. **`pg_tables` has no `forcerowsecurity`.** Use `pg_class.relforcerowsecurity` /
    `pg_class.relrowsecurity` to check RLS.
 4. **FORCE RLS applies to the migration role too.** DDL bypasses RLS, but any
