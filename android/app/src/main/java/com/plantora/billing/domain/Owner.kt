@@ -79,3 +79,38 @@ data class OwnerCashInHand(
     val running: Money,
     val today: Money,
 )
+
+/** One shop's uncollected dues, across its whole history (never period-scoped). */
+data class ShopDueRow(
+    val shopId: String,
+    val shopName: String,
+    val outstanding: Money,
+    val billCount: Int,
+    val customerCount: Int,
+    val oldestDueDate: String?,
+)
+
+data class OwnerDues(
+    val totalOutstanding: Money,
+    val shops: List<ShopDueRow>,
+)
+
+/** A single unpaid bill behind a customer's balance. */
+data class DueBill(
+    val billId: String,
+    val billNo: String?,
+    val createdAt: String,
+    val total: Money,
+    val dueAmount: Money,
+)
+
+/** Everything one customer still owes a shop. Unattached bills group as "Walk-in". */
+data class CustomerDue(
+    val customerId: String?,
+    val name: String,
+    val phone: String?,
+    val outstanding: Money,
+    val billCount: Int,
+    val oldestDueDate: String?,
+    val bills: List<DueBill>,
+)

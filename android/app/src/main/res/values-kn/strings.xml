@@ -339,6 +339,8 @@
     <string name="lab_phone">ಫೋನ್ ಸಂಖ್ಯೆ</string>
     <string name="lab_aadhaar">ಆಧಾರ್ ಸಂಖ್ಯೆ (ಐಚ್ಛಿಕ)</string>
     <string name="lab_wage_per_day">ದಿನದ ಕೂಲಿ (₹)</string>
+    <string name="lab_joined_on">ಸೇರಿದ ದಿನಾಂಕ</string>
+    <string name="lab_joined_since">%1$s ರಿಂದ</string>
     <string name="lab_gender">ಲಿಂಗ</string>
     <string name="lab_gender_male">ಪುರುಷ</string>
     <string name="lab_gender_female">ಮಹಿಳೆ</string>
@@ -551,4 +553,22 @@
     <string name="notif_action">ತೆರೆ</string>
     <!-- Login contact (for prospective customers) -->
     <string name="login_interested">PlantBill ನಲ್ಲಿ ಆಸಕ್ತಿಯಿದೆಯೇ? ನಮ್ಮನ್ನು ಸಂಪರ್ಕಿಸಿ:</string>
+
+    <string name="own_dues_title">ವಸೂಲಿ ಮಾಡಬೇಕಾದ ಹಣ</string>
+    <string name="own_dues_all_time">ಇಲ್ಲಿಯವರೆಗೆ ಬಾಕಿ</string>
+    <string name="own_dues_since">%1$s ರಿಂದ</string>
+    <string name="own_dues_bill">ಬಿಲ್</string>
+    <string name="own_dues_bill_total">ಬಿಲ್ ಒಟ್ಟು %1$s</string>
+    <string name="own_dues_show_bills">ಬಾಕಿ ಬಿಲ್‌ಗಳನ್ನು ತೋರಿಸಿ</string>
+    <string name="own_dues_hide_bills">ಬಿಲ್‌ಗಳನ್ನು ಮರೆಮಾಡಿ</string>
+    <string name="own_dues_none_title">ವಸೂಲಿ ಮಾಡಲು ಏನೂ ಇಲ್ಲ</string>
+    <string name="own_dues_none_msg">ಈ ಅಂಗಡಿಯ ಎಲ್ಲಾ ಬಿಲ್‌ಗಳು ಪೂರ್ಣವಾಗಿ ಪಾವತಿಯಾಗಿವೆ.</string>
+    <plurals name="own_dues_customers">
+        <item quantity="one">%1$d ಗ್ರಾಹಕ ಹಣ ನೀಡಬೇಕಿದೆ</item>
+        <item quantity="other">%1$d ಗ್ರಾಹಕರು ಹಣ ನೀಡಬೇಕಿದೆ</item>
+    </plurals>
+    <plurals name="own_dues_bills">
+        <item quantity="one">%1$d ಬಿಲ್ ಬಾಕಿ</item>
+        <item quantity="other">%1$d ಬಿಲ್‌ಗಳು ಬಾಕಿ</item>
+    </plurals>
 </resources>

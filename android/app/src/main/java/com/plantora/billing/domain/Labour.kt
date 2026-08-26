@@ -13,6 +13,7 @@ data class Labourer(
     val totalPaid: Money,
     val earned: Money,           // wage_per_day × days_worked
     val balanceToPay: Money,     // earned − paid (negative = paid ahead / advance)
+    val joinedOn: String?,       // yyyy-MM-dd; null only against a pre-0.1.40 backend
     val createdAt: String,
 )
 

@@ -1,7 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="plantora_green">@color/md_green_700</color>
-    <color name="md_green_700">#2E7D46</color>
+    <!-- Pre-Compose brand colour (splash + status bar before Compose draws).
+         Must match Brand.Orange.primary / .primaryDark in ui/theme/Color.kt.
+         Botanical green, if it ever comes back: #2E7D46 / #1F5C32 / #37974F. -->
+    <color name="plantora_brand">#C2410C</color>
+    <color name="plantora_brand_dark">#9A3412</color>
     <color name="plantora_surface">#FBFAF7</color>
-    <color name="ic_launcher_background">#37974F</color>
+    <color name="ic_launcher_background">#C2410C</color>
 </resources>

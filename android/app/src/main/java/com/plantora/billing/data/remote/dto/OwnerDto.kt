@@ -110,3 +110,40 @@ data class OwnerCashInHandDto(
     @SerialName("cash_in_hand_running") val running: String,
     @SerialName("cash_in_hand_today") val today: String,
 )
+
+// ── Outstanding dues (all-time, not period-scoped) ───────────────────────────
+@Serializable
+data class ShopDueRowDto(
+    @SerialName("shop_id") val shopId: String,
+    @SerialName("shop_name") val shopName: String,
+    val outstanding: String,
+    @SerialName("bill_count") val billCount: Int,
+    @SerialName("customer_count") val customerCount: Int,
+    @SerialName("oldest_due_date") val oldestDueDate: String? = null,
+)
+
+@Serializable
+data class OwnerDuesDto(
+    @SerialName("total_outstanding") val totalOutstanding: String,
+    val shops: List<ShopDueRowDto> = emptyList(),
+)
+
+@Serializable
+data class DueBillDto(
+    @SerialName("bill_id") val billId: String,
+    @SerialName("bill_no") val billNo: String? = null,
+    @SerialName("created_at") val createdAt: String,
+    val total: String,
+    @SerialName("due_amount") val dueAmount: String,
+)
+
+@Serializable
+data class CustomerDueDto(
+    @SerialName("customer_id") val customerId: String? = null,
+    val name: String,
+    val phone: String? = null,
+    val outstanding: String,
+    @SerialName("bill_count") val billCount: Int,
+    @SerialName("oldest_due_date") val oldestDueDate: String? = null,
+    val bills: List<DueBillDto> = emptyList(),
+)

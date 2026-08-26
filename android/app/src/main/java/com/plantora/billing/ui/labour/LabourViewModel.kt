@@ -10,6 +10,7 @@ import com.plantora.billing.i18n.UiText
 import com.plantora.billing.domain.Labourer
 import com.plantora.billing.domain.LabourPayment
 import com.plantora.billing.domain.Money
+import com.plantora.billing.domain.parseApiDate
 import com.plantora.billing.domain.todayInShopZone
 import com.plantora.billing.domain.toApiDate
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -19,6 +20,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.math.BigDecimal
+import java.time.LocalDate
 import javax.inject.Inject
 
 private fun daysDecimal(s: String): BigDecimal = s.trim().toBigDecimalOrNull() ?: BigDecimal.ZERO
@@ -36,6 +38,9 @@ data class WorkerEditor(
     val aadhaar: String = "",
     val gender: String = "male",
     val wage: String = "",
+    // The day this worker joined. A new worker defaults to today; editing loads
+    // whatever the shop recorded, so a late entry can be corrected.
+    val joinedOn: LocalDate = todayInShopZone(),
     val saving: Boolean = false,
     val error: String? = null,
 ) {
@@ -146,7 +151,13 @@ class LabourViewModel @Inject constructor(
     // ── Worker editor ──
     fun openAddWorker() = _ui.update { it.copy(workerEditor = WorkerEditor()) }
     fun openEditWorker(l: Labourer) = _ui.update {
-        it.copy(workerEditor = WorkerEditor(id = l.id, name = l.name, phone = l.phone ?: "", aadhaar = l.aadhaar ?: "", gender = l.gender, wage = l.defaultWage.toInput()))
+        it.copy(
+            workerEditor = WorkerEditor(
+                id = l.id, name = l.name, phone = l.phone ?: "", aadhaar = l.aadhaar ?: "",
+                gender = l.gender, wage = l.defaultWage.toInput(),
+                joinedOn = parseApiDate(l.joinedOn) ?: todayInShopZone(),
+            ),
+        )
     }
     fun closeWorker() = _ui.update { it.copy(workerEditor = null) }
     fun setWorkerName(v: String) = _ui.update { it.copy(workerEditor = it.workerEditor?.copy(name = v, error = null)) }
@@ -154,6 +165,7 @@ class LabourViewModel @Inject constructor(
     fun setWorkerAadhaar(v: String) = _ui.update { it.copy(workerEditor = it.workerEditor?.copy(aadhaar = v, error = null)) }
     fun setWorkerGender(v: String) = _ui.update { it.copy(workerEditor = it.workerEditor?.copy(gender = v)) }
     fun setWorkerWage(v: String) = _ui.update { it.copy(workerEditor = it.workerEditor?.copy(wage = v, error = null)) }
+    fun setWorkerJoinedOn(v: LocalDate) = _ui.update { it.copy(workerEditor = it.workerEditor?.copy(joinedOn = v, error = null)) }
 
     fun saveWorker() {
         val e = _ui.value.workerEditor ?: return
@@ -161,8 +173,9 @@ class LabourViewModel @Inject constructor(
         _ui.update { it.copy(workerEditor = e.copy(saving = true, error = null)) }
         viewModelScope.launch {
             runCatching {
-                if (e.id == null) repo.addLabourer(e.name, e.phone, e.aadhaar, e.gender, Money.parse(e.wage))
-                else repo.updateLabourer(e.id, e.name, e.phone, e.aadhaar, e.gender, Money.parse(e.wage))
+                val joined = e.joinedOn.toApiDate()
+                if (e.id == null) repo.addLabourer(e.name, e.phone, e.aadhaar, e.gender, Money.parse(e.wage), joined)
+                else repo.updateLabourer(e.id, e.name, e.phone, e.aadhaar, e.gender, Money.parse(e.wage), joined)
             }.onSuccess { _ui.update { it.copy(workerEditor = null, message = UiText.res(R.string.vm_saved)) }; load() }
                 .onFailure { err -> _ui.update { it.copy(workerEditor = e.copy(saving = false, error = friendlyError(err))) } }
         }

@@ -15,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import com.plantora.billing.ui.theme.BrandPrimary
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.Dp
@@ -29,7 +30,7 @@ fun TrendLineChart(
     values: List<Float>,
     modifier: Modifier = Modifier,
     height: Dp = 120.dp,
-    lineColor: Color = Color(0xFF2E7D46),
+    lineColor: Color = BrandPrimary,
 ) {
     var play by remember { mutableStateOf(false) }
     LaunchedEffect(values) { play = true }

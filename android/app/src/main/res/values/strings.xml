@@ -362,6 +362,8 @@
     <string name="lab_phone">Phone number</string>
     <string name="lab_aadhaar">Aadhaar number (optional)</string>
     <string name="lab_wage_per_day">Wage per day (₹)</string>
+    <string name="lab_joined_on">Joining date</string>
+    <string name="lab_joined_since">Joined %1$s</string>
     <string name="lab_gender">Gender</string>
     <string name="lab_gender_male">Male</string>
     <string name="lab_gender_female">Female</string>
@@ -607,4 +609,23 @@
     <!-- App version in More. %1$s = versionName, %2$d = versionCode. Brand + number,
          so it is language-neutral and lives only in the default resources. -->
     <string name="more_version">PlantBill v%1$s (%2$d)</string>
+
+    <!-- Owner: all-time outstanding dues (not the period-scoped due_total). -->
+    <string name="own_dues_title">Money to collect</string>
+    <string name="own_dues_all_time">Still owed, all time</string>
+    <string name="own_dues_since">since %1$s</string>
+    <string name="own_dues_bill">Bill</string>
+    <string name="own_dues_bill_total">Bill total %1$s</string>
+    <string name="own_dues_show_bills">Show unpaid bills</string>
+    <string name="own_dues_hide_bills">Hide unpaid bills</string>
+    <string name="own_dues_none_title">Nothing to collect</string>
+    <string name="own_dues_none_msg">Every bill in this shop has been paid in full.</string>
+    <plurals name="own_dues_customers">
+        <item quantity="one">%1$d customer owes money</item>
+        <item quantity="other">%1$d customers owe money</item>
+    </plurals>
+    <plurals name="own_dues_bills">
+        <item quantity="one">%1$d unpaid bill</item>
+        <item quantity="other">%1$d unpaid bills</item>
+    </plurals>
 </resources>

@@ -55,6 +55,7 @@ import com.plantora.billing.ui.components.PlantoraCard
 import com.plantora.billing.ui.components.PlantoraTextField
 import com.plantora.billing.ui.components.PrimaryButton
 import com.plantora.billing.ui.components.SecondaryButton
+import com.plantora.billing.ui.theme.BrandPrimary
 import com.plantora.billing.ui.theme.Dimens
 
 @Composable
@@ -76,13 +77,13 @@ fun LoginScreen(viewModel: LoginViewModel = hiltViewModel()) {
             // Use the launcher FOREGROUND (a PNG). The adaptive icon mipmaps resolve to
             // an XML adaptive-icon on Android 8+, which Compose's painterResource cannot
             // render (it throws for non-raster assets), crashing on launch. The white
-            // mark sits on the brand-green tile so it reads on the light background.
+            // mark sits on the brand-coloured tile so it reads on the light background.
             Box(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier
                     .size(120.dp)
                     .clip(RoundedCornerShape(28.dp))
-                    .background(Color(0xFF37974F)),
+                    .background(BrandPrimary),
             ) {
                 Image(
                     painter = painterResource(id = R.mipmap.ic_launcher_foreground),

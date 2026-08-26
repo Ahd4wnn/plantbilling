@@ -339,6 +339,8 @@
     <string name="lab_phone">ഫോൺ നമ്പർ</string>
     <string name="lab_aadhaar">ആധാർ നമ്പർ (നിർബന്ധമല്ല)</string>
     <string name="lab_wage_per_day">ദിവസക്കൂലി (₹)</string>
+    <string name="lab_joined_on">ചേർന്ന തീയതി</string>
+    <string name="lab_joined_since">%1$s മുതൽ</string>
     <string name="lab_gender">ലിംഗം</string>
     <string name="lab_gender_male">പുരുഷൻ</string>
     <string name="lab_gender_female">സ്ത്രീ</string>
@@ -551,4 +553,22 @@
     <string name="notif_action">തുറക്കുക</string>
     <!-- Login contact (for prospective customers) -->
     <string name="login_interested">PlantBill-ൽ താൽപ്പര്യമുണ്ടോ? ഞങ്ങളെ ബന്ധപ്പെടുക:</string>
+
+    <string name="own_dues_title">പിരിഞ്ഞുകിട്ടാനുള്ള പണം</string>
+    <string name="own_dues_all_time">ഇതുവരെ കിട്ടാനുള്ളത്</string>
+    <string name="own_dues_since">%1$s മുതൽ</string>
+    <string name="own_dues_bill">ബിൽ</string>
+    <string name="own_dues_bill_total">ബിൽ ആകെ %1$s</string>
+    <string name="own_dues_show_bills">പണം കിട്ടാനുള്ള ബില്ലുകൾ കാണിക്കുക</string>
+    <string name="own_dues_hide_bills">ബില്ലുകൾ മറയ്ക്കുക</string>
+    <string name="own_dues_none_title">പിരിഞ്ഞുകിട്ടാൻ ഒന്നുമില്ല</string>
+    <string name="own_dues_none_msg">ഈ കടയിലെ എല്ലാ ബില്ലുകളും പൂർണമായി അടച്ചിട്ടുണ്ട്.</string>
+    <plurals name="own_dues_customers">
+        <item quantity="one">%1$d ഉപഭോക്താവ് പണം തരാനുണ്ട്</item>
+        <item quantity="other">%1$d ഉപഭോക്താക്കൾ പണം തരാനുണ്ട്</item>
+    </plurals>
+    <plurals name="own_dues_bills">
+        <item quantity="one">%1$d ബിൽ അടച്ചിട്ടില്ല</item>
+        <item quantity="other">%1$d ബില്ലുകൾ അടച്ചിട്ടില്ല</item>
+    </plurals>
 </resources>

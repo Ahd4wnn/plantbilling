@@ -2,14 +2,57 @@ package com.plantora.billing.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-// Botanical-green brand palette. Confident, calm — "Apple's calm + Stripe's
-// clarity + real craft, scaled up for older eyes."
-val GreenPrimary = Color(0xFF2E7D46)
-val GreenPrimaryDark = Color(0xFF1F5C32)
-val GreenContainer = Color(0xFFB7E5C4)
-val OnGreenContainer = Color(0xFF06210F)
+/**
+ * The app's brand identity, as a set of interchangeable palettes.
+ *
+ * Everything brand-coloured in the app resolves through [ACTIVE_BRAND], so the
+ * whole look changes by editing one line — no find-and-replace, no risk of a
+ * stray old colour surviving in some screen nobody reopened.
+ *
+ * Every palette must keep white text on [primary] at WCAG AA (≥ 4.5:1): the
+ * audience is elderly shop owners and primary buttons are white-on-brand.
+ * [accent] is deliberately lighter — it is for icons and highlights only and
+ * must never sit behind white text.
+ *
+ * If the brand colour changes here, also update to match:
+ *   - `res/values/colors.xml`     (pre-Compose status bar + launcher background)
+ *   - the launcher/web/iOS icon PNGs
+ *   - `backend/app/services/report_xlsx.py` (the Excel report's header bands)
+ */
+sealed interface Brand {
+    val primary: Color
+    val primaryDark: Color
+    val container: Color
+    val onContainer: Color
+    val accent: Color
 
-val LeafAccent = Color(0xFF5BA86E)
+    /** Deep orange. White on #C2410C is 4.9:1. */
+    data object Orange : Brand {
+        override val primary = Color(0xFFC2410C)
+        override val primaryDark = Color(0xFF9A3412)
+        override val container = Color(0xFFFFE0CC)
+        override val onContainer = Color(0xFF3D1502)
+        override val accent = Color(0xFFF97316)
+    }
+
+    /** The original botanical green. White on #2E7D46 is 5.3:1. */
+    data object Green : Brand {
+        override val primary = Color(0xFF2E7D46)
+        override val primaryDark = Color(0xFF1F5C32)
+        override val container = Color(0xFFB7E5C4)
+        override val onContainer = Color(0xFF06210F)
+        override val accent = Color(0xFF5BA86E)
+    }
+}
+
+/** The live brand. Set this to [Brand.Green] to go back to botanical green. */
+val ACTIVE_BRAND: Brand = Brand.Orange
+
+val BrandPrimary = ACTIVE_BRAND.primary
+val BrandPrimaryDark = ACTIVE_BRAND.primaryDark
+val BrandContainer = ACTIVE_BRAND.container
+val OnBrandContainer = ACTIVE_BRAND.onContainer
+val BrandAccent = ACTIVE_BRAND.accent
 
 // Warm, near-white surfaces (not flat gray) for depth and legibility.
 val SurfaceWarm = Color(0xFFFBFAF7)
@@ -24,7 +67,10 @@ val InkSecondary = Color(0xFF4A4F55)
 val ErrorRed = Color(0xFFB3261E)
 val ErrorContainerRed = Color(0xFFF9DEDC)
 
-// Money / status accents.
+// Money / status accents. These are SEMANTIC, not brand: green means "cash
+// received", blue means UPI, amber means still owed. They stay put when the
+// brand colour changes so the three payment figures remain tellable apart at a
+// glance — which matters more here than colour-matching the brand.
 val CashGreen = Color(0xFF2E7D46)
 val UpiBlue = Color(0xFF2563A8)
 val DueAmber = Color(0xFFB26A00)

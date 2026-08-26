@@ -24,6 +24,7 @@ import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.rounded.Logout
+import androidx.compose.material.icons.rounded.AccountBalanceWallet
 import androidx.compose.material.icons.rounded.EmojiEvents
 import androidx.compose.material.icons.rounded.Storefront
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -72,6 +73,7 @@ import com.plantora.billing.domain.ShopOverviewRow
 import com.plantora.billing.domain.StaffPerf
 import com.plantora.billing.domain.User
 import com.plantora.billing.domain.formatBillTime
+import com.plantora.billing.domain.OwnerDues
 import com.plantora.billing.domain.toDisplay
 import com.plantora.billing.ui.components.ErrorState
 import com.plantora.billing.ui.components.LoadingState
@@ -81,6 +83,7 @@ import com.plantora.billing.ui.components.PlantoraTextField
 import com.plantora.billing.ui.components.PrimaryButton
 import com.plantora.billing.ui.components.SectionHeader
 import com.plantora.billing.ui.theme.Dimens
+import com.plantora.billing.ui.theme.DueAmber
 
 /** The signed-in shell for the multi-shop OWNER (oversight only). */
 @Composable
@@ -91,8 +94,15 @@ fun OwnerShell(user: User, onLogout: () -> Unit) {
             OwnerDashboardScreen(
                 email = user.email,
                 onOpenShop = { id -> nav.navigate("owner_shop/$id") },
+                onOpenDues = { id -> nav.navigate("owner_dues/$id") },
                 onLogout = onLogout,
             )
+        }
+        composable(
+            "owner_dues/{shopId}",
+            arguments = listOf(navArgument("shopId") { type = NavType.StringType }),
+        ) {
+            OwnerDuesScreen(onBack = { nav.popBackStack() })
         }
         composable(
             "owner_shop/{shopId}",
@@ -269,6 +279,7 @@ private fun KpiCard(label: String, value: String, modifier: Modifier = Modifier)
 private fun OwnerDashboardScreen(
     email: String,
     onOpenShop: (String) -> Unit,
+    onOpenDues: (String) -> Unit,
     onLogout: () -> Unit,
     viewModel: OwnerDashboardViewModel = hiltViewModel(),
 ) {
@@ -324,6 +335,9 @@ private fun OwnerDashboardScreen(
                         if ((o.cashTotal.amount + o.upiTotal.amount + o.dueTotal.amount).signum() > 0) {
                             item { PaymentMixCard(o.cashTotal, o.upiTotal, o.dueTotal) }
                         }
+                        ui.dues?.takeIf { it.totalOutstanding.isPositive() }?.let { dues ->
+                            item { DuesCard(dues, onOpenDues) }
+                        }
                         item { SectionHeader(stringResource(R.string.own_shops_count, o.shopCount)) }
                         if (o.shops.isEmpty()) {
                             item { Text(stringResource(R.string.own_no_shops), color = MaterialTheme.colorScheme.onSurfaceVariant) }
@@ -361,6 +375,72 @@ private fun androidx.compose.foundation.lazy.LazyListScope.itemsIndexedStaff(row
                     )
                 }
                 MoneyText(st.totalSales, style = MaterialTheme.typography.titleMedium)
+            }
+        }
+    }
+}
+
+/**
+ * Money still to collect, across every owned shop.
+ *
+ * Deliberately outside the period filter: the `dueTotal` on each [ShopRow] is
+ * "due created in the chosen dates" and falls to zero when the owner switches to
+ * Today. This is the standing balance — what customers actually still owe — so it
+ * says "all time" on its face to keep the two from being confused.
+ */
+@Composable
+private fun DuesCard(dues: OwnerDues, onOpenDues: (String) -> Unit) {
+    PlantoraCard {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                Icons.Rounded.AccountBalanceWallet,
+                contentDescription = null,
+                tint = DueAmber,
+                modifier = Modifier.padding(end = Dimens.sm),
+            )
+            Column(Modifier.weight(1f)) {
+                Text(
+                    stringResource(R.string.own_dues_title),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                Text(
+                    stringResource(R.string.own_dues_all_time),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            MoneyText(
+                dues.totalOutstanding,
+                style = MaterialTheme.typography.titleLarge,
+                color = DueAmber,
+            )
+        }
+        dues.shops.filter { it.outstanding.isPositive() }.forEach { shop ->
+            HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .clickable { onOpenDues(shop.shopId) }
+                    .padding(vertical = Dimens.sm),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text(shop.shopName, style = MaterialTheme.typography.bodyLarge)
+                    Text(
+                        pluralStringResource(
+                            R.plurals.own_dues_customers, shop.customerCount, shop.customerCount,
+                        ),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                MoneyText(shop.outstanding, style = MaterialTheme.typography.titleMedium)
+                Icon(
+                    Icons.AutoMirrored.Rounded.KeyboardArrowRight,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
         }
     }

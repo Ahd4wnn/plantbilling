@@ -22,6 +22,9 @@ class LabourerCreate(BaseModel):
     aadhaar: str | None = None
     gender: Gender
     default_wage: MoneyIn = Field(default=0)  # type: ignore[assignment]
+    # Omit to use today (IST) — the usual case, since a worker is normally added
+    # on the day they start. Set it when entering someone who started earlier.
+    joined_on: dt.date | None = None
 
 
 class LabourerUpdate(BaseModel):
@@ -31,6 +34,7 @@ class LabourerUpdate(BaseModel):
     gender: Gender | None = None
     default_wage: MoneyIn | None = None
     is_active: bool | None = None
+    joined_on: dt.date | None = None
 
 
 class LabourerOut(BaseModel):
@@ -50,6 +54,7 @@ class LabourerOut(BaseModel):
     total_paid: MoneyOut = 0  # type: ignore[assignment]
     earned: MoneyOut = 0  # type: ignore[assignment]
     balance_to_pay: MoneyOut = 0  # type: ignore[assignment]
+    joined_on: dt.date
     created_at: dt.datetime
 
     model_config = {"from_attributes": True}

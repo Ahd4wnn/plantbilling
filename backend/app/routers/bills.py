@@ -1207,7 +1207,7 @@ def download_detailed_report(
     import io
     from fastapi.responses import StreamingResponse
 
-    from app.services.report_xlsx import build_report_workbook
+    from app.services.report_xlsx import AttendanceMark, build_report_workbook
 
     today = _today_ist()
     d_from = date_from or today
@@ -1386,10 +1386,12 @@ def download_detailed_report(
     kpis.append(("Labour Paid", labour_total, "money"))
 
     # ── Attendance in range ──
-    _STATUS_LABEL = {"present": "Present", "absent": "Absent", "half_day": "Half-day"}
+    # Passed through raw (day, worker, joined, status). The report pivots it into a
+    # school-style register — workers down the side, days across the top — because
+    # that shape is a formatting concern, and a row-per-record list was unreadable.
     from app.models.labour import Labourer as _Labourer
     att_records = db.execute(
-        select(LabourAttendance, _Labourer.name)
+        select(LabourAttendance, _Labourer.name, _Labourer.joined_on)
         .join(_Labourer, _Labourer.id == LabourAttendance.labourer_id)
         .where(
             LabourAttendance.shop_id == target_shop_id,
@@ -1398,13 +1400,23 @@ def download_detailed_report(
         )
         .order_by(LabourAttendance.day.asc(), _Labourer.name.asc())
     ).all()
-    attendance_tab = [
-        [
-            str(a.day), name, _STATUS_LABEL.get(a.status, a.status),
-            _user_email(db, a.created_by) or "—",
-        ]
-        for a, name in att_records
+    attendance_marks = [
+        AttendanceMark(day=a.day, worker=name, joined_on=joined, status=a.status)
+        for a, name, joined in att_records
     ]
+    # The register's enrolment list — every worker still on the roster, so a
+    # worker nobody marked all month shows as an empty row rather than vanishing.
+    attendance_roster = [
+        (name, joined)
+        for name, joined in db.execute(
+            select(_Labourer.name, _Labourer.joined_on)
+            .where(_Labourer.shop_id == target_shop_id, _Labourer.is_active.is_(True))
+            .order_by(_Labourer.name.asc())
+        ).all()
+    ]
+    total_absent_days = sum(1 for m in attendance_marks if m.status == "absent")
+    if attendance_marks or attendance_roster:
+        kpis.append(("Absent Days (all workers)", total_absent_days, "int"))
 
     # Bill edit & delete log (from the audit table — starts at this feature's deploy)
     audit_rows = db.execute(
@@ -1429,7 +1441,9 @@ def download_detailed_report(
         expenses=expenses_tab,
         expenses_by_category=expenses_by_category_tab,
         labour=labour_tab,
-        attendance=attendance_tab,
+        attendance=attendance_marks,
+        attendance_range=(d_from, d_to),
+        attendance_roster=attendance_roster,
         audit=audit_tab,
     )
 

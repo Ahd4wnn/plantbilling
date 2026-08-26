@@ -196,12 +196,30 @@ gunzip -c ~/plantora-backup-YYYY-MM-DD-HHMM.sql.gz | \
 ### Recent deploys
 | Revision | What it adds |
 |---|---|
+| `b2c4d6e8f0a1` | **`labourers.joined_on`** — the date a worker joined. Additive; backfilled from `created_at` in Asia/Kolkata, defaults to `CURRENT_DATE`. Downgrade drops the column. Ships with the orange rebrand (app 0.1.40). |
 | `f9c1d2e3a4b5` | **Admin Sales & Expenses ledger** — `admin_sales` + `admin_expenses` (admin-only RLS, FORCE). Purely additive; downgrade drops both tables. |
 | `e2f3a4b5c6d7` | `bill_audit_log.action = 'account_delete'` |
 
 ---
 
-## 7. Post-deploy smoke test (this feature)
+## 7a. Post-deploy smoke test (orange rebrand / joining date / dues / register)
+
+1. **Frontend colour.** Hard-reload the web app — buttons, focus rings and the primary
+   fills are deep orange (`#C2410C`), not green. A stale `dist/` is the usual cause if not.
+2. **Joining date.** Labour → open a worker: "Joined <date>" shows, and it matches the day
+   they were added (not today). Edit it to an earlier date and reopen — it sticks. A future
+   date is refused in plain language.
+3. **Owner dues.** Log in as an **owner** → the dashboard shows a "Money to collect" card
+   with a per-shop breakdown; tap a shop for the customer list. Change the period filter —
+   the dues figure must **not** move (it's all-time by design). Collect a due in the shop
+   app and confirm the owner figure drops by exactly that amount.
+4. **Attendance register.** Sales → generate the report → the **Attendance Register** tab is
+   a month grid, absences shaded light red, per-worker P/H/A/Days totals on the right, and a
+   grand "TOTAL ABSENT DAYS" row that matches the new Summary KPI.
+
+---
+
+## 7. Post-deploy smoke test (admin ledger)
 
 1. Log in as **admin** → sidebar shows **Sales & Expenses** (`/admin/ledger`).
 2. **Log a sale** with a Cash/UPI/**Due** split → the "balanced ✓" indicator, then it

@@ -156,3 +156,64 @@ class OwnerStaffActivate(BaseModel):
 
 class OwnerStaffResetPassword(BaseModel):
     new_password: str = Field(min_length=8)
+
+
+# ── Outstanding dues (all-time, deliberately NOT period-scoped) ───────────────
+# The overview's `due_total` answers "how much due did we create this week?" and
+# drops back to zero when the date range moves. These answer the different, more
+# useful question: "how much money is still out there, and who has it?"
+
+
+class ShopDueRow(BaseModel):
+    """One shop's uncollected dues, across its whole history."""
+
+    shop_id: uuid.UUID
+    shop_name: str
+    outstanding: decimal.Decimal
+    bill_count: int
+    customer_count: int
+    oldest_due_date: dt.date | None = None
+
+    @field_serializer("outstanding")
+    def _ser(self, v: decimal.Decimal) -> str:
+        return f"{v:.2f}"
+
+
+class OwnerDuesOverview(BaseModel):
+    total_outstanding: decimal.Decimal
+    shops: list[ShopDueRow] = []
+
+    @field_serializer("total_outstanding")
+    def _ser(self, v: decimal.Decimal) -> str:
+        return f"{v:.2f}"
+
+
+class DueBillRow(BaseModel):
+    """A single unpaid bill behind a customer's outstanding balance."""
+
+    bill_id: uuid.UUID
+    bill_no: str | None = None
+    created_at: dt.datetime
+    total: decimal.Decimal
+    due_amount: decimal.Decimal
+
+    @field_serializer("total", "due_amount")
+    def _ser(self, v: decimal.Decimal) -> str:
+        return f"{v:.2f}"
+
+
+class CustomerDueRow(BaseModel):
+    """Everything one customer still owes a shop, with the bills behind it.
+    Bills with no customer attached collapse into a single 'Walk-in' row."""
+
+    customer_id: uuid.UUID | None = None
+    name: str
+    phone: str | None = None
+    outstanding: decimal.Decimal
+    bill_count: int
+    oldest_due_date: dt.date | None = None
+    bills: list[DueBillRow] = []
+
+    @field_serializer("outstanding")
+    def _ser(self, v: decimal.Decimal) -> str:
+        return f"{v:.2f}"

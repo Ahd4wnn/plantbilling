@@ -28,6 +28,11 @@ class Labourer(Base):
         Numeric(12, 2), nullable=False, server_default=text("0")
     )
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
+    # The day the worker joined the shop. Defaults to the day they were added,
+    # but editable — workers are often entered into the app after they started.
+    joined_on: Mapped[dt.date] = mapped_column(
+        nullable=False, server_default=text("CURRENT_DATE")
+    )
     created_by: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )

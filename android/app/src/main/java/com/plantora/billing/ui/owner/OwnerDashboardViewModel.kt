@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.plantora.billing.data.OwnerRepository
 import com.plantora.billing.data.remote.friendlyError
+import com.plantora.billing.domain.OwnerDues
 import com.plantora.billing.domain.OwnerOverview
 import com.plantora.billing.domain.toApiDate
 import com.plantora.billing.domain.todayInShopZone
@@ -22,6 +23,9 @@ data class OwnerDashboardState(
     val loading: Boolean = true,
     val error: String? = null,
     val overview: OwnerOverview? = null,
+    // Outstanding dues are all-time, so they live outside the period filter and
+    // are loaded once rather than on every date change.
+    val dues: OwnerDues? = null,
     val period: OwnerPeriod = OwnerPeriod.TODAY,
     val customFrom: LocalDate = todayInShopZone().minusDays(6),
     val customTo: LocalDate = todayInShopZone(),
@@ -35,7 +39,7 @@ class OwnerDashboardViewModel @Inject constructor(
     private val _ui = MutableStateFlow(OwnerDashboardState())
     val ui: StateFlow<OwnerDashboardState> = _ui.asStateFlow()
 
-    init { load() }
+    init { load(); loadDues() }
 
     fun setPeriod(p: OwnerPeriod) {
         if (p == _ui.value.period) return
@@ -67,6 +71,14 @@ class OwnerDashboardViewModel @Inject constructor(
             runCatching { repo.overview(from.toApiDate(), to.toApiDate()) }
                 .onSuccess { o -> _ui.update { it.copy(loading = false, overview = o) } }
                 .onFailure { e -> _ui.update { it.copy(loading = false, error = friendlyError(e)) } }
+        }
+    }
+
+    /** Dues fail quietly: they're a secondary card, and losing them shouldn't
+     *  replace the whole dashboard with an error the owner can't act on. */
+    fun loadDues() {
+        viewModelScope.launch {
+            runCatching { repo.dues() }.onSuccess { d -> _ui.update { it.copy(dues = d) } }
         }
     }
 }

@@ -56,6 +56,8 @@ import com.plantora.billing.ui.components.SecondaryButton
 import com.plantora.billing.ui.components.charts.BarChart
 import com.plantora.billing.ui.components.charts.BarDatum
 import com.plantora.billing.ui.components.charts.TrendLineChart
+import com.plantora.billing.ui.theme.BrandPrimary
+import com.plantora.billing.ui.theme.BrandPrimaryDark
 import com.plantora.billing.ui.theme.CashGreen
 import com.plantora.billing.ui.theme.Dimens
 import com.plantora.billing.ui.theme.UpiBlue
@@ -200,7 +202,7 @@ private fun TotalHero(report: DetailedReport) {
         Modifier
             .fillMaxWidth()
             .background(
-                Brush.linearGradient(listOf(Color(0xFF1F8A4C), Color(0xFF0E7A66))),
+                Brush.linearGradient(listOf(BrandPrimary, BrandPrimaryDark)),
                 MaterialTheme.shapes.large,
             )
             .padding(Dimens.xl),

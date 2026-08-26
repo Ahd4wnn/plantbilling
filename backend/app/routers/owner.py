@@ -32,6 +32,7 @@ from app.routers.labour import labourers_with_ledger, _payment_out
 from app.schemas.labour import LabourerOut, LabourPaymentOut
 from app.routers.bills import (
     SHOP_TZ,
+    _bill_no,
     _generate_report_data,
     _ist_day_bounds_utc,
     _payment_method,
@@ -46,8 +47,11 @@ from app.services.audit import record_account_deletion
 from app.schemas.bill import BillDetailOut, BillItemOut
 from app.schemas.report import DetailedReportResponse
 from app.schemas.owner import (
+    CustomerDueRow,
+    DueBillRow,
     OwnerBillList,
     OwnerBillRow,
+    OwnerDuesOverview,
     OwnerOverview,
     OwnerShop,
     OwnerShopUpdate,
@@ -55,6 +59,7 @@ from app.schemas.owner import (
     OwnerStaffCreate,
     OwnerStaffOut,
     OwnerStaffResetPassword,
+    ShopDueRow,
     ShopOverviewRow,
     StaffPerformance,
 )
@@ -323,6 +328,111 @@ def shop_labourer_payments(
 
 
 # ── Aggregate overview across all owned shops ─────────────────────────────────
+# ── Outstanding dues ──────────────────────────────────────────────────────────
+# Bill.due_amount IS the live balance: settlements decrement it as money comes in
+# (see settlements._apply_to_bill), so "still owed" is just the rows above zero.
+# Deliberately unfiltered by date — this is money out there, not this week's
+# activity, and a date filter would make it silently understate what's owed.
+
+
+@router.get("/dues", response_model=OwnerDuesOverview)
+def dues_overview(
+    db: Session = Depends(get_db),
+    owner: User = Depends(require_owner),
+) -> OwnerDuesOverview:
+    """How much each owned shop is still owed, all time, biggest first."""
+    shops = db.execute(
+        select(Shop)
+        .join(ShopOwner, ShopOwner.shop_id == Shop.id)
+        .where(ShopOwner.owner_id == owner.id)
+    ).scalars().all()
+    shop_name = {s.id: s.name for s in shops}
+    if not shop_name:
+        return OwnerDuesOverview(total_outstanding=ZERO, shops=[])
+
+    rows = db.execute(
+        select(
+            Bill.shop_id,
+            func.coalesce(func.sum(Bill.due_amount), 0),
+            func.count(Bill.id),
+            func.count(func.distinct(Bill.customer_id)),
+            func.min(Bill.created_at),
+        )
+        .where(Bill.shop_id.in_(list(shop_name)), Bill.due_amount > ZERO)
+        .group_by(Bill.shop_id)
+    ).all()
+    by_shop = {r[0]: r for r in rows}
+
+    out: list[ShopDueRow] = []
+    total = ZERO
+    for shop_id, name in shop_name.items():
+        r = by_shop.get(shop_id)
+        outstanding = q2(r[1]) if r else ZERO
+        total += outstanding
+        out.append(
+            ShopDueRow(
+                shop_id=shop_id,
+                shop_name=name,
+                outstanding=outstanding,
+                bill_count=r[2] if r else 0,
+                customer_count=r[3] if r else 0,
+                oldest_due_date=r[4].astimezone(SHOP_TZ).date() if r and r[4] else None,
+            )
+        )
+    # Shops that owe the most first; the ones at zero sink to the bottom.
+    out.sort(key=lambda s: (-s.outstanding, s.shop_name.lower()))
+    return OwnerDuesOverview(total_outstanding=q2(total), shops=out)
+
+
+@router.get("/shops/{shop_id}/dues", response_model=list[CustomerDueRow])
+def shop_dues(
+    shop_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    owner: User = Depends(require_owner),
+) -> list[CustomerDueRow]:
+    """Who owes this shop what, with the unpaid bills behind each balance.
+    Read-only: collecting a due stays a shop-side action so it goes through the
+    manager-approval flow in /settlements."""
+    _owned_shop_or_404(db, owner, shop_id)
+
+    rows = db.execute(
+        select(Bill, Customer.name, Customer.phone)
+        .outerjoin(Customer, Customer.id == Bill.customer_id)
+        .where(Bill.shop_id == shop_id, Bill.due_amount > ZERO)
+        .order_by(Bill.created_at.asc())
+    ).all()
+
+    # Bills with no customer attached are all one anonymous group — there is no
+    # person to chase, but the money still has to show up in the total.
+    grouped: dict[uuid.UUID | None, CustomerDueRow] = {}
+    for bill, name, phone in rows:
+        key = bill.customer_id
+        entry = grouped.get(key)
+        if entry is None:
+            entry = CustomerDueRow(
+                customer_id=key,
+                name=name or "Walk-in",
+                phone=phone,
+                outstanding=ZERO,
+                bill_count=0,
+                oldest_due_date=bill.created_at.astimezone(SHOP_TZ).date(),
+            )
+            grouped[key] = entry
+        entry.outstanding = q2(entry.outstanding + bill.due_amount)
+        entry.bill_count += 1
+        entry.bills.append(
+            DueBillRow(
+                bill_id=bill.id,
+                bill_no=_bill_no(bill),
+                created_at=bill.created_at,
+                total=bill.total,
+                due_amount=bill.due_amount,
+            )
+        )
+
+    return sorted(grouped.values(), key=lambda c: (-c.outstanding, c.name.lower()))
+
+
 @router.get("/overview", response_model=OwnerOverview)
 def overview(
     date_from: dt.date | None = Query(default=None),

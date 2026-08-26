@@ -30,6 +30,7 @@ internal fun LabourerDto.toDomain() = Labourer(
     totalPaid = Money.parse(totalPaid),
     earned = Money.parse(earned),
     balanceToPay = Money.parse(balanceToPay),
+    joinedOn = joinedOn,
     createdAt = createdAt,
 )
 
@@ -68,20 +69,22 @@ class LabourRepository @Inject constructor(
 
     suspend fun addLabourer(
         name: String, phone: String?, aadhaar: String?, gender: String, defaultWage: Money,
+        joinedOn: String? = null,
     ): Labourer = api.createLabourer(
         LabourerCreateDto(
             name = name.trim(), phone = phone?.trim()?.ifBlank { null }, aadhaar = aadhaar?.trim()?.ifBlank { null },
-            gender = gender, defaultWage = defaultWage.toWire(),
+            gender = gender, defaultWage = defaultWage.toWire(), joinedOn = joinedOn,
         ),
     ).toDomain()
 
     suspend fun updateLabourer(
         id: String, name: String, phone: String?, aadhaar: String?, gender: String, defaultWage: Money,
+        joinedOn: String? = null,
     ): Labourer = api.updateLabourer(
         id,
         LabourerUpdateDto(
             name = name.trim(), phone = phone?.trim() ?: "", aadhaar = aadhaar?.trim() ?: "",
-            gender = gender, defaultWage = defaultWage.toWire(),
+            gender = gender, defaultWage = defaultWage.toWire(), joinedOn = joinedOn,
         ),
     ).toDomain()
 

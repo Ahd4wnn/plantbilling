@@ -9,15 +9,19 @@ import com.plantora.billing.data.remote.dto.OwnerStaffCreateDto
 import com.plantora.billing.data.remote.dto.OwnerStaffDto
 import com.plantora.billing.data.remote.dto.ShopOverviewRowDto
 import com.plantora.billing.data.remote.dto.StaffPerfDto
+import com.plantora.billing.domain.CustomerDue
 import com.plantora.billing.domain.DetailedReport
+import com.plantora.billing.domain.DueBill
 import com.plantora.billing.domain.Labourer
 import com.plantora.billing.domain.LabourPayment
 import com.plantora.billing.domain.Money
 import com.plantora.billing.domain.OwnerBill
 import com.plantora.billing.domain.OwnerCashInHand
+import com.plantora.billing.domain.OwnerDues
 import com.plantora.billing.domain.OwnerOverview
 import com.plantora.billing.domain.OwnerShop
 import com.plantora.billing.domain.OwnerStaff
+import com.plantora.billing.domain.ShopDueRow
 import com.plantora.billing.domain.ShopOverviewRow
 import com.plantora.billing.domain.StaffPerf
 import javax.inject.Inject
@@ -40,6 +44,34 @@ class OwnerRepository @Inject constructor(
 
     suspend fun billDetail(shopId: String, billId: String): com.plantora.billing.domain.BillDetail =
         api.billDetail(shopId, billId).toDomain()
+
+    suspend fun dues(): OwnerDues = api.dues().let { d ->
+        OwnerDues(
+            totalOutstanding = Money.parse(d.totalOutstanding),
+            shops = d.shops.map {
+                ShopDueRow(
+                    shopId = it.shopId, shopName = it.shopName,
+                    outstanding = Money.parse(it.outstanding),
+                    billCount = it.billCount, customerCount = it.customerCount,
+                    oldestDueDate = it.oldestDueDate,
+                )
+            },
+        )
+    }
+
+    suspend fun shopDues(shopId: String): List<CustomerDue> = api.shopDues(shopId).map { c ->
+        CustomerDue(
+            customerId = c.customerId, name = c.name, phone = c.phone,
+            outstanding = Money.parse(c.outstanding), billCount = c.billCount,
+            oldestDueDate = c.oldestDueDate,
+            bills = c.bills.map { b ->
+                DueBill(
+                    billId = b.billId, billNo = b.billNo, createdAt = b.createdAt,
+                    total = Money.parse(b.total), dueAmount = Money.parse(b.dueAmount),
+                )
+            },
+        )
+    }
 
     suspend fun cashInHand(shopId: String, date: String?): OwnerCashInHand {
         val d = api.cashInHand(shopId, date)

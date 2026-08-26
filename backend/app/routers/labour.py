@@ -88,10 +88,22 @@ def labourers_with_ledger(db: Session, shop_id: uuid.UUID | None = None) -> list
                 id=l.id, name=l.name, phone=l.phone, aadhaar=l.aadhaar, gender=l.gender,  # type: ignore[arg-type]
                 default_wage=l.default_wage, is_active=l.is_active,
                 days_worked=_num_str(days), total_paid=q2(paid), earned=earned,
-                balance_to_pay=q2(earned - paid), created_at=l.created_at,
+                balance_to_pay=q2(earned - paid), joined_on=l.joined_on,
+                created_at=l.created_at,
             )
         )
     return out
+
+
+def _checked_joining_date(value: dt.date | None) -> dt.date:
+    """Default to today (IST, like every other day boundary here). A future date
+    is always a typo — nobody joins next month — so refuse it in plain language."""
+    today = _today_ist()
+    if value is None:
+        return today
+    if value > today:
+        raise _http422("The joining date can't be in the future.")
+    return value
 
 
 def _require_shop(user: User) -> uuid.UUID:
@@ -147,6 +159,7 @@ def create_labourer(
         aadhaar=(payload.aadhaar or "").strip() or None,
         gender=payload.gender,
         default_wage=q2(payload.default_wage),
+        joined_on=_checked_joining_date(payload.joined_on),
         created_by=user.id,
     )
     db.add(labourer)
@@ -156,7 +169,7 @@ def create_labourer(
         id=labourer.id, name=labourer.name, phone=labourer.phone, aadhaar=labourer.aadhaar, gender=labourer.gender,  # type: ignore[arg-type]
         default_wage=labourer.default_wage,
         is_active=labourer.is_active, days_worked="0", total_paid=ZERO, earned=ZERO,
-        balance_to_pay=ZERO, created_at=labourer.created_at,
+        balance_to_pay=ZERO, joined_on=labourer.joined_on, created_at=labourer.created_at,
     )
 
 
@@ -184,6 +197,8 @@ def update_labourer(
         labourer.default_wage = q2(payload.default_wage)
     if payload.is_active is not None:
         labourer.is_active = payload.is_active
+    if payload.joined_on is not None:
+        labourer.joined_on = _checked_joining_date(payload.joined_on)
 
     db.flush()
     db.refresh(labourer)
@@ -195,7 +210,7 @@ def update_labourer(
         id=labourer.id, name=labourer.name, phone=labourer.phone, aadhaar=labourer.aadhaar, gender=labourer.gender,  # type: ignore[arg-type]
         default_wage=labourer.default_wage,
         is_active=labourer.is_active, days_worked="0", total_paid=ZERO, earned=ZERO,
-        balance_to_pay=ZERO, created_at=labourer.created_at,
+        balance_to_pay=ZERO, joined_on=labourer.joined_on, created_at=labourer.created_at,
     )
 
 

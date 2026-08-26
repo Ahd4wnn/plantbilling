@@ -60,6 +60,9 @@ import com.plantora.billing.domain.Labourer
 import com.plantora.billing.domain.LabourPayment
 import com.plantora.billing.domain.Money
 import com.plantora.billing.domain.formatBillTime
+import com.plantora.billing.domain.formatPlainDate
+import com.plantora.billing.domain.todayInShopZone
+import com.plantora.billing.ui.components.DatePickerField
 import com.plantora.billing.ui.components.ErrorState
 import com.plantora.billing.ui.components.LoadingState
 import com.plantora.billing.ui.components.MoneyText
@@ -150,7 +153,7 @@ fun LabourScreen(
 
     ui.workerEditor?.let { editor ->
         ModalBottomSheet(onDismissRequest = viewModel::closeWorker, sheetState = sheet) {
-            WorkerEditorSheet(editor, viewModel::setWorkerName, viewModel::setWorkerPhone, viewModel::setWorkerAadhaar, viewModel::setWorkerGender, viewModel::setWorkerWage, viewModel::saveWorker)
+            WorkerEditorSheet(editor, viewModel::setWorkerName, viewModel::setWorkerPhone, viewModel::setWorkerAadhaar, viewModel::setWorkerGender, viewModel::setWorkerWage, viewModel::setWorkerJoinedOn, viewModel::saveWorker)
         }
     }
     ui.paymentEditor?.let { editor ->
@@ -181,7 +184,8 @@ private fun WorkerRow(l: Labourer, canManage: Boolean, onOpen: () -> Unit, onEdi
             Column(Modifier.weight(1f)) {
                 Text(l.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                 Text(
-                    genderLabel(l.gender) + " • " + stringResource(R.string.lab_per_day, l.defaultWage.format()) + (l.phone?.let { " • $it" } ?: ""),
+                    genderLabel(l.gender) + " • " + stringResource(R.string.lab_per_day, l.defaultWage.format()) + (l.phone?.let { " • $it" } ?: "") +
+                        (l.joinedOn?.let { " • " + stringResource(R.string.lab_joined_since, formatPlainDate(it)) } ?: ""),
                     style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 when {
@@ -223,7 +227,7 @@ private fun PaymentRow(p: LabourPayment, canManage: Boolean, onEdit: () -> Unit,
 }
 
 @Composable
-private fun WorkerEditorSheet(editor: WorkerEditor, onName: (String) -> Unit, onPhone: (String) -> Unit, onAadhaar: (String) -> Unit, onGender: (String) -> Unit, onWage: (String) -> Unit, onSave: () -> Unit) {
+private fun WorkerEditorSheet(editor: WorkerEditor, onName: (String) -> Unit, onPhone: (String) -> Unit, onAadhaar: (String) -> Unit, onGender: (String) -> Unit, onWage: (String) -> Unit, onJoinedOn: (java.time.LocalDate) -> Unit, onSave: () -> Unit) {
     Column(Modifier.fillMaxWidth().imePadding().verticalScroll(rememberScrollState()).padding(horizontal = Dimens.lg).padding(bottom = Dimens.xl)) {
         Text(if (editor.id != null) stringResource(R.string.cd_edit_worker) else stringResource(R.string.lab_add_worker), style = MaterialTheme.typography.headlineMedium)
         Spacer(Modifier.height(Dimens.lg))
@@ -236,6 +240,17 @@ private fun WorkerEditorSheet(editor: WorkerEditor, onName: (String) -> Unit, on
         GenderToggle(editor.gender, onGender)
         Spacer(Modifier.height(Dimens.md))
         PlantoraTextField(editor.wage, onWage, label = stringResource(R.string.lab_wage_per_day), keyboardType = KeyboardType.Decimal)
+        Spacer(Modifier.height(Dimens.md))
+        Text(stringResource(R.string.lab_joined_on), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Spacer(Modifier.height(Dimens.xs))
+        // Defaults to today for a new worker. Nobody joins in the future, so the
+        // picker simply won't offer a later date.
+        DatePickerField(
+            date = editor.joinedOn,
+            onDate = onJoinedOn,
+            maxDate = todayInShopZone(),
+            modifier = Modifier.fillMaxWidth(),
+        )
         editor.error?.let { Spacer(Modifier.height(Dimens.md)); Text(it, color = MaterialTheme.colorScheme.error) }
         Spacer(Modifier.height(Dimens.xl))
         PrimaryButton(text = if (editor.id != null) stringResource(R.string.action_save_changes) else stringResource(R.string.lab_add_worker), onClick = onSave, enabled = editor.canSave, loading = editor.saving, modifier = Modifier.fillMaxWidth())
@@ -328,6 +343,13 @@ private fun WorkerDetailSheet(detail: WorkerDetail, onRecord: () -> Unit, onAdva
     Column(Modifier.fillMaxWidth().imePadding().verticalScroll(rememberScrollState()).padding(horizontal = Dimens.lg).padding(bottom = Dimens.xl)) {
         Text(l.name, style = MaterialTheme.typography.headlineMedium)
         Text(genderLabel(l.gender) + (l.phone?.let { " • $it" } ?: "") + (l.aadhaar?.let { " • " + stringResource(R.string.lab_aadhaar_val, it) } ?: ""), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        l.joinedOn?.let {
+            Text(
+                stringResource(R.string.lab_joined_since, formatPlainDate(it)),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
         Spacer(Modifier.height(Dimens.md))
 
         // Statement of pay

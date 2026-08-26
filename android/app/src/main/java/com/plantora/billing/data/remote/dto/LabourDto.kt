@@ -17,6 +17,7 @@ data class LabourerDto(
     @SerialName("total_paid") val totalPaid: String = "0",
     @SerialName("earned") val earned: String = "0",
     @SerialName("balance_to_pay") val balanceToPay: String = "0",
+    @SerialName("joined_on") val joinedOn: String? = null,
     @SerialName("created_at") val createdAt: String,
 )
 
@@ -27,6 +28,8 @@ data class LabourerCreateDto(
     val aadhaar: String? = null,
     val gender: String,
     @SerialName("default_wage") val defaultWage: String = "0",
+    // Omitted (null) means "today" — the server fills it in IST.
+    @SerialName("joined_on") val joinedOn: String? = null,
 )
 
 @Serializable
@@ -37,6 +40,7 @@ data class LabourerUpdateDto(
     val gender: String? = null,
     @SerialName("default_wage") val defaultWage: String? = null,
     @SerialName("is_active") val isActive: Boolean? = null,
+    @SerialName("joined_on") val joinedOn: String? = null,
 )
 
 // ── Payment ──────────────────────────────────────────────────────────────────

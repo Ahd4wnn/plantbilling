@@ -13,12 +13,17 @@ import androidx.core.view.WindowCompat
 // Light-first scheme. A dark scheme can be added later; the brief prioritises a
 // bright, high-contrast surface for legibility.
 private val PlantoraLightColors = lightColorScheme(
-    primary = GreenPrimary,
+    primary = BrandPrimary,
     onPrimary = SurfaceCard,
-    primaryContainer = GreenContainer,
-    onPrimaryContainer = OnGreenContainer,
-    secondary = LeafAccent,
+    primaryContainer = BrandContainer,
+    onPrimaryContainer = OnBrandContainer,
+    secondary = BrandAccent,
     onSecondary = SurfaceCard,
+    // Left unset, these fall back to Material's baseline purple — which is what
+    // the quick-add FAB on the Bill screen was drawing itself in, next to a
+    // brand-coloured cart FAB. Tie them to the brand so the pair belongs together.
+    secondaryContainer = BrandContainer,
+    onSecondaryContainer = OnBrandContainer,
     background = SurfaceWarm,
     onBackground = InkPrimary,
     surface = SurfaceCard,
@@ -44,7 +49,7 @@ fun PlantoraTheme(
     if (!view.isInEditMode) {
         SideEffect {
             val window = (view.context as Activity).window
-            window.statusBarColor = GreenPrimaryDark.toArgb()
+            window.statusBarColor = BrandPrimaryDark.toArgb()
             WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = false
         }
     }

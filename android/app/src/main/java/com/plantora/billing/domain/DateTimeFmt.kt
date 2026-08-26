@@ -16,10 +16,21 @@ private val dayFmt: DateTimeFormatter = DateTimeFormatter.ofPattern("EEE, d MMM 
 // Printed receipts keep the year (a receipt is a record the customer may hold for
 // months), e.g. "30 Jul 2026, 3:13 PM".
 private val receiptFmt: DateTimeFormatter = DateTimeFormatter.ofPattern("d MMM yyyy, h:mm a", Locale.ENGLISH)
+// A plain calendar date with the year, e.g. "12 Mar 2026" — for dates that aren't
+// about "when today", like a worker's joining date.
+private val plainDateFmt: DateTimeFormatter = DateTimeFormatter.ofPattern("d MMM yyyy", Locale.ENGLISH)
 
 fun todayInShopZone(): LocalDate = LocalDate.now(SHOP_ZONE)
 
 fun LocalDate.toApiDate(): String = format(apiDate)
+
+/** Parse a server date (yyyy-MM-dd). Null if absent or unparsable. */
+fun parseApiDate(raw: String?): LocalDate? =
+    raw?.let { runCatching { LocalDate.parse(it, apiDate) }.getOrNull() }
+
+/** Server date (yyyy-MM-dd) → "12 Mar 2026". Falls back to the raw text. */
+fun formatPlainDate(raw: String?): String =
+    parseApiDate(raw)?.format(plainDateFmt) ?: (raw ?: "")
 
 fun LocalDate.toDisplay(): String = format(dayFmt)
 

@@ -1,11 +1,13 @@
 package com.plantora.billing.data.remote.api
 
 import com.plantora.billing.data.remote.dto.BillDetailDto
+import com.plantora.billing.data.remote.dto.CustomerDueDto
 import com.plantora.billing.data.remote.dto.DetailedReportDto
 import com.plantora.billing.data.remote.dto.LabourPaymentDto
 import com.plantora.billing.data.remote.dto.LabourerDto
 import com.plantora.billing.data.remote.dto.OwnerBillListDto
 import com.plantora.billing.data.remote.dto.OwnerCashInHandDto
+import com.plantora.billing.data.remote.dto.OwnerDuesDto
 import com.plantora.billing.data.remote.dto.OwnerOverviewDto
 import com.plantora.billing.data.remote.dto.OwnerShopDto
 import com.plantora.billing.data.remote.dto.OwnerShopUpdateDto
@@ -49,6 +51,14 @@ interface OwnerApi {
 
     @GET("/owner/shops/{shopId}/bills/{billId}")
     suspend fun billDetail(@Path("shopId") shopId: String, @Path("billId") billId: String): BillDetailDto
+
+    /** All-time uncollected dues per owned shop. Deliberately has no date range. */
+    @GET("/owner/dues")
+    suspend fun dues(): OwnerDuesDto
+
+    /** Who owes one shop what, with the unpaid bills behind each balance. */
+    @GET("/owner/shops/{id}/dues")
+    suspend fun shopDues(@Path("id") id: String): List<CustomerDueDto>
 
     @GET("/owner/shops/{id}/cash-in-hand")
     suspend fun cashInHand(@Path("id") id: String, @Query("date") date: String? = null): OwnerCashInHandDto
