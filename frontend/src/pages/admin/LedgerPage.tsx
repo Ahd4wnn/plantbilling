@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Plus,
   Wallet,
@@ -8,42 +8,93 @@ import {
   TrendingDown,
   X,
   Trash2,
+  Undo2,
   IndianRupee,
 } from "lucide-react";
 import {
   listSales,
   listExpenses,
+  listTrash,
   createSale,
   createExpense,
   collectDue,
   deleteSale,
   deleteExpense,
+  restoreSale,
+  restoreExpense,
   getLedgerSummary,
   type AdminSale,
   type AdminExpense,
   type LedgerSummary,
   type PaymentMethod,
+  type TrashedEntry,
 } from "@/api/adminLedger";
 import { friendlyError } from "@/api/client";
 import { Button } from "@/components/Button";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { Spinner } from "@/components/Spinner";
 import { Bars } from "@/components/MiniChart";
 import { formatINR, toPaise, fromPaise } from "@/lib/money";
-import { todayISO, shiftDay, formatDay } from "@/lib/datetime";
+import { todayISO, shiftDay, formatDay, formatDateTime } from "@/lib/datetime";
 
-type Period = "today" | "week" | "month";
-type Tab = "sales" | "expenses" | "dues";
+type Period = "today" | "week" | "month" | "year" | "all";
+type Tab = "sales" | "expenses" | "dues" | "trash";
 
-function rangeFor(period: Period): { from: string; to: string } {
+/** How many rows each list pulls per request. The API caps this at 200. */
+const PAGE_SIZE = 100;
+
+const PERIOD_LABEL: Record<Period, string> = {
+  today: "Today",
+  week: "7 days",
+  month: "30 days",
+  year: "This year",
+  all: "All time",
+};
+
+/** Prose for the KPI captions, so a tile never implies it's a lifetime total. */
+const PERIOD_CAPTION: Record<Period, string> = {
+  today: "today",
+  week: "in the last 7 days",
+  month: "in the last 30 days",
+  year: "this year",
+  all: "all time",
+};
+
+/**
+ * The window each period covers. "all" returns no bounds at all: the params are
+ * then omitted from the request and the API returns everything.
+ *
+ * There deliberately IS an all-time option. Without one, the page silently
+ * capped every list and every total at 30 days, and entries older than that
+ * looked as though they had been deleted.
+ */
+function rangeFor(period: Period): { from?: string; to?: string } {
   const to = todayISO();
+  if (period === "all") return {};
   if (period === "today") return { from: to, to };
+  if (period === "year") return { from: `${to.slice(0, 4)}-01-01`, to };
   return { from: shiftDay(to, period === "week" ? -6 : -29), to };
+}
+
+const PERIOD_KEY = "plantora.ledger.period";
+
+function loadPeriod(): Period {
+  const saved = localStorage.getItem(PERIOD_KEY);
+  return saved && saved in PERIOD_LABEL ? (saved as Period) : "month";
 }
 
 const inr = (s: string) => formatINR(toPaise(s));
 
+export type Range = { from?: string; to?: string };
+
 export function LedgerPage() {
-  const [period, setPeriod] = useState<Period>("month");
+  // Remembered across visits: an admin who switches to All time to find an old
+  // entry shouldn't be dropped back into the 30-day window on every reload.
+  const [period, setPeriodState] = useState<Period>(loadPeriod);
+  const setPeriod = useCallback((p: Period) => {
+    setPeriodState(p);
+    localStorage.setItem(PERIOD_KEY, p);
+  }, []);
   const range = useMemo(() => rangeFor(period), [period]);
   const [reloadKey, setReloadKey] = useState(0);
   const refresh = useCallback(() => setReloadKey((k) => k + 1), []);
@@ -61,14 +112,14 @@ export function LedgerPage() {
     let alive = true;
     setSumLoading(true);
     setSumError(null);
-    getLedgerSummary(range.from, range.to)
+    getLedgerSummary(range.from, range.to, period === "all")
       .then((d) => alive && setSummary(d))
       .catch((e) => alive && setSumError(friendlyError(e, "Couldn't load the summary.")))
       .finally(() => alive && setSumLoading(false));
     return () => {
       alive = false;
     };
-  }, [range.from, range.to, reloadKey]);
+  }, [range.from, range.to, period, reloadKey]);
 
   return (
     <div className="space-y-6">
@@ -79,8 +130,8 @@ export function LedgerPage() {
           <p className="text-base font-semibold text-ink-soft">Your own books — money you earn and spend</p>
         </div>
         <div className="flex items-center gap-2">
-          <div className="flex rounded-control border border-border bg-white p-1">
-            {(["today", "week", "month"] as Period[]).map((p) => (
+          <div className="flex flex-wrap rounded-control border border-border bg-white p-1">
+            {(["today", "week", "month", "year", "all"] as Period[]).map((p) => (
               <button
                 key={p}
                 type="button"
@@ -90,7 +141,7 @@ export function LedgerPage() {
                   period === p ? "bg-primary-600 text-white" : "text-ink-soft hover:bg-surface-muted",
                 ].join(" ")}
               >
-                {p === "week" ? "7 days" : p === "month" ? "30 days" : "Today"}
+                {PERIOD_LABEL[p]}
               </button>
             ))}
           </div>
@@ -111,7 +162,7 @@ export function LedgerPage() {
           </Button>
         </div>
       )}
-      {summary && !sumLoading && <Dashboard summary={summary} />}
+      {summary && !sumLoading && <Dashboard summary={summary} period={period} />}
 
       {/* Add actions */}
       <div className="flex flex-wrap gap-3">
@@ -130,6 +181,7 @@ export function LedgerPage() {
             ["sales", "Sales"],
             ["expenses", "Expenses"],
             ["dues", "Outstanding dues"],
+            ["trash", "Recently deleted"],
           ] as [Tab, string][]
         ).map(([t, label]) => (
           <button
@@ -146,9 +198,10 @@ export function LedgerPage() {
         ))}
       </div>
 
-      {tab === "sales" && <SalesList range={range} reloadKey={reloadKey} onChanged={refresh} />}
-      {tab === "expenses" && <ExpensesList range={range} reloadKey={reloadKey} onChanged={refresh} />}
+      {tab === "sales" && <SalesList range={range} period={period} reloadKey={reloadKey} onChanged={refresh} />}
+      {tab === "expenses" && <ExpensesList range={range} period={period} reloadKey={reloadKey} onChanged={refresh} />}
       {tab === "dues" && <DuesList reloadKey={reloadKey} onChanged={refresh} />}
+      {tab === "trash" && <TrashListView reloadKey={reloadKey} onChanged={refresh} />}
 
       {addSaleOpen && (
         <AddSaleModal
@@ -173,9 +226,14 @@ export function LedgerPage() {
 }
 
 // ── Dashboard ────────────────────────────────────────────────────────────
-function Dashboard({ summary }: { summary: LedgerSummary }) {
+function Dashboard({ summary, period }: { summary: LedgerSummary; period: Period }) {
   const collected = toPaise(summary.cash_collected) + toPaise(summary.upi_collected);
   const netPositive = toPaise(summary.net_collected) >= 0;
+  const when = PERIOD_CAPTION[period];
+  // The tile shows every rupee still owed, ever — not just dues on sales that
+  // happen to fall inside the current window. It used to show the windowed
+  // figure, which disagreed with the Outstanding dues tab on this same page.
+  const dueP = toPaise(summary.outstanding_due_all_time);
 
   const trend = summary.trend.map((t) => ({
     label: formatDay(`${t.date}T00:00:00`),
@@ -190,28 +248,32 @@ function Dashboard({ summary }: { summary: LedgerSummary }) {
             icon={<IndianRupee className="h-4 w-4" />}
             label="Total sales"
             value={inr(summary.total_sales)}
-            sub={`${summary.sales_count} sale${summary.sales_count === 1 ? "" : "s"}`}
+            sub={`${summary.sales_count} sale${summary.sales_count === 1 ? "" : "s"} ${when}`}
             accent="text-ink"
           />
           <Kpi
             icon={<TrendingUp className="h-4 w-4" />}
             label="Collected"
             value={formatINR(collected)}
-            sub="cash + UPI in hand"
+            sub={`cash + UPI ${when}`}
             accent="text-primary-700"
           />
           <Kpi
             icon={<Clock className="h-4 w-4" />}
             label="Outstanding due"
-            value={inr(summary.outstanding_due)}
-            sub={toPaise(summary.outstanding_due) > 0 ? "to collect later" : "all settled"}
-            accent={toPaise(summary.outstanding_due) > 0 ? "text-warning" : "text-ink-soft"}
+            value={inr(summary.outstanding_due_all_time)}
+            sub={
+              dueP > 0
+                ? `all time · ${summary.dues_count_all_time} unpaid`
+                : "all time · all settled"
+            }
+            accent={dueP > 0 ? "text-warning" : "text-ink-soft"}
           />
           <Kpi
             icon={<TrendingDown className="h-4 w-4" />}
             label="Expenses"
             value={inr(summary.total_expenses)}
-            sub={`${summary.expenses_count} entr${summary.expenses_count === 1 ? "y" : "ies"}`}
+            sub={`${summary.expenses_count} entr${summary.expenses_count === 1 ? "y" : "ies"} ${when}`}
             accent="text-ink"
           />
         </div>
@@ -226,7 +288,9 @@ function Dashboard({ summary }: { summary: LedgerSummary }) {
               netPositive ? "border-primary-100 bg-primary-50" : "border-danger-soft bg-danger-soft/40",
             ].join(" ")}
           >
-            <div className="text-xs font-bold uppercase tracking-wider text-ink-soft">Net (collected − expenses)</div>
+            <div className="text-xs font-bold uppercase tracking-wider text-ink-soft">
+              Net (collected − expenses) · {when}
+            </div>
             <div className={["mt-0.5 text-2xl font-extrabold tracking-tight", netPositive ? "text-primary-700" : "text-danger"].join(" ")}>
               {inr(summary.net_collected)}
             </div>
@@ -282,38 +346,131 @@ function SplitTile({ icon, label, value, tone }: { icon: React.ReactNode; label:
   );
 }
 
-// ── Sales list ─────────────────────────────────────────────────────────────
-function SalesList({ range, reloadKey, onChanged }: { range: { from: string; to: string }; reloadKey: number; onChanged: () => void }) {
-  const [rows, setRows] = useState<AdminSale[]>([]);
+// ── Paging ─────────────────────────────────────────────────────────────────
+/**
+ * A list that loads one page at a time and can fetch the rest.
+ *
+ * The lists here used to ask for 100 rows, throw away the `has_more` flag the
+ * API returns, and render whatever came back — so beyond 100 entries the rest
+ * simply weren't on screen, with nothing to say so. A list showing a subset has
+ * to offer the remainder.
+ */
+function usePagedList<T>(
+  fetchPage: (offset: number) => Promise<{ items: T[]; has_more: boolean }>,
+  errorMessage: string,
+  deps: React.DependencyList,
+) {
+  const [rows, setRows] = useState<T[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Held in a ref so callers can pass an inline closure without the effect
+  // refiring on every render; `deps` stays the single source of when to reload.
+  const fetchRef = useRef(fetchPage);
+  fetchRef.current = fetchPage;
 
   useEffect(() => {
     let alive = true;
     setLoading(true);
     setError(null);
-    listSales({ date_from: range.from, date_to: range.to, limit: 100 })
-      .then((r) => alive && setRows(r.items))
-      .catch((e) => alive && setError(friendlyError(e, "Couldn't load sales.")))
+    fetchRef.current(0)
+      .then((r) => {
+        if (!alive) return;
+        setRows(r.items);
+        setHasMore(r.has_more);
+      })
+      .catch((e) => alive && setError(friendlyError(e, errorMessage)))
       .finally(() => alive && setLoading(false));
     return () => {
       alive = false;
     };
-  }, [range.from, range.to, reloadKey]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, deps);
 
-  const onDelete = async (id: string) => {
-    if (!window.confirm("Delete this sale? This can't be undone.")) return;
+  const loadMore = useCallback(async () => {
+    setLoadingMore(true);
     try {
-      await deleteSale(id);
+      const r = await fetchRef.current(rows.length);
+      setRows((prev) => [...prev, ...r.items]);
+      setHasMore(r.has_more);
+    } catch (e) {
+      setError(friendlyError(e, errorMessage));
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [rows.length, errorMessage]);
+
+  return { rows, loading, loadingMore, hasMore, error, loadMore };
+}
+
+function LoadMore({
+  shown,
+  loading,
+  onClick,
+}: {
+  shown: number;
+  loading: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <div className="pt-2 text-center">
+      <Button variant="secondary" size="tap" onClick={onClick} loading={loading} loadingLabel="Loading…">
+        Load more
+      </Button>
+      <p className="mt-2 text-sm font-medium text-ink-soft">
+        Showing the first {shown} — there are more.
+      </p>
+    </div>
+  );
+}
+
+// ── Sales list ─────────────────────────────────────────────────────────────
+function SalesList({
+  range,
+  period,
+  reloadKey,
+  onChanged,
+}: {
+  range: Range;
+  period: Period;
+  reloadKey: number;
+  onChanged: () => void;
+}) {
+  const { rows, loading, loadingMore, hasMore, error, loadMore } = usePagedList<AdminSale>(
+    (offset) =>
+      listSales({ date_from: range.from, date_to: range.to, limit: PAGE_SIZE, offset }),
+    "Couldn't load sales.",
+    [range.from, range.to, reloadKey],
+  );
+  const [pendingDelete, setPendingDelete] = useState<AdminSale | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  const confirmDelete = async () => {
+    if (!pendingDelete) return;
+    try {
+      await deleteSale(pendingDelete.id);
+      setPendingDelete(null);
+      setDeleteError(null);
       onChanged();
     } catch (e) {
-      alert(friendlyError(e, "Couldn't delete the sale."));
+      setDeleteError(friendlyError(e, "Couldn't delete the sale."));
     }
   };
 
   if (loading) return <ListSpinner />;
   if (error) return <ListError message={error} />;
-  if (rows.length === 0) return <Empty message="No sales in this period yet. Log your first sale above." />;
+  if (rows.length === 0)
+    return (
+      <Empty
+        message={
+          period === "all"
+            ? "No sales recorded yet. Log your first sale above."
+            : `No sales ${PERIOD_CAPTION[period]}. Try “All time” to see older entries.`
+        }
+      />
+    );
 
   return (
     <div className="space-y-2">
@@ -332,7 +489,7 @@ function SalesList({ range, reloadKey, onChanged }: { range: { from: string; to:
             <span className="text-lg font-extrabold tracking-tight text-ink">{inr(s.amount)}</span>
             <button
               type="button"
-              onClick={() => onDelete(s.id)}
+              onClick={() => setPendingDelete(s)}
               className="rounded-lg p-2 text-ink-soft hover:bg-danger-soft hover:text-danger"
               aria-label="Delete sale"
             >
@@ -341,6 +498,29 @@ function SalesList({ range, reloadKey, onChanged }: { range: { from: string; to:
           </div>
         </div>
       ))}
+      {hasMore && <LoadMore shown={rows.length} loading={loadingMore} onClick={loadMore} />}
+
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        title="Delete this sale?"
+        body={
+          <>
+            <strong className="text-ink">{pendingDelete?.title}</strong>
+            {pendingDelete ? ` — ${inr(pendingDelete.amount)}` : ""}
+            <br />
+            It moves to Recently deleted, where you can restore it.
+            {deleteError && <span className="mt-2 block font-semibold text-danger">{deleteError}</span>}
+          </>
+        }
+        confirmLabel="Delete"
+        cancelLabel="Keep it"
+        destructive
+        onConfirm={confirmDelete}
+        onCancel={() => {
+          setPendingDelete(null);
+          setDeleteError(null);
+        }}
+      />
     </div>
   );
 }
@@ -354,37 +534,50 @@ function PaymentBadges({ sale }: { sale: AdminSale }) {
 }
 
 // ── Expenses list ────────────────────────────────────────────────────────
-function ExpensesList({ range, reloadKey, onChanged }: { range: { from: string; to: string }; reloadKey: number; onChanged: () => void }) {
-  const [rows, setRows] = useState<AdminExpense[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+function ExpensesList({
+  range,
+  period,
+  reloadKey,
+  onChanged,
+}: {
+  range: Range;
+  period: Period;
+  reloadKey: number;
+  onChanged: () => void;
+}) {
+  const { rows, loading, loadingMore, hasMore, error, loadMore } = usePagedList<AdminExpense>(
+    (offset) =>
+      listExpenses({ date_from: range.from, date_to: range.to, limit: PAGE_SIZE, offset }),
+    "Couldn't load expenses.",
+    [range.from, range.to, reloadKey],
+  );
+  const [pendingDelete, setPendingDelete] = useState<AdminExpense | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
-  useEffect(() => {
-    let alive = true;
-    setLoading(true);
-    setError(null);
-    listExpenses({ date_from: range.from, date_to: range.to, limit: 100 })
-      .then((r) => alive && setRows(r.items))
-      .catch((e) => alive && setError(friendlyError(e, "Couldn't load expenses.")))
-      .finally(() => alive && setLoading(false));
-    return () => {
-      alive = false;
-    };
-  }, [range.from, range.to, reloadKey]);
-
-  const onDelete = async (id: string) => {
-    if (!window.confirm("Delete this expense? This can't be undone.")) return;
+  const confirmDelete = async () => {
+    if (!pendingDelete) return;
     try {
-      await deleteExpense(id);
+      await deleteExpense(pendingDelete.id);
+      setPendingDelete(null);
+      setDeleteError(null);
       onChanged();
     } catch (e) {
-      alert(friendlyError(e, "Couldn't delete the expense."));
+      setDeleteError(friendlyError(e, "Couldn't delete the expense."));
     }
   };
 
   if (loading) return <ListSpinner />;
   if (error) return <ListError message={error} />;
-  if (rows.length === 0) return <Empty message="No expenses in this period yet." />;
+  if (rows.length === 0)
+    return (
+      <Empty
+        message={
+          period === "all"
+            ? "No expenses recorded yet."
+            : `No expenses ${PERIOD_CAPTION[period]}. Try “All time” to see older entries.`
+        }
+      />
+    );
 
   return (
     <div className="space-y-2">
@@ -401,7 +594,7 @@ function ExpensesList({ range, reloadKey, onChanged }: { range: { from: string; 
             <span className="text-lg font-extrabold tracking-tight text-danger">− {inr(x.amount)}</span>
             <button
               type="button"
-              onClick={() => onDelete(x.id)}
+              onClick={() => setPendingDelete(x)}
               className="rounded-lg p-2 text-ink-soft hover:bg-danger-soft hover:text-danger"
               aria-label="Delete expense"
             >
@@ -410,29 +603,43 @@ function ExpensesList({ range, reloadKey, onChanged }: { range: { from: string; 
           </div>
         </div>
       ))}
+      {hasMore && <LoadMore shown={rows.length} loading={loadingMore} onClick={loadMore} />}
+
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        title="Delete this expense?"
+        body={
+          <>
+            <strong className="text-ink">{pendingDelete?.reason}</strong>
+            {pendingDelete ? ` — ${inr(pendingDelete.amount)}` : ""}
+            <br />
+            It moves to Recently deleted, where you can restore it.
+            {deleteError && <span className="mt-2 block font-semibold text-danger">{deleteError}</span>}
+          </>
+        }
+        confirmLabel="Delete"
+        cancelLabel="Keep it"
+        destructive
+        onConfirm={confirmDelete}
+        onCancel={() => {
+          setPendingDelete(null);
+          setDeleteError(null);
+        }}
+      />
     </div>
   );
 }
 
 // ── Outstanding dues ───────────────────────────────────────────────────────
 function DuesList({ reloadKey, onChanged }: { reloadKey: number; onChanged: () => void }) {
-  const [rows, setRows] = useState<AdminSale[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  // Deliberately unfiltered by period: a debt doesn't stop existing because the
+  // dashboard is showing the last 7 days.
+  const { rows, loading, loadingMore, hasMore, error, loadMore } = usePagedList<AdminSale>(
+    (offset) => listSales({ due_only: true, limit: PAGE_SIZE, offset }),
+    "Couldn't load dues.",
+    [reloadKey],
+  );
   const [collecting, setCollecting] = useState<AdminSale | null>(null);
-
-  useEffect(() => {
-    let alive = true;
-    setLoading(true);
-    setError(null);
-    listSales({ due_only: true, limit: 100 })
-      .then((r) => alive && setRows(r.items))
-      .catch((e) => alive && setError(friendlyError(e, "Couldn't load dues.")))
-      .finally(() => alive && setLoading(false));
-    return () => {
-      alive = false;
-    };
-  }, [reloadKey]);
 
   const total = rows.reduce((sum, r) => sum + toPaise(r.due_amount), 0);
 
@@ -443,8 +650,15 @@ function DuesList({ reloadKey, onChanged }: { reloadKey: number; onChanged: () =
   return (
     <div className="space-y-3">
       <div className="rounded-card border border-warning-soft bg-warning-soft/40 px-4 py-3">
-        <span className="text-sm font-bold uppercase tracking-wider text-warning">Total outstanding</span>
+        <span className="text-sm font-bold uppercase tracking-wider text-warning">
+          Total outstanding{hasMore ? " (so far)" : ""}
+        </span>
         <span className="ml-2 text-xl font-extrabold tracking-tight text-warning">{formatINR(total)}</span>
+        {hasMore && (
+          <p className="mt-1 text-sm font-medium text-ink-soft">
+            More dues haven't loaded yet — the tile above shows the true all-time total.
+          </p>
+        )}
       </div>
       {rows.map((s) => (
         <div key={s.id} className="flex items-center justify-between gap-3 rounded-card border border-border bg-white px-4 py-3 shadow-card">
@@ -468,6 +682,8 @@ function DuesList({ reloadKey, onChanged }: { reloadKey: number; onChanged: () =
         </div>
       ))}
 
+      {hasMore && <LoadMore shown={rows.length} loading={loadingMore} onClick={loadMore} />}
+
       {collecting && (
         <CollectModal
           sale={collecting}
@@ -478,6 +694,81 @@ function DuesList({ reloadKey, onChanged }: { reloadKey: number; onChanged: () =
           }}
         />
       )}
+    </div>
+  );
+}
+
+// ── Recently deleted ───────────────────────────────────────────────────────
+/**
+ * Everything an admin has removed, with who removed it and a way to put it
+ * back. Deleting a money record used to be permanent and unlogged, so a mis-tap
+ * on the trash icon was unrecoverable and left no trace.
+ */
+function TrashListView({ reloadKey, onChanged }: { reloadKey: number; onChanged: () => void }) {
+  const { rows, loading, loadingMore, hasMore, error, loadMore } = usePagedList<TrashedEntry>(
+    (offset) => listTrash({ limit: PAGE_SIZE, offset }),
+    "Couldn't load deleted entries.",
+    [reloadKey],
+  );
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [restoreError, setRestoreError] = useState<string | null>(null);
+
+  const onRestore = async (entry: TrashedEntry) => {
+    setBusyId(entry.id);
+    setRestoreError(null);
+    try {
+      if (entry.kind === "sale") await restoreSale(entry.id);
+      else await restoreExpense(entry.id);
+      onChanged();
+    } catch (e) {
+      setRestoreError(friendlyError(e, "Couldn't restore that entry."));
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  if (loading) return <ListSpinner />;
+  if (error) return <ListError message={error} />;
+  if (rows.length === 0)
+    return <Empty message="Nothing has been deleted. Anything you remove will show up here." />;
+
+  return (
+    <div className="space-y-2">
+      {restoreError && <ListError message={restoreError} />}
+      {rows.map((t) => (
+        <div
+          key={`${t.kind}-${t.id}`}
+          className="flex items-center justify-between gap-3 rounded-card border border-border bg-slate-50 px-4 py-3 shadow-card"
+        >
+          <div className="min-w-0">
+            <div className="truncate font-bold text-ink">
+              <span className="mr-2 rounded-md bg-white px-1.5 py-0.5 text-xs font-bold uppercase tracking-wider text-ink-soft">
+                {t.kind}
+              </span>
+              {t.label}
+            </div>
+            <div className="truncate text-sm text-ink-soft">
+              {formatDay(`${t.occurred_on}T00:00:00`)} · deleted {formatDateTime(t.deleted_at)}
+              {t.deleted_by_email ? ` by ${t.deleted_by_email}` : ""}
+            </div>
+          </div>
+          <div className="flex shrink-0 items-center gap-3">
+            <span className="text-lg font-extrabold tracking-tight text-ink-soft line-through">
+              {inr(t.amount)}
+            </span>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => onRestore(t)}
+              loading={busyId === t.id}
+              loadingLabel="Restoring…"
+            >
+              <Undo2 className="h-4 w-4" /> Restore
+            </Button>
+          </div>
+        </div>
+      ))}
+      {hasMore && <LoadMore shown={rows.length} loading={loadingMore} onClick={loadMore} />}
     </div>
   );
 }

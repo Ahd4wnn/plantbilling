@@ -45,11 +45,25 @@ export interface LedgerSummary {
   sales_count: number;
   cash_collected: string;
   upi_collected: string;
+  /** Dues on sales dated inside the window. Feeds the trend, not the KPI tile. */
   outstanding_due: string;
+  /** Every rupee still owed, ignoring the date window — what the tile shows. */
+  outstanding_due_all_time: string;
+  dues_count_all_time: number;
   total_expenses: string;
   expenses_count: number;
   net_collected: string;
   trend: LedgerTrendPoint[];
+}
+
+export interface TrashedEntry {
+  kind: "sale" | "expense";
+  id: string;
+  label: string;
+  amount: string;
+  occurred_on: string;
+  deleted_at: string;
+  deleted_by_email: string | null;
 }
 
 export interface SaleCreate {
@@ -103,8 +117,14 @@ export async function collectDue(
   return data;
 }
 
+/** Soft delete — the entry moves to Recently deleted and can be restored. */
 export async function deleteSale(id: string): Promise<void> {
   await api.delete(`/admin/ledger/sales/${id}`);
+}
+
+export async function restoreSale(id: string): Promise<AdminSale> {
+  const { data } = await api.post<AdminSale>(`/admin/ledger/sales/${id}/restore`);
+  return data;
 }
 
 // ── Expenses ─────────────────────────────────────────────────────────────
@@ -128,15 +148,37 @@ export async function updateExpense(id: string, payload: Partial<ExpenseCreate>)
   return data;
 }
 
+/** Soft delete — the entry moves to Recently deleted and can be restored. */
 export async function deleteExpense(id: string): Promise<void> {
   await api.delete(`/admin/ledger/expenses/${id}`);
 }
 
+export async function restoreExpense(id: string): Promise<AdminExpense> {
+  const { data } = await api.post<AdminExpense>(`/admin/ledger/expenses/${id}/restore`);
+  return data;
+}
+
+// ── Recently deleted ───────────────────────────────────────────────────────
+export async function listTrash(params: {
+  limit?: number;
+  offset?: number;
+}): Promise<{ items: TrashedEntry[]; has_more: boolean }> {
+  const { data } = await api.get("/admin/ledger/trash", { params });
+  return data;
+}
+
 // ── Summary ────────────────────────────────────────────────────────────────
-export async function getLedgerSummary(dateFrom?: string, dateTo?: string): Promise<LedgerSummary> {
-  const params: Record<string, string> = {};
+export async function getLedgerSummary(
+  dateFrom?: string,
+  dateTo?: string,
+  allTime = false,
+): Promise<LedgerSummary> {
+  const params: Record<string, string | boolean> = {};
   if (dateFrom) params.date_from = dateFrom;
   if (dateTo) params.date_to = dateTo;
+  // Without this the server falls back to "last 30 days", which is exactly the
+  // hidden window that made older entries look deleted.
+  if (allTime) params.all_time = true;
   const { data } = await api.get<LedgerSummary>("/admin/ledger/summary", { params });
   return data;
 }

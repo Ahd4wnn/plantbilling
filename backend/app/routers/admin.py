@@ -479,11 +479,32 @@ def update_shop(
 @router.delete("/shops/{shop_id}", status_code=status.HTTP_204_NO_CONTENT, response_class=Response)
 def delete_shop(
     shop_id: uuid.UUID,
+    confirm_name: str = Query(
+        ...,
+        description="The shop's exact name, to confirm. Deleting a shop is permanent.",
+    ),
     db: Session = Depends(get_db),
 ):
+    """Permanently delete a shop AND everything in it.
+
+    Every bill, expense, product, customer and labourer for this shop is removed
+    with it by ON DELETE CASCADE. There is no undo and no audit trail, so the
+    caller must echo the shop's exact name back to prove the target is intended
+    rather than a mis-tapped row in a list.
+    """
     shop = db.execute(select(Shop).where(Shop.id == shop_id)).scalar_one_or_none()
     if shop is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Shop not found")
+
+    if confirm_name.strip() != shop.name.strip():
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=(
+                f'To delete this shop, type its name exactly: "{shop.name}". '
+                "Everything belonging to it will be removed and cannot be recovered."
+            ),
+        )
+
     db.delete(shop)
     db.flush()
 

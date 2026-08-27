@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { Button } from "./Button";
 
@@ -9,6 +9,13 @@ interface ConfirmDialogProps {
   confirmLabel?: string;
   cancelLabel?: string;
   destructive?: boolean;
+  /**
+   * When set, the operator must type this exact text before Confirm enables.
+   * For actions that destroy data irreversibly — a one-tap confirm is too easy
+   * to fire on the wrong row in a list.
+   */
+  requireTyped?: string;
+  requireTypedLabel?: string;
   onConfirm: () => void;
   onCancel: () => void;
 }
@@ -21,10 +28,22 @@ export function ConfirmDialog({
   confirmLabel = "Confirm",
   cancelLabel = "Cancel",
   destructive = false,
+  requireTyped,
+  requireTypedLabel,
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) {
   const reduce = useReducedMotion();
+  const [typed, setTyped] = useState("");
+
+  // Clear between openings, so the previous target's name can't carry over and
+  // pre-arm the button for a different row.
+  useEffect(() => {
+    if (!open) setTyped("");
+  }, [open]);
+
+  const armed = !requireTyped || typed.trim() === requireTyped.trim();
+
   return (
     <AnimatePresence>
       {open && (
@@ -48,11 +67,27 @@ export function ConfirmDialog({
           >
             <h2 className="text-xl font-bold text-ink">{title}</h2>
             {body && <div className="mt-2 text-base text-ink-soft">{body}</div>}
+            {requireTyped && (
+              <div className="mt-4">
+                <label className="mb-1 block text-sm font-bold text-ink-soft">
+                  {requireTypedLabel ?? `Type “${requireTyped}” to confirm`}
+                </label>
+                <input
+                  className="h-11 w-full rounded-xl border-2 border-border bg-white px-3 text-base font-semibold text-ink focus:border-danger focus:outline-none focus:ring-4 focus:ring-danger/20"
+                  value={typed}
+                  onChange={(e) => setTyped(e.target.value)}
+                  placeholder={requireTyped}
+                  autoFocus
+                  autoComplete="off"
+                />
+              </div>
+            )}
             <div className="mt-6 flex flex-col gap-3">
               <Button
                 variant="primary"
                 size="action"
                 onClick={onConfirm}
+                disabled={!armed}
                 className={destructive ? "!bg-danger hover:!bg-danger" : ""}
               >
                 {confirmLabel}

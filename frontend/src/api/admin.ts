@@ -103,8 +103,14 @@ export async function updateShop(
   await api.patch(`/admin/shops/${shopId}`, payload);
 }
 
-export async function deleteShop(shopId: string): Promise<void> {
-  await api.delete(`/admin/shops/${shopId}`);
+/**
+ * Permanently delete a shop and everything in it (bills, expenses, products,
+ * customers, labourers — all via ON DELETE CASCADE). `confirmName` must be the
+ * shop's exact name; the server rejects the call otherwise, so a stray or
+ * replayed request can't wipe a shop on its own.
+ */
+export async function deleteShop(shopId: string, confirmName: string): Promise<void> {
+  await api.delete(`/admin/shops/${shopId}`, { params: { confirm_name: confirmName } });
 }
 
 export async function resetOwnerPassword(shopId: string, newPassword: string): Promise<void> {

@@ -16,7 +16,7 @@ import datetime as dt
 import decimal
 import uuid
 
-from sqlalchemy import Date, ForeignKey, Numeric, Text, text
+from sqlalchemy import Date, DateTime, ForeignKey, Numeric, Text, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -53,6 +53,17 @@ class AdminSale(Base):
         nullable=True,
     )
     created_at: Mapped[dt.datetime] = created_at_col()
+    # Soft delete. A money record is never destroyed by a tap on a trash icon:
+    # the row stays and every read filters on `deleted_at IS NULL`, so an admin
+    # can see what was removed, by whom, and put it back.
+    deleted_at: Mapped[dt.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    deleted_by: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
 
 
 class AdminExpense(Base):
@@ -75,3 +86,12 @@ class AdminExpense(Base):
         nullable=True,
     )
     created_at: Mapped[dt.datetime] = created_at_col()
+    # Soft delete — see AdminSale.deleted_at.
+    deleted_at: Mapped[dt.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    deleted_by: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    )

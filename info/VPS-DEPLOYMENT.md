@@ -195,6 +195,45 @@ psql "$(grep DATABASE_URL_ADMIN /var/www/plantbill/backend/.env | cut -d= -f2- |
 > The database is named `plantbill`, not `plantora`. `sudo -u postgres psql -d plantbill`
 > reaches it; a wrong `-d` or a stray `-p 5544` fails in ways that are easy to miss.
 
+### 4a. "The admin ledger lost my data" — check before believing it
+
+Run this whenever someone reports that Sales & Expenses has deleted entries. In
+August 2026 the answer was that nothing had been deleted: the page had no
+"All time" option, so everything older than 30 days was simply unreachable.
+
+**Set the admin GUC first.** Both tables are `FORCE ROW LEVEL SECURITY`, which
+applies to the table owner too, so without it *every query below returns zero
+rows* and looks exactly like catastrophic data loss.
+
+```bash
+psql "$(grep DATABASE_URL_ADMIN /var/www/plantbill/backend/.env | cut -d= -f2- | sed 's#postgresql+psycopg#postgresql#')"
+```
+```sql
+SELECT set_config('app.user_role','admin',true);
+
+-- Is the data there at all?
+SELECT count(*), min(occurred_on), max(occurred_on), sum(amount) FROM admin_expenses;
+SELECT count(*), min(occurred_on), max(occurred_on), sum(amount), sum(due_amount) FROM admin_sales;
+
+-- Per month, to compare against what the admin can actually see on screen.
+SELECT date_trunc('month', occurred_on) AS month, count(*), sum(amount)
+  FROM admin_expenses GROUP BY 1 ORDER BY 1;
+
+-- Since c3d5e7f9a1b2: anything soft-deleted, and by whom.
+SELECT 'sale' AS kind, title AS label, amount, occurred_on, deleted_at, deleted_by
+  FROM admin_sales WHERE deleted_at IS NOT NULL
+UNION ALL
+SELECT 'expense', reason, amount, occurred_on, deleted_at, deleted_by
+  FROM admin_expenses WHERE deleted_at IS NOT NULL
+ORDER BY deleted_at DESC;
+
+-- Is point-in-time recovery even available if something IS missing?
+SHOW archive_mode; SHOW wal_level;
+```
+
+If rows really are gone, check the backups **before** promising a restore — see
+the §3.2 warning about `pg_dump` writing empty archives.
+
 ---
 
 ## 5. Rollback
@@ -229,6 +268,7 @@ gunzip -c ~/plantbill-backup-YYYY-MM-DD-HHMM.sql.gz | \
 ### Recent deploys
 | Revision | What it adds |
 |---|---|
+| `c3d5e7f9a1b2` | **Admin ledger soft delete** — `deleted_at` / `deleted_by` on `admin_sales` and `admin_expenses`, plus a partial index on live rows. Purely additive; the old build ignores the columns, so deploy order doesn't matter. Downgrade drops both columns and the indexes. |
 | `b2c4d6e8f0a1` | **`labourers.joined_on`** — the date a worker joined. Additive; backfilled from `created_at` in Asia/Kolkata, defaults to `CURRENT_DATE`. Downgrade drops the column. Ships with the orange rebrand (app 0.1.40). |
 | `f9c1d2e3a4b5` | **Admin Sales & Expenses ledger** — `admin_sales` + `admin_expenses` (admin-only RLS, FORCE). Purely additive; downgrade drops both tables. |
 | `e2f3a4b5c6d7` | `bill_audit_log.action = 'account_delete'` |
@@ -263,6 +303,25 @@ gunzip -c ~/plantbill-backup-YYYY-MM-DD-HHMM.sql.gz | \
 5. Log in as a shop **manager/salesperson** → confirm **no** access to `/admin/ledger`
    (admin-only at the API and RLS level).
 
+### 7b. After `c3d5e7f9a1b2` (all-time view + soft delete)
+
+6. **The missing data comes back.** Period chips now read
+   Today / 7 days / 30 days / This year / **All time**. Switch to **All time** →
+   entries older than 30 days appear in both Sales and Expenses. Cross-check the
+   count against `SELECT count(*) FROM admin_expenses;` (§4a). *This is the fix
+   for the reported "it deleted my expenses".*
+7. **Nothing is silently truncated.** With more than 100 entries in the window a
+   **Load more** button appears and reaches the rest.
+8. **The due figures agree.** The "Outstanding due" tile must equal the
+   "Total outstanding" banner in the Outstanding dues tab, **exactly**, and must
+   not change when the period chips change (it is all-time by design, and says so).
+9. **Delete is reversible.** Delete an expense → it leaves the list and appears
+   under **Recently deleted** with the admin's email and a timestamp → **Restore**
+   → it returns and the Expenses tile goes back up. Confirm in psql that
+   `count(*)` never changed — the row was hidden, not destroyed.
+10. **Shop delete is guarded.** Admin → Shops → Delete now requires typing the
+    shop's exact name; the server rejects the call otherwise (422).
+
 ---
 
 ## 8. Gotchas we actually hit (so future-you doesn't)
@@ -291,3 +350,10 @@ gunzip -c ~/plantbill-backup-YYYY-MM-DD-HHMM.sql.gz | \
    a file, so you get a **~2.6 KB backup that contains no data** and a zero exit
    status is never checked. Dump as a role that can bypass RLS (see §2.1) and
    always check the size — a real backup is over a megabyte.
+6. **"It deleted my data" usually means a filter hid it.** The admin ledger
+   defaulted to a 30-day window with no all-time option, so anything older
+   vanished from the lists *and* every total, with nothing on screen blaming a
+   filter. Both lists also asked for 100 rows and discarded the API's `has_more`,
+   so the remainder silently wasn't rendered. **Before assuming loss, run §4a and
+   count the rows.** When adding any date-filtered or paged view: offer an
+   all-time option, and never drop a `has_more` flag on the floor.

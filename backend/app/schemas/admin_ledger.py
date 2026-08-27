@@ -118,9 +118,35 @@ class LedgerSummary(BaseModel):
     cash_collected: MoneyOut       # cash portion of sales (already in hand)
     upi_collected: MoneyOut        # upi portion of sales
     outstanding_due: MoneyOut      # sum of due still owed (in range)
+    # Money still owed across ALL time, ignoring the date window entirely. The
+    # windowed figure above quietly drops a sale from two months ago that has
+    # never been paid, which made this tile disagree with the Outstanding dues
+    # tab on the same screen. The tile shows this one.
+    outstanding_due_all_time: MoneyOut
+    dues_count_all_time: int
     # Expenses
     total_expenses: MoneyOut
     expenses_count: int
     # Net = collected (cash+upi) − expenses
     net_collected: MoneyOut
     trend: list[LedgerTrendPoint]
+
+
+# ── Recently deleted ───────────────────────────────────────────────────────
+class TrashedEntry(BaseModel):
+    """A soft-deleted sale or expense, for the Recently deleted tab."""
+
+    kind: Literal["sale", "expense"]
+    id: uuid.UUID
+    label: str                     # the sale's title / the expense's reason
+    amount: MoneyOut
+    occurred_on: dt.date
+    deleted_at: dt.datetime
+    # Which admin removed it. `users` has no display name, so this is their
+    # email. None if that account has since been deleted (FK is SET NULL).
+    deleted_by_email: str | None
+
+
+class TrashList(BaseModel):
+    items: list[TrashedEntry]
+    has_more: bool

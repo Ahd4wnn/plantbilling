@@ -152,7 +152,7 @@ export function ShopsPage() {
   async function applyDelete(shop: ShopRow) {
     setBusyId(shop.id);
     try {
-      await deleteShop(shop.id);
+      await deleteShop(shop.id, shop.name);
       showToast(`${shop.name} deleted successfully.`);
       await load();
     } catch (e) {
@@ -359,6 +359,7 @@ export function ShopsPage() {
         confirmLabel="Delete permanently"
         cancelLabel="Cancel"
         destructive
+        requireTyped={deleteShopTarget?.name}
         onConfirm={() => deleteShopTarget && applyDelete(deleteShopTarget)}
         onCancel={() => setDeleteShopTarget(null)}
       />
