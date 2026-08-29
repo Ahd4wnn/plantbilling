@@ -41,8 +41,45 @@ class Shop(Base):
         Integer, nullable=False, server_default=text("1")
     )
 
+    # Shop logo for printed bills. Relative path under MEDIA_ROOT (e.g.
+    # "logos/<uuid>.png"), never a URL — same convention as products.photo_path.
+    # Admin-only: shop staff can see it but not change it.
+    logo_path: Mapped[str | None] = mapped_column(Text, nullable=True)
+
     settings: Mapped[dict] = mapped_column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))
     created_at: Mapped[dt.datetime] = created_at_col()
+
+    @property
+    def logo_url(self) -> str | None:
+        """The logo's public URL, derived from the stored relative path.
+
+        A property rather than a column so the path stays the single source of
+        truth — moving MEDIA_ROOT or changing the public prefix must not require
+        rewriting rows. Schemas with from_attributes pick this up automatically.
+        """
+        from app.media import build_media_url  # local: app.media reads settings
+
+        return build_media_url(self.logo_path)
+
+    @property
+    def logo_enabled(self) -> bool:
+        """Whether an uploaded logo actually prints. Separate from logo_path so
+        turning it off doesn't discard the file the admin uploaded.
+
+        `settings` is only non-null once the row has been through the DB (the
+        default is a server_default), so a freshly constructed Shop still has
+        None here — and this is read on every bill, where an AttributeError
+        would take down the receipt.
+        """
+        return (self.settings or {}).get("logo_enabled", True)
+
+    @logo_enabled.setter
+    def logo_enabled(self, value: bool) -> None:
+        if self.settings is None:
+            self.settings = {}
+        new_settings = dict(self.settings)
+        new_settings["logo_enabled"] = value
+        self.settings = new_settings
 
     @property
     def whatsapp_auto_send(self) -> bool:

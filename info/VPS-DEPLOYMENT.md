@@ -268,6 +268,7 @@ gunzip -c ~/plantbill-backup-YYYY-MM-DD-HHMM.sql.gz | \
 ### Recent deploys
 | Revision | What it adds |
 |---|---|
+| `d4e6f8a0b2c3` | **Monthly-wage workers + shop logo** — `labourers.wage_type` / `monthly_wage` / `paid_leaves_per_month` (all defaulted, so every existing worker stays `'daily'` and no one's pay changes), plus `shops.logo_path`. Adds `labourers_wage_type_check` and `labourers_wage_nonneg` — note the latter restores a `default_wage >= 0` guard that Postgres silently dropped back at `d2e3f4a5b6c7` when `overtime_rate` was removed. Purely additive DDL; deploy order doesn't matter. Downgrade drops the columns and constraints. |
 | `c3d5e7f9a1b2` | **Admin ledger soft delete** — `deleted_at` / `deleted_by` on `admin_sales` and `admin_expenses`, plus a partial index on live rows. Purely additive; the old build ignores the columns, so deploy order doesn't matter. Downgrade drops both columns and the indexes. |
 | `b2c4d6e8f0a1` | **`labourers.joined_on`** — the date a worker joined. Additive; backfilled from `created_at` in Asia/Kolkata, defaults to `CURRENT_DATE`. Downgrade drops the column. Ships with the orange rebrand (app 0.1.40). |
 | `f9c1d2e3a4b5` | **Admin Sales & Expenses ledger** — `admin_sales` + `admin_expenses` (admin-only RLS, FORCE). Purely additive; downgrade drops both tables. |
@@ -321,6 +322,37 @@ gunzip -c ~/plantbill-backup-YYYY-MM-DD-HHMM.sql.gz | \
    `count(*)` never changed — the row was hidden, not destroyed.
 10. **Shop delete is guarded.** Admin → Shops → Delete now requires typing the
     shop's exact name; the server rejects the call otherwise (422).
+
+### 7c. After `d4e6f8a0b2c3` (monthly wages + shop logo)
+
+11. **No existing worker's pay moved.** Before deploying, note a few workers'
+    "Balance to pay". After, they must be identical — every existing row defaults
+    to `wage_type = 'daily'` and the daily formula is unchanged. If any figure
+    shifted, stop and investigate before anyone pays out against it.
+12. **A monthly worker adds up.** Create one at ₹30,000/month with 2 paid leaves,
+    joining date the 1st of last month. Mark 3 absences last month. Their statement
+    must read `30,000 − (30,000/30 × 1) = 29,000` for that month, and show
+    "Leaves … 3 of 2 paid". Unmarked days must NOT reduce the pay — that is the
+    deliberate choice, so that a manager who forgets to mark attendance never
+    silently cuts someone's wages.
+13. **Part months are pro-rated.** A monthly worker joining mid-month earns
+    `monthly_wage/30 × days since joining`, and the current month grows by one
+    day's pay each day. A *complete* month always pays the full salary, whether it
+    has 28, 30 or 31 days.
+14. **Deleting a worker asks first, on Android too.** The trash icon used to delete
+    immediately on a single tap — and it cascade-deletes the attendance every wage
+    figure is computed from. Confirm the dialog appears on both web and Android, and
+    that cancelling leaves the worker intact.
+15. **The logo prints, and the switch works.** Admin → Shops → Business details →
+    upload a logo. It appears on the on-screen receipt, the browser print preview,
+    and the public shared-bill link. Untick "Print this logo on bills" → gone from
+    all three with no rebuild (the server nulls the URL, so every surface obeys it).
+16. **The logo can't break a print.** `rm` the logo file from `MEDIA_ROOT/logos/`
+    and print again — the bill must still print, without the logo. Same on Android
+    with the phone offline. Then print to a real thermal printer from both web and
+    Android: a logo that dithers to an unreadable smudge is a failed test.
+17. **The shop cannot change its own logo.** `PATCH /shop` deliberately omits the
+    logo fields; a shop-owner login sees the logo but has no control for it.
 
 ---
 

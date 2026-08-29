@@ -67,6 +67,9 @@ import com.plantora.billing.ui.theme.Dimens
 @Composable
 fun BillScreen(viewModel: BillingViewModel = hiltViewModel()) {
     val state by viewModel.ui.collectAsStateWithLifecycle()
+    // Read from preferences, not from the bill state — starting a new bill resets
+    // the state, and the picker's layout is a device setting, not part of a bill.
+    val productViewMode by viewModel.productViewMode.collectAsStateWithLifecycle()
     val heldBills by viewModel.heldBills.collectAsStateWithLifecycle()
     var showHeld by remember { mutableStateOf(false) }
     val heldSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -220,7 +223,7 @@ fun BillScreen(viewModel: BillingViewModel = hiltViewModel()) {
                     }
                 }
                 ProductViewToggle(
-                    mode = state.productViewMode,
+                    mode = productViewMode,
                     onChange = viewModel::setProductViewMode,
                     modifier = Modifier.padding(end = Dimens.sm),
                 )
@@ -242,7 +245,7 @@ fun BillScreen(viewModel: BillingViewModel = hiltViewModel()) {
                 )
                 else -> ProductCatalog(
                     products = state.filteredProducts,
-                    viewMode = state.productViewMode,
+                    viewMode = productViewMode,
                     onClick = viewModel::addProduct,
                     addable = true,
                     modifier = Modifier.weight(1f),

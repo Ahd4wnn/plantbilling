@@ -59,6 +59,11 @@ export interface BillDetail {
   business_name: string | null;
   business_address: string | null;
   business_phone: string | null;
+  /**
+   * The shop's logo for this receipt, or null for no logo. Already resolved
+   * against the admin's on/off switch server-side — just check for null.
+   */
+  business_logo_url: string | null;
   subtotal: string;
   discount_type: "flat" | "percent";
   discount_value: string;

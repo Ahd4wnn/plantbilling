@@ -4,7 +4,7 @@ import datetime as dt
 import decimal
 import uuid
 
-from sqlalchemy import Boolean, ForeignKey, Numeric, Text, text
+from sqlalchemy import Boolean, ForeignKey, Integer, Numeric, Text, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -24,8 +24,24 @@ class Labourer(Base):
     phone: Mapped[str | None] = mapped_column(Text, nullable=True)
     aadhaar: Mapped[str | None] = mapped_column(Text, nullable=True)  # optional Aadhaar no.
     gender: Mapped[str] = mapped_column(Text, nullable=False)  # 'male' | 'female'
+    # How this worker is paid. 'daily' reads default_wage and earns per day marked
+    # present; 'monthly' reads monthly_wage and instead DEDUCTS for leaves beyond
+    # the paid-leave allowance. Only one of the two wage columns is ever meaningful.
+    wage_type: Mapped[str] = mapped_column(
+        Text, nullable=False, server_default=text("'daily'")
+    )
+    # Rupees per day. Only used when wage_type = 'daily'.
     default_wage: Mapped[decimal.Decimal] = mapped_column(
         Numeric(12, 2), nullable=False, server_default=text("0")
+    )
+    # Rupees per month. Only used when wage_type = 'monthly'.
+    monthly_wage: Mapped[decimal.Decimal] = mapped_column(
+        Numeric(12, 2), nullable=False, server_default=text("0")
+    )
+    # Leaves a monthly worker may take each month without losing pay. The allowance
+    # resets every month — unused leaves do not carry forward.
+    paid_leaves_per_month: Mapped[int] = mapped_column(
+        Integer, nullable=False, server_default=text("0")
     )
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
     # The day the worker joined the shop. Defaults to the day they were added,

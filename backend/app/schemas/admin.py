@@ -83,6 +83,10 @@ class ShopSummary(BaseModel):
     business_email: str | None = None
     business_upi: str | None = None
     whatsapp_message_template: str | None = None
+    # Shop logo for printed bills. The URL is derived from the stored path; the
+    # flag is whether it actually prints. Admin-controlled.
+    logo_url: str | None = None
+    logo_enabled: bool = True
 
     model_config = {"from_attributes": True}
 
@@ -110,6 +114,8 @@ class ShopListRow(BaseModel):
     business_email: str | None = None
     business_upi: str | None = None
     whatsapp_message_template: str | None = None
+    logo_url: str | None = None
+    logo_enabled: bool = True
 
 
 class ShopUpdateRequest(BaseModel):
@@ -121,6 +127,9 @@ class ShopUpdateRequest(BaseModel):
     business_email: str | None = None
     business_upi: str | None = None
     whatsapp_message_template: str | None = None
+    # Turns the logo off without discarding the uploaded file. The file itself is
+    # managed by POST/DELETE /admin/shops/{id}/logo, not by this payload.
+    logo_enabled: bool | None = None
 
     @field_validator("business_upi")
     @classmethod

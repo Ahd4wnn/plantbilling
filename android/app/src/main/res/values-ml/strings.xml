@@ -326,6 +326,24 @@
     <string name="lab_recent_payments">സമീപകാല പണമടവുകൾ</string>
     <string name="lab_no_payments">ഇതുവരെ പണമടവുകളൊന്നും രേഖപ്പെടുത്തിയിട്ടില്ല.</string>
     <string name="lab_per_day">%1$s/ദിവസം</string>
+    <!-- Monthly-wage workers -->
+    <string name="lab_per_month">%1$s/മാസം</string>
+    <string name="lab_wage_type">ഈ തൊഴിലാളിക്ക് എങ്ങനെ ശമ്പളം?</string>
+    <string name="lab_wage_type_daily">ദിവസത്തിന്</string>
+    <string name="lab_wage_type_monthly">മാസത്തിന്</string>
+    <string name="lab_wage_per_month">മാസ ശമ്പളം (₹)</string>
+    <string name="lab_paid_leaves">മാസത്തിൽ ശമ്പളത്തോടെയുള്ള അവധി</string>
+    <string name="lab_paid_leaves_hint">ഒരു മാസത്തിൽ ഇതിലധികം അവധി എടുത്താൽ ശമ്പളത്തിൽ നിന്ന് കുറയ്ക്കും. ഹാജർ രേഖപ്പെടുത്താത്ത ദിവസങ്ങൾ അവധിയായി കണക്കാക്കില്ല.</string>
+    <string name="lab_wage_per_month_label">മാസ ശമ്പളം: %1$s</string>
+    <string name="lab_balance_label">കൊടുക്കാനുള്ളത്: %1$s</string>
+    <string name="lab_earned_monthly">നേടിയത് (%1$s/മാസം)</string>
+    <string name="lab_leaves_this_month">ഈ മാസത്തെ അവധികൾ</string>
+    <string name="lab_leaves_of_paid">%2$d-ൽ %1$s ശമ്പളത്തോടെ</string>
+    <string name="lab_unpaid_leaves">ഈ മാസത്തെ ശമ്പളമില്ലാത്ത അവധികൾ</string>
+    <string name="lab_days_deducted">%1$s ദിവസം കുറച്ചു</string>
+    <string name="lab_remove_worker">നീക്കം ചെയ്യുക</string>
+    <string name="lab_delete_worker_title">തൊഴിലാളിയെ നീക്കണോ?</string>
+    <string name="lab_delete_worker_body">%1$s-നെ നീക്കണോ? അവരുടെ ഹാജർ രേഖ ഇല്ലാതാകും, തിരികെ കിട്ടില്ല, അതിനാൽ അവരുടെ ശമ്പളം ഇനി കണക്കാക്കാനാവില്ല. പഴയ പേയ്‌മെന്റുകൾ നിലനിൽക്കും.</string>
     <string name="lab_balance_to_pay_amt">നൽകാനുള്ള ബാക്കി %1$s</string>
     <string name="lab_paid_ahead_amt">മുൻകൂർ നൽകിയത് %1$s</string>
     <string name="cd_edit_worker">തൊഴിലാളിയെ തിരുത്തുക</string>

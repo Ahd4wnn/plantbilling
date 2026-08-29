@@ -10,6 +10,7 @@ import com.plantora.billing.i18n.UiText
 import com.plantora.billing.domain.Labourer
 import com.plantora.billing.domain.LabourPayment
 import com.plantora.billing.domain.Money
+import com.plantora.billing.domain.isMonthly
 import com.plantora.billing.domain.parseApiDate
 import com.plantora.billing.domain.todayInShopZone
 import com.plantora.billing.domain.toApiDate
@@ -29,6 +30,17 @@ private fun daysDecimal(s: String): BigDecimal = s.trim().toBigDecimalOrNull() ?
 private fun wageFor(wagePerDay: Money, days: String): Money =
     Money(wagePerDay.amount.multiply(daysDecimal(days)))
 
+/**
+ * What to pre-fill as a wage payment's amount.
+ *
+ * A daily worker is paid days × wage. A monthly worker isn't measured in days at
+ * all, so "days × wage per day" would be a meaningless number — what's actually
+ * being handed over is what's currently owed.
+ */
+private fun prefillWage(worker: Labourer, days: String): Money =
+    if (worker.isMonthly) worker.balanceToPay.let { if (it.isNegative()) Money.ZERO else it }
+    else wageFor(worker.defaultWage, days)
+
 enum class LabourPayMode { CASH, UPI, SPLIT }
 
 data class WorkerEditor(
@@ -37,14 +49,27 @@ data class WorkerEditor(
     val phone: String = "",
     val aadhaar: String = "",
     val gender: String = "male",
-    val wage: String = "",
+    /** "daily" or "monthly" — decides which wage field below is asked for. */
+    val wageType: String = "daily",
+    val wage: String = "",          // per day
+    val monthlyWage: String = "",   // per month
+    val paidLeaves: String = "",    // per month, monthly workers only
     // The day this worker joined. A new worker defaults to today; editing loads
     // whatever the shop recorded, so a late entry can be corrected.
     val joinedOn: LocalDate = todayInShopZone(),
     val saving: Boolean = false,
     val error: String? = null,
 ) {
-    val canSave: Boolean get() = name.isNotBlank() && !saving
+    /** Mirrors Labourer.isMonthly, for the editor's own in-progress selection. */
+    val isMonthly: Boolean get() = wageType == "monthly"
+
+    /** The wage that matters for the chosen mode has to be filled in. Caught here
+     *  so the message lands beside the empty field instead of coming back as a
+     *  server error after the manager has already tapped Save. */
+    val wageFilled: Boolean
+        get() = (if (isMonthly) Money.parse(monthlyWage) else Money.parse(wage)).amount.signum() > 0
+
+    val canSave: Boolean get() = name.isNotBlank() && wageFilled && !saving
 }
 
 data class PaymentEditor(
@@ -53,6 +78,10 @@ data class PaymentEditor(
     val labourerName: String = "",
     val isAdvance: Boolean = false,
     val wagePerDay: Money = Money.ZERO,
+    /** Monthly workers get no "number of days" field — a salary isn't paid in days. */
+    val isMonthlyWorker: Boolean = false,
+    val monthlyWage: Money = Money.ZERO,
+    val balanceToPay: Money = Money.ZERO,
     val days: String = "1",
     val amount: String = "",
     val mode: LabourPayMode = LabourPayMode.CASH,
@@ -154,7 +183,10 @@ class LabourViewModel @Inject constructor(
         it.copy(
             workerEditor = WorkerEditor(
                 id = l.id, name = l.name, phone = l.phone ?: "", aadhaar = l.aadhaar ?: "",
-                gender = l.gender, wage = l.defaultWage.toInput(),
+                gender = l.gender, wageType = l.wageType,
+                wage = l.defaultWage.toInput(),
+                monthlyWage = if (l.monthlyWage.amount.signum() > 0) l.monthlyWage.toInput() else "",
+                paidLeaves = l.paidLeavesPerMonth.toString(),
                 joinedOn = parseApiDate(l.joinedOn) ?: todayInShopZone(),
             ),
         )
@@ -165,6 +197,9 @@ class LabourViewModel @Inject constructor(
     fun setWorkerAadhaar(v: String) = _ui.update { it.copy(workerEditor = it.workerEditor?.copy(aadhaar = v, error = null)) }
     fun setWorkerGender(v: String) = _ui.update { it.copy(workerEditor = it.workerEditor?.copy(gender = v)) }
     fun setWorkerWage(v: String) = _ui.update { it.copy(workerEditor = it.workerEditor?.copy(wage = v, error = null)) }
+    fun setWorkerWageType(v: String) = _ui.update { it.copy(workerEditor = it.workerEditor?.copy(wageType = v, error = null)) }
+    fun setWorkerMonthlyWage(v: String) = _ui.update { it.copy(workerEditor = it.workerEditor?.copy(monthlyWage = v, error = null)) }
+    fun setWorkerPaidLeaves(v: String) = _ui.update { it.copy(workerEditor = it.workerEditor?.copy(paidLeaves = v, error = null)) }
     fun setWorkerJoinedOn(v: LocalDate) = _ui.update { it.copy(workerEditor = it.workerEditor?.copy(joinedOn = v, error = null)) }
 
     fun saveWorker() {
@@ -174,8 +209,16 @@ class LabourViewModel @Inject constructor(
         viewModelScope.launch {
             runCatching {
                 val joined = e.joinedOn.toApiDate()
-                if (e.id == null) repo.addLabourer(e.name, e.phone, e.aadhaar, e.gender, Money.parse(e.wage), joined)
-                else repo.updateLabourer(e.id, e.name, e.phone, e.aadhaar, e.gender, Money.parse(e.wage), joined)
+                // Zero out the wage of the mode this worker is NOT paid in, so an
+                // old figure can't linger and confuse a later reading of the row.
+                val daily = if (e.isMonthly) Money.ZERO else Money.parse(e.wage)
+                val monthly = if (e.isMonthly) Money.parse(e.monthlyWage) else Money.ZERO
+                val leaves = if (e.isMonthly) e.paidLeaves.trim().toIntOrNull() ?: 0 else 0
+                if (e.id == null) {
+                    repo.addLabourer(e.name, e.phone, e.aadhaar, e.gender, e.wageType, daily, monthly, leaves, joined)
+                } else {
+                    repo.updateLabourer(e.id, e.name, e.phone, e.aadhaar, e.gender, e.wageType, daily, monthly, leaves, joined)
+                }
             }.onSuccess { _ui.update { it.copy(workerEditor = null, message = UiText.res(R.string.vm_saved)) }; load() }
                 .onFailure { err -> _ui.update { it.copy(workerEditor = e.copy(saving = false, error = friendlyError(err))) } }
         }
@@ -197,8 +240,11 @@ class LabourViewModel @Inject constructor(
             labourerName = worker?.name ?: "",
             isAdvance = advance,
             wagePerDay = worker?.defaultWage ?: Money.ZERO,
+            isMonthlyWorker = worker?.isMonthly == true,
+            monthlyWage = worker?.monthlyWage ?: Money.ZERO,
+            balanceToPay = worker?.balanceToPay ?: Money.ZERO,
             days = "1",
-            amount = if (worker != null && !advance) wageFor(worker.defaultWage, "1").toInput() else "",
+            amount = if (worker != null && !advance) prefillWage(worker, "1").toInput() else "",
         )
         _ui.update { it.copy(paymentEditor = editor) }
     }
@@ -208,18 +254,29 @@ class LabourViewModel @Inject constructor(
             com.plantora.billing.domain.PaymentMethod.SPLIT -> LabourPayMode.SPLIT
             else -> LabourPayMode.CASH
         }
-        val wagePerDay = it.labourers.find { l -> l.id == p.labourerId }?.defaultWage ?: Money.ZERO
+        // Null when the worker has since been removed; the payment row survives.
+        val worker = it.labourers.find { l -> l.id == p.labourerId }
         it.copy(paymentEditor = PaymentEditor(
             id = p.id, labourerId = p.labourerId ?: p.id, labourerName = p.labourerName,
-            isAdvance = p.kind == "advance", wagePerDay = wagePerDay, days = p.days ?: "1",
+            isAdvance = p.kind == "advance",
+            wagePerDay = worker?.defaultWage ?: Money.ZERO,
+            isMonthlyWorker = worker?.isMonthly == true,
+            monthlyWage = worker?.monthlyWage ?: Money.ZERO,
+            balanceToPay = worker?.balanceToPay ?: Money.ZERO,
+            days = p.days ?: "1",
             amount = p.wageAmount.toInput(), mode = mode, splitCash = p.cashAmount.toInput(), note = p.note ?: "",
         ))
     }
     fun closePayment() = _ui.update { it.copy(paymentEditor = null) }
     fun selectPaymentLabourer(l: Labourer) = _ui.update {
         val ed = it.paymentEditor ?: return@update it
-        val amount = if (!ed.isAdvance) wageFor(l.defaultWage, ed.days).toInput() else ed.amount
-        it.copy(paymentEditor = ed.copy(labourerId = l.id, labourerName = l.name, wagePerDay = l.defaultWage, amount = amount, error = null))
+        val amount = if (!ed.isAdvance) prefillWage(l, ed.days).toInput() else ed.amount
+        it.copy(paymentEditor = ed.copy(
+            labourerId = l.id, labourerName = l.name,
+            wagePerDay = l.defaultWage, isMonthlyWorker = l.isMonthly,
+            monthlyWage = l.monthlyWage, balanceToPay = l.balanceToPay,
+            amount = amount, error = null,
+        ))
     }
     fun setPaymentDays(v: String) = _ui.update {
         val ed = it.paymentEditor ?: return@update it
@@ -229,7 +286,11 @@ class LabourViewModel @Inject constructor(
     fun setPaymentAmount(v: String) = _ui.update { it.copy(paymentEditor = it.paymentEditor?.copy(amount = v, error = null)) }
     fun setPaymentAdvance(advance: Boolean) = _ui.update {
         val ed = it.paymentEditor ?: return@update it
-        val amount = if (advance) "" else wageFor(ed.wagePerDay, ed.days).toInput()
+        val amount = when {
+            advance -> ""
+            ed.isMonthlyWorker -> if (ed.balanceToPay.isNegative()) "" else ed.balanceToPay.toInput()
+            else -> wageFor(ed.wagePerDay, ed.days).toInput()
+        }
         it.copy(paymentEditor = ed.copy(isAdvance = advance, amount = amount, error = null))
     }
     fun setPaymentMode(m: LabourPayMode) = _ui.update {
@@ -245,7 +306,9 @@ class LabourViewModel @Inject constructor(
         if (!e.canSave) return
         _ui.update { it.copy(paymentEditor = e.copy(saving = true, error = null)) }
         val amount = Money.parse(e.amount)
-        val days = if (e.isAdvance) null else e.days
+        // "Days covered" only means something for a daily wage. A salary payment
+        // isn't measured in days, and the field is nullable for exactly this case.
+        val days = if (e.isAdvance || e.isMonthlyWorker) null else e.days
         val kind = if (e.isAdvance) "advance" else "wage"
         viewModelScope.launch {
             runCatching {

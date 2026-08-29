@@ -69,8 +69,6 @@ data class BillingUiState(
     // Surviving process death alongside the cart means a returning user never
     // gets a spurious open, and an add always opens it.
     val showReview: Boolean = false,
-    /** Blocks or compact list for the picker; persisted per device. */
-    val productViewMode: ProductViewMode = ProductViewMode.GRID,
 ) {
     val discountValue: Money get() = Money.parse(discountInput.ifBlank { "0" })
     val totals: CartTotals get() = CartMath.totals(lines, discountType, discountValue)
@@ -117,6 +115,20 @@ class BillingViewModel @Inject constructor(
     private val _ui = MutableStateFlow(BillingUiState())
     val ui: StateFlow<BillingUiState> = _ui.asStateFlow()
 
+    /**
+     * Blocks or compact list for the picker; persisted per device.
+     *
+     * Deliberately NOT part of [BillingUiState]. It used to be, and startNewBill()
+     * builds a fresh state carrying over only a few fields — so finishing a bill
+     * silently dropped the picker back to blocks while the stored preference still
+     * said list. That mismatch also killed the toggle: the button derives its next
+     * value from what's on screen, so it kept writing the value already stored,
+     * DataStore skipped the no-op write, nothing emitted, and the tap did nothing.
+     * Reading straight from preferences means no state reset can desync it.
+     */
+    val productViewMode: StateFlow<ProductViewMode> =
+        prefs.productViewMode.stateIn(viewModelScope, SharingStarted.Eagerly, ProductViewMode.GRID)
+
     /** Debounced returning-customer lookup for the phone field. */
     private var lookupJob: Job? = null
 
@@ -133,9 +145,6 @@ class BillingViewModel @Inject constructor(
             _ui.update { it.copy(businessUpi = u.businessUpi, businessName = u.displayShop) }
         }
         loadProducts()
-        viewModelScope.launch {
-            prefs.productViewMode.collect { mode -> _ui.update { it.copy(productViewMode = mode) } }
-        }
     }
 
     fun setProductViewMode(mode: ProductViewMode) {
@@ -471,6 +480,9 @@ class BillingViewModel @Inject constructor(
     }
 
     fun startNewBill() {
+        // Wipes the state and carries over only what outlives a single bill. Anything
+        // that is really a device setting belongs OUTSIDE BillingUiState (see
+        // productViewMode) — put it in here and it silently resets after every sale.
         idempotencyKey = UUID.randomUUID().toString()
         _ui.update {
             BillingUiState(

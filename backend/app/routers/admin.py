@@ -10,13 +10,20 @@ from __future__ import annotations
 import datetime as dt
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Response, UploadFile, status
 from sqlalchemy import func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.auth.dependencies import get_db, require_admin
 from app.auth.security import hash_password
+from app.media import (
+    IMAGE_CONTENT_TYPES,
+    MAX_IMAGE_BYTES,
+    build_media_url,
+    delete_relative,
+    save_shop_logo_bytes,
+)
 from app.models.customer import Customer
 from app.models.shop import Shop
 from app.models.shop_owner import ShopOwner
@@ -125,6 +132,7 @@ def list_shops(db: Session = Depends(get_db)) -> list[ShopListRow]:
             Shop.business_phone,
             Shop.business_email,
             Shop.business_upi,
+            Shop.logo_path,
             User.email.label("owner_email"),
         )
         .outerjoin(User, (User.shop_id == Shop.id) & (User.role == ROLE_MANAGER))
@@ -160,6 +168,10 @@ def list_shops(db: Session = Depends(get_db)) -> list[ShopListRow]:
             # property, not a column), so read it from there — selecting it as a
             # column raises and 500s the whole endpoint.
             whatsapp_message_template=(r.settings or {}).get("whatsapp_message_template"),
+            # Same reason as above — this is a column select, not an ORM object, so
+            # the model's logo_url property isn't available here. Build it by hand.
+            logo_url=build_media_url(r.logo_path),
+            logo_enabled=(r.settings or {}).get("logo_enabled", True),
         )
         for r in rows
     ]
@@ -471,8 +483,81 @@ def update_shop(
         shop.business_upi = payload.business_upi
     if payload.whatsapp_message_template is not None:
         shop.whatsapp_message_template = payload.whatsapp_message_template
+    if payload.logo_enabled is not None:
+        shop.logo_enabled = payload.logo_enabled
     db.flush()
     db.refresh(shop)
+    return shop
+
+
+def _shop_or_404(db: Session, shop_id: uuid.UUID) -> Shop:
+    shop = db.execute(select(Shop).where(Shop.id == shop_id)).scalar_one_or_none()
+    if shop is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Shop not found")
+    return shop
+
+
+@router.post("/shops/{shop_id}/logo", response_model=ShopSummary)
+async def upload_shop_logo(
+    shop_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    file: UploadFile = File(...),
+) -> Shop:
+    """Set the shop's logo for printed bills. Admin-only, by design.
+
+    Shop staff can see the logo but cannot change it (PATCH /shop deliberately
+    omits it) — the logo is part of how the platform presents a shop, not a
+    preference the shop edits.
+    """
+    shop = _shop_or_404(db, shop_id)
+
+    ext = IMAGE_CONTENT_TYPES.get((file.content_type or "").lower())
+    if ext is None:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Unsupported image type. Allowed: JPEG, PNG, WebP.",
+        )
+
+    # Read with a hard size cap (reject before buffering the whole oversized file).
+    data = bytearray()
+    while True:
+        chunk = await file.read(1024 * 1024)
+        if not chunk:
+            break
+        data.extend(chunk)
+        if len(data) > MAX_IMAGE_BYTES:
+            raise HTTPException(
+                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                detail="Image is too large. Maximum size is 5 MB.",
+            )
+    if not data:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Uploaded file is empty.",
+        )
+
+    old_path = shop.logo_path
+    shop.logo_path = save_shop_logo_bytes(bytes(data), ext)
+    db.flush()
+
+    # Remove the previous logo only once the new one is on disk and in the row.
+    if old_path and old_path != shop.logo_path:
+        delete_relative(old_path)
+
+    db.refresh(shop)
+    return shop
+
+
+@router.delete("/shops/{shop_id}/logo", response_model=ShopSummary)
+def delete_shop_logo(shop_id: uuid.UUID, db: Session = Depends(get_db)) -> Shop:
+    """Remove the shop's logo entirely. To keep the file but stop printing it,
+    PATCH logo_enabled=false instead."""
+    shop = _shop_or_404(db, shop_id)
+    if shop.logo_path:
+        delete_relative(shop.logo_path)
+        shop.logo_path = None
+        db.flush()
+        db.refresh(shop)
     return shop
 
 

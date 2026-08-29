@@ -326,6 +326,24 @@
     <string name="lab_recent_payments">சமீபத்திய பணம் செலுத்துதல்கள்</string>
     <string name="lab_no_payments">இன்னும் பணம் செலுத்துதல் எதுவும் பதிவாகவில்லை.</string>
     <string name="lab_per_day">%1$s/நாள்</string>
+    <!-- Monthly-wage workers -->
+    <string name="lab_per_month">%1$s/மாதம்</string>
+    <string name="lab_wage_type">இந்த வேலையாளுக்கு எப்படி ஊதியம்?</string>
+    <string name="lab_wage_type_daily">நாளுக்கு</string>
+    <string name="lab_wage_type_monthly">மாதத்திற்கு</string>
+    <string name="lab_wage_per_month">மாத ஊதியம் (₹)</string>
+    <string name="lab_paid_leaves">மாதத்திற்கு ஊதியத்துடன் விடுப்பு</string>
+    <string name="lab_paid_leaves_hint">ஒரு மாதத்தில் இதற்கு மேல் விடுப்பு எடுத்தால் ஊதியத்திலிருந்து பிடிக்கப்படும். வருகைப் பதிவில் குறிக்கப்படாத நாட்கள் விடுப்பாகக் கணக்கிடப்படாது.</string>
+    <string name="lab_wage_per_month_label">மாத ஊதியம்: %1$s</string>
+    <string name="lab_balance_label">கொடுக்க வேண்டியது: %1$s</string>
+    <string name="lab_earned_monthly">ஈட்டியது (%1$s/மாதம்)</string>
+    <string name="lab_leaves_this_month">இந்த மாத விடுப்புகள்</string>
+    <string name="lab_leaves_of_paid">%2$d-ல் %1$s ஊதியத்துடன்</string>
+    <string name="lab_unpaid_leaves">இந்த மாதம் ஊதியமில்லா விடுப்புகள்</string>
+    <string name="lab_days_deducted">%1$s நாள் பிடித்தம்</string>
+    <string name="lab_remove_worker">நீக்கு</string>
+    <string name="lab_delete_worker_title">வேலையாளை நீக்கவா?</string>
+    <string name="lab_delete_worker_body">%1$s-ஐ நீக்கவா? அவரது வருகைப் பதிவு அழிந்துவிடும், மீட்க முடியாது, எனவே அவரது ஊதியத்தை இனி கணக்கிட முடியாது. பழைய பணப்பட்டுவாடாக்கள் இருக்கும்.</string>
     <string name="lab_balance_to_pay_amt">செலுத்த வேண்டிய இருப்பு %1$s</string>
     <string name="lab_paid_ahead_amt">முன்கூட்டியே செலுத்தியது %1$s</string>
     <string name="cd_edit_worker">தொழிலாளியைத் திருத்து</string>

@@ -33,7 +33,11 @@ class ShopSettingsOut(BaseModel):
     whatsapp_message_template: str | None = None
     whatsapp_footer_message: str | None = None
     whatsapp_language: str
-    
+    # Read-only here on purpose. The logo is admin-controlled — it is deliberately
+    # absent from ShopSettingsUpdate below, so PATCH /shop cannot change it.
+    logo_url: str | None = None
+    logo_enabled: bool = True
+
     model_config = {"from_attributes": True}
 
 

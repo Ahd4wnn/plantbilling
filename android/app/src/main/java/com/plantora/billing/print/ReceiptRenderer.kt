@@ -30,11 +30,17 @@ import java.io.ByteArrayOutputStream
  */
 class ReceiptRenderer(private val dotsWide: Int) {
 
-    fun build(bill: BillDetail, autoCut: Boolean): ByteArray =
-        wrap(renderToBitmap(billBlocks(bill)), autoCut)
+    /**
+     * @param logo already-decoded shop logo, or null to print without one. The
+     *   caller fetches it (see PrinterController) so a slow or missing image can
+     *   never stop a bill from printing.
+     */
+    fun build(bill: BillDetail, autoCut: Boolean, logo: Bitmap? = null): ByteArray =
+        wrap(renderToBitmap(billBlocks(bill, logo)), autoCut)
 
     /** The rendered receipt bitmap, for on-screen preview / instrumented tests. */
-    internal fun renderBitmap(bill: BillDetail): Bitmap = renderToBitmap(billBlocks(bill))
+    internal fun renderBitmap(bill: BillDetail, logo: Bitmap? = null): Bitmap =
+        renderToBitmap(billBlocks(bill, logo))
 
     fun buildTest(connectionLabel: String, autoCut: Boolean): ByteArray {
         val blocks = listOf(
@@ -96,7 +102,8 @@ class ReceiptRenderer(private val dotsWide: Int) {
     }
 
     // ── Content ──────────────────────────────────────────────────────────────
-    private fun billBlocks(bill: BillDetail): List<Block> = buildList {
+    private fun billBlocks(bill: BillDetail, logo: Bitmap?): List<Block> = buildList {
+        logo?.let { add(LogoBlock(it)) }
         add(Para((bill.businessName ?: bill.shopName ?: "NURSERY RECEIPT"), pHeader, center = true))
         bill.businessAddress?.trim()?.takeIf { it.isNotBlank() }?.let { add(Para(it, pSmall, center = true)) }
         bill.businessPhone?.trim()?.takeIf { it.isNotBlank() }?.let { add(Para("Contact: $it", pSmall, center = true)) }
@@ -195,6 +202,31 @@ class ReceiptRenderer(private val dotsWide: Int) {
         override fun draw(canvas: Canvas, top: Int) {}
     }
 
+    /**
+     * The shop logo, scaled to fit the paper and centred.
+     *
+     * Because the whole receipt is already drawn as a bitmap, this is one more
+     * draw call — the ESC/POS raster encoding downstream doesn't know or care
+     * that part of the image came from a file.
+     */
+    private inner class LogoBlock(private val logo: Bitmap) : Block {
+        // Never upscale (a small logo blown up just prints blurry) and never let
+        // it grow so tall it pushes the bill itself off the paper.
+        private val scale = minOf(
+            dotsWide.toFloat() / logo.width,
+            LOGO_MAX_H.toFloat() / logo.height,
+            1f,
+        )
+        private val w = (logo.width * scale).toInt().coerceAtLeast(1)
+        private val h = (logo.height * scale).toInt().coerceAtLeast(1)
+
+        override fun height() = h + LOGO_GAP
+        override fun draw(canvas: Canvas, top: Int) {
+            val dest = android.graphics.Rect((dotsWide - w) / 2, top, (dotsWide - w) / 2 + w, top + h)
+            canvas.drawBitmap(logo, null, dest, imagePaint)
+        }
+    }
+
     // ── Paints ───────────────────────────────────────────────────────────────
     private fun textPaint(sizePx: Float, bold: Boolean) = TextPaint().apply {
         isAntiAlias = true
@@ -212,11 +244,16 @@ class ReceiptRenderer(private val dotsWide: Int) {
     private val pHeader = textPaint(46f, bold = true)
     private val pTotal = textPaint(40f, bold = true)
     private val rule = Paint().apply { color = Color.BLACK; strokeWidth = 2f }
+    // Filtering matters here: the logo is almost always downscaled, and nearest-
+    // neighbour sampling of thin artwork drops whole strokes.
+    private val imagePaint = Paint().apply { isAntiAlias = true; isFilterBitmap = true }
 
     private companion object {
         const val TOP_PAD = 16
         const val BOTTOM_PAD = 40
         const val DIVIDER_H = 18
         const val LINE_GAP = 6
+        const val LOGO_MAX_H = 200
+        const val LOGO_GAP = 12
     }
 }

@@ -83,6 +83,9 @@ data class BillDetailDto(
     @SerialName("business_name") val businessName: String? = null,
     @SerialName("business_address") val businessAddress: String? = null,
     @SerialName("business_phone") val businessPhone: String? = null,
+    // Null means "no logo" — the server has already applied the shop's on/off
+    // switch, so there's nothing to check here. Defaulted for older backends.
+    @SerialName("business_logo_url") val businessLogoUrl: String? = null,
     @SerialName("bill_type") val billType: String,
     val subtotal: String,
     @SerialName("discount_type") val discountType: String,

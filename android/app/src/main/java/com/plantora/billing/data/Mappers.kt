@@ -138,6 +138,7 @@ fun BillDetailDto.toDomain() = BillDetail(
     businessName = businessName,
     businessAddress = businessAddress,
     businessPhone = businessPhone,
+    businessLogoUrl = businessLogoUrl,
     subtotal = Money.parse(subtotal),
     discountType = DiscountType.from(discountType),
     discountValue = Money.parse(discountValue),

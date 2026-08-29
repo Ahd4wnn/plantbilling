@@ -103,6 +103,19 @@ def _bill_no(bill: Bill) -> str | None:
     return f"{bill.bill_seq:04d}" if bill.bill_seq is not None else None
 
 
+def _bill_logo_url(shop) -> str | None:
+    """The logo to print on this shop's bills, or None for no logo.
+
+    The admin's on/off switch is resolved HERE, once, rather than in each of the
+    four print surfaces (screen, browser, web thermal, Android thermal). They each
+    only have to check for None, so the switch cannot be honoured in one place and
+    forgotten in another.
+    """
+    if shop is None or not shop.logo_enabled:
+        return None
+    return shop.logo_url
+
+
 def _serialize(
     bill: Bill,
     items: list[BillItem],
@@ -669,6 +682,7 @@ def get_bill(
         business_name=(shop.business_name or shop.name) if shop else None,
         business_address=shop.business_address if shop else None,
         business_phone=shop.business_phone if shop else None,
+        business_logo_url=_bill_logo_url(shop),
         bill_type=bill.bill_type,
         subtotal=bill.subtotal,
         discount_type=bill.discount_type,
@@ -841,6 +855,7 @@ def update_bill(
         business_name=(shop.business_name or shop.name) if shop else None,
         business_address=shop.business_address if shop else None,
         business_phone=shop.business_phone if shop else None,
+        business_logo_url=_bill_logo_url(shop),
         bill_type=bill.bill_type,
         subtotal=bill.subtotal,
         discount_type=bill.discount_type,
@@ -1556,6 +1571,7 @@ def get_public_bill(
             business_name=(shop.business_name or shop.name) if shop else None,
             business_address=shop.business_address if shop else None,
             business_phone=shop.business_phone if shop else None,
+            business_logo_url=_bill_logo_url(shop),
             bill_type=bill.bill_type,
             subtotal=bill.subtotal,
             discount_type=bill.discount_type,

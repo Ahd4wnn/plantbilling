@@ -21,6 +21,9 @@ export interface ShopRow {
   business_email?: string | null;
   business_upi?: string | null;
   whatsapp_message_template?: string | null;
+  /** Shop logo for printed bills. The URL is the file; the flag is whether it prints. */
+  logo_url?: string | null;
+  logo_enabled?: boolean;
 }
 
 export interface OwnerInfo {
@@ -98,9 +101,29 @@ export async function updateShop(
     business_email?: string | null;
     business_upi?: string | null;
     whatsapp_message_template?: string | null;
+    logo_enabled?: boolean;
   }
 ): Promise<void> {
   await api.patch(`/admin/shops/${shopId}`, payload);
+}
+
+/**
+ * Set the shop's logo for printed bills. Admin-only — shop staff can see the
+ * logo but not change it. To stop printing it without discarding the file,
+ * call updateShop({ logo_enabled: false }) instead.
+ */
+export async function uploadShopLogo(shopId: string, file: File): Promise<ShopRow> {
+  const form = new FormData();
+  form.append("file", file);
+  const { data } = await api.post<ShopRow>(`/admin/shops/${shopId}/logo`, form, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  return data;
+}
+
+export async function deleteShopLogo(shopId: string): Promise<ShopRow> {
+  const { data } = await api.delete<ShopRow>(`/admin/shops/${shopId}/logo`);
+  return data;
 }
 
 /**

@@ -349,6 +349,24 @@
     <string name="lab_recent_payments">Recent payments</string>
     <string name="lab_no_payments">No payments recorded yet.</string>
     <string name="lab_per_day">%1$s/day</string>
+    <!-- Monthly-wage workers -->
+    <string name="lab_per_month">%1$s/month</string>
+    <string name="lab_wage_type">How is this worker paid?</string>
+    <string name="lab_wage_type_daily">Per day</string>
+    <string name="lab_wage_type_monthly">Per month</string>
+    <string name="lab_wage_per_month">Monthly wage (₹)</string>
+    <string name="lab_paid_leaves">Paid leaves per month</string>
+    <string name="lab_paid_leaves_hint">Leaves beyond this many in a month are deducted from the wage. Days not marked in Attendance are not counted as leave.</string>
+    <string name="lab_wage_per_month_label">Monthly wage: %1$s</string>
+    <string name="lab_balance_label">Balance to pay: %1$s</string>
+    <string name="lab_earned_monthly">Earned (%1$s/month)</string>
+    <string name="lab_leaves_this_month">Leaves this month</string>
+    <string name="lab_leaves_of_paid">%1$s of %2$d paid</string>
+    <string name="lab_unpaid_leaves">Unpaid leaves this month</string>
+    <string name="lab_days_deducted">%1$s day(s) deducted</string>
+    <string name="lab_remove_worker">Remove</string>
+    <string name="lab_delete_worker_title">Remove worker?</string>
+    <string name="lab_delete_worker_body">Remove %1$s? Their attendance record will be deleted and cannot be brought back, so their wage can no longer be worked out. Past payments are kept.</string>
     <string name="lab_balance_to_pay_amt">Balance to pay %1$s</string>
     <string name="lab_paid_ahead_amt">Paid ahead %1$s</string>
     <string name="cd_edit_worker">Edit worker</string>

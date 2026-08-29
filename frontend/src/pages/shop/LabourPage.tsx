@@ -24,6 +24,7 @@ import {
   type Gender,
   type Labourer,
   type LabourPayment,
+  type WageType,
 } from "@/api/labour";
 import { Plus, Pencil, Trash2, HardHat, Search, CalendarCheck, Wallet } from "lucide-react";
 
@@ -32,6 +33,24 @@ function fmt(v: string | null | undefined): string {
 }
 function todayISO(): string {
   return new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+}
+/** "₹500/day" or "₹15,000/month" — whichever this worker is actually paid. */
+function wageLine(l: Labourer): string {
+  return l.wage_type === "monthly" ? `${fmt(l.monthly_wage)}/month` : `${fmt(l.default_wage)}/day`;
+}
+
+/**
+ * What to pre-fill as a wage payment's amount: one day's wage for a daily worker,
+ * or the outstanding balance for a monthly one (a salary isn't paid in days, and
+ * their default_wage is 0). Blank for an advance — that amount is always typed.
+ */
+function prefillAmount(l: Labourer | null, isAdvance: boolean): string {
+  if (!l || isAdvance) return "";
+  if (l.wage_type === "monthly") {
+    const owed = parseFloat(l.balance_to_pay) || 0;
+    return owed > 0 ? owed.toFixed(2) : "";
+  }
+  return parseFloat(l.default_wage).toString();
 }
 
 type PayMode = "cash" | "upi" | "split";
@@ -121,7 +140,7 @@ export function LabourPage() {
                 <button type="button" onClick={() => setDetail(l)} className="min-w-0 text-left">
                   <p className="font-semibold text-ink truncate">{l.name}</p>
                   <p className="text-sm text-ink-soft">
-                    {l.gender === "male" ? "Male" : "Female"} · {fmt(l.default_wage)}/day{l.phone ? ` · ${l.phone}` : ""}
+                    {l.gender === "male" ? "Male" : "Female"} · {wageLine(l)}{l.phone ? ` · ${l.phone}` : ""}
                   </p>
                   <BalanceLine labourer={l} />
                 </button>
@@ -172,7 +191,12 @@ export function LabourPage() {
       {detailLive && <DetailSheet labourer={detailLive} onClose={() => setDetail(null)} onRecord={(advance) => { setDetail(null); setPayEdit({ worker: detailLive, advance }); }} />}
       {attendanceOpen && <AttendanceSheet labourers={labourers} onClose={() => setAttendanceOpen(false)} onChanged={load} />}
 
-      <ConfirmDialog open={deleteWorker !== null} title="Remove worker?" body={`Remove ${deleteWorker?.name}? Past payments are kept.`} confirmLabel="Remove" cancelLabel="Cancel" destructive
+      {/* Deleting a worker cascade-deletes their attendance, which is what every
+          wage figure is calculated from — so say that, rather than only mentioning
+          the payments that survive. */}
+      <ConfirmDialog open={deleteWorker !== null} title="Remove worker?"
+        body={`Remove ${deleteWorker?.name}? Their attendance record will be deleted and cannot be brought back, so their wage can no longer be worked out. Past payments are kept.`}
+        confirmLabel="Remove" cancelLabel="Cancel" destructive
         onConfirm={async () => { if (!deleteWorker) return; try { await deleteLabourer(deleteWorker.id); setDeleteWorker(null); await load(); } catch (e) { alert(friendlyError(e)); } }}
         onCancel={() => setDeleteWorker(null)} />
       <ConfirmDialog open={deletePay !== null} title="Delete payment?" body="This removes the record permanently." confirmLabel="Delete" cancelLabel="Cancel" destructive
@@ -203,28 +227,66 @@ function GenderPicker({ value, onChange }: { value: Gender; onChange: (g: Gender
   );
 }
 
+function WageTypePicker({ value, onChange }: { value: WageType; onChange: (t: WageType) => void }) {
+  return (
+    <div>
+      <label className="field-label">How is this worker paid?</label>
+      <div className="grid grid-cols-2 gap-2">
+        {(["daily", "monthly"] as WageType[]).map((t) => (
+          <button key={t} type="button" onClick={() => onChange(t)} className={`rounded-control border px-4 py-3 text-base font-bold ${value === t ? "bg-primary-50 text-primary-700 border-primary-300 ring-2 ring-primary-600/10" : "bg-white text-ink-soft border-border"}`}>{t === "daily" ? "Per day" : "Per month"}</button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function WorkerSheet({ worker, onClose, onSaved }: { worker: Labourer | "new" | null; onClose: () => void; onSaved: () => void }) {
   const editing = worker && worker !== "new" ? worker : null;
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [aadhaar, setAadhaar] = useState("");
   const [gender, setGender] = useState<Gender>("male");
+  const [wageType, setWageType] = useState<WageType>("daily");
   const [wage, setWage] = useState("");
+  const [monthlyWage, setMonthlyWage] = useState("");
+  const [paidLeaves, setPaidLeaves] = useState("");
+  const [joinedOn, setJoinedOn] = useState("");
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
   useEffect(() => {
     if (!worker) return;
     setName(editing?.name ?? ""); setPhone(editing?.phone ?? ""); setAadhaar(editing?.aadhaar ?? ""); setGender(editing?.gender ?? "male");
-    setWage(editing ? parseFloat(editing.default_wage).toString() : ""); setErr(null);
+    setWageType(editing?.wage_type ?? "daily");
+    setWage(editing ? parseFloat(editing.default_wage).toString() : "");
+    setMonthlyWage(editing && editing.monthly_wage ? parseFloat(editing.monthly_wage).toString() : "");
+    setPaidLeaves(editing ? String(editing.paid_leaves_per_month ?? 0) : "");
+    // New workers default to today; the field is editable because people are
+    // routinely entered into the app days or weeks after they actually started.
+    setJoinedOn(editing?.joined_on ?? todayISO());
+    setErr(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [worker]);
 
+  const monthly = wageType === "monthly";
+  // The wage that matters for the selected mode. Blocking here rather than
+  // letting the server reject it keeps the message next to the empty field.
+  const wageFilled = monthly ? Number(monthlyWage) > 0 : Number(wage) > 0;
+
   const submit = async () => {
-    if (!name.trim()) return;
+    if (!name.trim() || !wageFilled) return;
     setSaving(true); setErr(null);
     try {
-      const payload = { name: name.trim(), phone: phone.trim() || null, aadhaar: aadhaar.trim() || null, gender, default_wage: wage.trim() || "0" };
+      const payload = {
+        name: name.trim(), phone: phone.trim() || null, aadhaar: aadhaar.trim() || null, gender,
+        wage_type: wageType,
+        // Both wages are always sent so switching a worker between modes doesn't
+        // leave a stale figure behind in the mode they're no longer paid in.
+        default_wage: monthly ? "0" : wage.trim() || "0",
+        monthly_wage: monthly ? monthlyWage.trim() || "0" : "0",
+        paid_leaves_per_month: monthly ? Number(paidLeaves || 0) : 0,
+        joined_on: joinedOn || null,
+      };
       if (editing) await updateLabourer(editing.id, payload); else await createLabourer(payload);
       onSaved(); onClose();
     } catch (e) { setErr(friendlyError(e, "Couldn't save worker.")); } finally { setSaving(false); }
@@ -232,14 +294,27 @@ function WorkerSheet({ worker, onClose, onSaved }: { worker: Labourer | "new" | 
 
   return (
     <BottomSheet open={worker !== null} onClose={onClose} title={editing ? "Edit worker" : "Add worker"}
-      footer={<Button variant="primary" size="action" className="w-full font-bold" disabled={!name.trim() || saving} loading={saving} onClick={submit}>{editing ? "Save changes" : "Add worker"}</Button>}>
+      footer={<Button variant="primary" size="action" className="w-full font-bold" disabled={!name.trim() || !wageFilled || saving} loading={saving} onClick={submit}>{editing ? "Save changes" : "Add worker"}</Button>}>
       <div className="space-y-4">
         {err && <p className="rounded-control bg-danger-soft px-4 py-3 text-base font-semibold text-danger">{err}</p>}
         <TextInput label="Name" value={name} onChange={(e) => setName(e.target.value)} required />
         <TextInput label="Phone number" value={phone} onChange={(e) => setPhone(e.target.value)} inputMode="tel" />
         <TextInput label="Aadhaar number (optional)" value={aadhaar} onChange={(e) => setAadhaar(e.target.value)} inputMode="numeric" />
         <GenderPicker value={gender} onChange={setGender} />
-        <TextInput label="Wage per day (₹)" value={wage} onChange={(e) => setWage(e.target.value.replace(/[^0-9.]/g, ""))} inputMode="decimal" placeholder="0" />
+        <TextInput label="Joining date" type="date" value={joinedOn} max={todayISO()} onChange={(e) => setJoinedOn(e.target.value)} />
+        <WageTypePicker value={wageType} onChange={setWageType} />
+        {monthly ? (
+          <>
+            <TextInput label="Monthly wage (₹)" value={monthlyWage} onChange={(e) => setMonthlyWage(e.target.value.replace(/[^0-9.]/g, ""))} inputMode="decimal" placeholder="0" required />
+            <TextInput label="Paid leaves per month" value={paidLeaves} onChange={(e) => setPaidLeaves(e.target.value.replace(/[^0-9]/g, ""))} inputMode="numeric" placeholder="0" />
+            <p className="text-sm text-ink-soft">
+              Leaves beyond this many in a month are deducted from the wage. Days you
+              haven't marked in Attendance are not counted as leave.
+            </p>
+          </>
+        ) : (
+          <TextInput label="Wage per day (₹)" value={wage} onChange={(e) => setWage(e.target.value.replace(/[^0-9.]/g, ""))} inputMode="decimal" placeholder="0" required />
+        )}
       </div>
     </BottomSheet>
   );
@@ -280,17 +355,29 @@ function PaymentSheet({ edit, labourers, onClose, onSaved }: { edit: PayStart | 
       setIsAdvance(startAdvance);
       setWagePerDay(w ? parseFloat(w.default_wage).toString() : "0");
       setDays("1");
-      setAmount(w && !startAdvance ? parseFloat(w.default_wage).toString() : "");
+      // A monthly worker's default_wage is 0, so one day's wage would pre-fill ₹0.
+      // What's normally being handed over is the outstanding balance.
+      setAmount(prefillAmount(w, startAdvance));
       setMode("cash"); setSplitCash(""); setNote("");
     }
     setErr(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [edit]);
 
+  // Which worker this payment is for, so the form can ask the right question.
+  // Null while editing a payment whose worker has since been removed.
+  const selectedWorker = labourers.find((l) => l.id === labourerId) ?? null;
+  const monthlyWorker = selectedWorker?.wage_type === "monthly";
+
   const selectWorker = (l: Labourer) => {
     setLabourerId(l.id);
     setWagePerDay(parseFloat(l.default_wage).toString());
-    if (!isAdvance) setAmount((parseFloat(l.default_wage) * (parseFloat(days || "0") || 0)).toString());
+    if (isAdvance) return;
+    setAmount(
+      l.wage_type === "monthly"
+        ? prefillAmount(l, false)
+        : (parseFloat(l.default_wage) * (parseFloat(days || "0") || 0)).toString(),
+    );
   };
 
   const setDaysAndAmount = (d: string) => {
@@ -311,8 +398,11 @@ function PaymentSheet({ edit, labourers, onClose, onSaved }: { edit: PayStart | 
     setSaving(true); setErr(null);
     try {
       const body = { wage_amount: amount.trim() || "0", cash_amount: split.cash, upi_amount: split.upi, due_amount: "0", note: note.trim() || null };
-      if (editing) await updateLabourPayment(editing.id, { ...body, days: isAdvance ? null : days.trim() || "0" });
-      else await createLabourPayment({ labourer_id: labourerId, kind: isAdvance ? "advance" : "wage", days: isAdvance ? null : days.trim() || "0", ...body });
+      // "Days covered" is only meaningful for a daily wage; a salary payment isn't
+      // measured in days, and the column is nullable for exactly this reason.
+      const daysCovered = isAdvance || monthlyWorker ? null : days.trim() || "0";
+      if (editing) await updateLabourPayment(editing.id, { ...body, days: daysCovered });
+      else await createLabourPayment({ labourer_id: labourerId, kind: isAdvance ? "advance" : "wage", days: daysCovered, ...body });
       onSaved(); onClose();
     } catch (e) { setErr(friendlyError(e, "Couldn't record the payment.")); } finally { setSaving(false); }
   };
@@ -340,17 +430,31 @@ function PaymentSheet({ edit, labourers, onClose, onSaved }: { edit: PayStart | 
         {!editing && (
           <div className="grid grid-cols-2 gap-2">
             {[{ v: false, label: "Wage payment" }, { v: true, label: "Advance" }].map((o) => (
-              <button key={o.label} type="button" onClick={() => { setIsAdvance(o.v); if (o.v) { setAmount(""); } else { setAmount(((parseFloat(wagePerDay || "0") || 0) * (parseFloat(days || "0") || 0)).toString()); } }}
+              <button key={o.label} type="button" onClick={() => {
+                setIsAdvance(o.v);
+                if (o.v) { setAmount(""); return; }
+                setAmount(
+                  monthlyWorker
+                    ? prefillAmount(selectedWorker, false)
+                    : ((parseFloat(wagePerDay || "0") || 0) * (parseFloat(days || "0") || 0)).toString(),
+                );
+              }}
                 className={`rounded-control border px-4 py-3 text-base font-bold ${isAdvance === o.v ? "bg-primary-50 text-primary-700 border-primary-300 ring-2 ring-primary-600/10" : "bg-white text-ink-soft border-border"}`}>{o.label}</button>
             ))}
           </div>
         )}
 
-        {!isAdvance && (
+        {!isAdvance && !monthlyWorker && (
           <>
             <p className="text-sm text-ink-soft">Wage per day: <span className="font-semibold text-ink">{fmt(wagePerDay)}</span></p>
             <TextInput label="Number of days" value={days} onChange={(e) => setDaysAndAmount(e.target.value.replace(/[^0-9.]/g, ""))} inputMode="decimal" />
           </>
+        )}
+        {!isAdvance && monthlyWorker && selectedWorker && (
+          <p className="text-sm text-ink-soft">
+            Monthly wage: <span className="font-semibold text-ink">{fmt(selectedWorker.monthly_wage)}</span>
+            {" · "}Balance to pay: <span className="font-semibold text-ink">{fmt(selectedWorker.balance_to_pay)}</span>
+          </p>
         )}
         <TextInput label={isAdvance ? "Advance amount (₹)" : "Amount (₹)"} value={amount} onChange={(e) => setAmount(e.target.value.replace(/[^0-9.]/g, ""))} inputMode="decimal" />
 
@@ -397,10 +501,22 @@ function DetailSheet({ labourer, onClose, onRecord }: { labourer: Labourer; onCl
       <div className="space-y-4">
         <p className="text-sm text-ink-soft">{labourer.gender === "male" ? "Male" : "Female"}{labourer.phone ? ` · ${labourer.phone}` : ""}{labourer.aadhaar ? ` · Aadhaar ${labourer.aadhaar}` : ""}</p>
 
-        {/* Statement of pay */}
+        {/* Statement of pay. A monthly worker's earnings are a salary minus
+            deductions, so show the leave position that produced them — otherwise a
+            reduced figure looks like the app got the sum wrong. */}
         <div className="rounded-card border border-border divide-y divide-border">
           <StatementRow label={`Days worked`} value={`${labourer.days_worked} day(s)`} />
-          <StatementRow label={`Earned (${fmt(labourer.default_wage)}/day)`} value={fmt(labourer.earned)} />
+          {labourer.wage_type === "monthly" ? (
+            <>
+              <StatementRow label="Leaves this month" value={`${labourer.leaves_this_month} of ${labourer.paid_leaves_per_month} paid`} />
+              {Number(labourer.unpaid_leaves_this_month) > 0 && (
+                <StatementRow label="Unpaid leaves this month" value={`${labourer.unpaid_leaves_this_month} day(s) deducted`} />
+              )}
+              <StatementRow label={`Earned (${fmt(labourer.monthly_wage)}/month)`} value={fmt(labourer.earned)} />
+            </>
+          ) : (
+            <StatementRow label={`Earned (${fmt(labourer.default_wage)}/day)`} value={fmt(labourer.earned)} />
+          )}
           <StatementRow label="Total paid" value={fmt(labourer.total_paid)} />
           <div className="flex items-center justify-between px-4 py-3">
             <span className="flex items-center gap-2 font-bold text-ink"><Wallet className="h-4 w-4" /> {bal < 0 ? "Paid ahead" : "Balance to pay"}</span>

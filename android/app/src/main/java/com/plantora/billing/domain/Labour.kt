@@ -7,15 +7,27 @@ data class Labourer(
     val phone: String?,
     val aadhaar: String?,        // optional Aadhaar number
     val gender: String,          // "male" | "female"
-    val defaultWage: Money,      // wage per day
+    val wageType: String,        // "daily" | "monthly"
+    val defaultWage: Money,      // wage per day    (daily workers)
+    val monthlyWage: Money,      // wage per month  (monthly workers)
+    val paidLeavesPerMonth: Int, // leaves allowed per month before pay is cut
     val isActive: Boolean,
     val daysWorked: String,      // present + ½·half-day (from attendance)
-    val totalPaid: Money,
-    val earned: Money,           // wage_per_day × days_worked
+    val totalPaid: Money,        // every rupee handed over (wage + advance)
+    // Daily:   wage_per_day × days_worked.
+    // Monthly: salary, part months pro-rated at monthly_wage/30 per day, minus
+    //          monthly_wage/30 per leave beyond that month's allowance.
+    // Computed by the server only — never recalculate it on the device.
+    val earned: Money,
     val balanceToPay: Money,     // earned − paid (negative = paid ahead / advance)
     val joinedOn: String?,       // yyyy-MM-dd; null only against a pre-0.1.40 backend
+    val leavesThisMonth: String,        // this calendar month, absent=1 half=½
+    val unpaidLeavesThisMonth: String,  // the part of those that cost the worker pay
     val createdAt: String,
 )
+
+/** True when this worker is on a monthly salary rather than a daily wage. */
+val Labourer.isMonthly: Boolean get() = wageType == "monthly"
 
 /** A recorded payment to a worker. */
 data class LabourPayment(

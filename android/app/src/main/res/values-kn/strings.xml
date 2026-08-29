@@ -326,6 +326,24 @@
     <string name="lab_recent_payments">ಇತ್ತೀಚಿನ ಪಾವತಿಗಳು</string>
     <string name="lab_no_payments">ಇನ್ನೂ ಯಾವುದೇ ಪಾವತಿ ದಾಖಲಾಗಿಲ್ಲ.</string>
     <string name="lab_per_day">%1$s/ದಿನ</string>
+    <!-- Monthly-wage workers -->
+    <string name="lab_per_month">%1$s/ತಿಂಗಳು</string>
+    <string name="lab_wage_type">ಈ ಕೆಲಸಗಾರರಿಗೆ ಹೇಗೆ ಸಂಬಳ?</string>
+    <string name="lab_wage_type_daily">ದಿನಕ್ಕೆ</string>
+    <string name="lab_wage_type_monthly">ತಿಂಗಳಿಗೆ</string>
+    <string name="lab_wage_per_month">ತಿಂಗಳ ಸಂಬಳ (₹)</string>
+    <string name="lab_paid_leaves">ತಿಂಗಳಿಗೆ ಸಂಬಳ ಸಹಿತ ರಜೆ</string>
+    <string name="lab_paid_leaves_hint">ಒಂದು ತಿಂಗಳಲ್ಲಿ ಇದಕ್ಕಿಂತ ಹೆಚ್ಚು ರಜೆ ತೆಗೆದುಕೊಂಡರೆ ಸಂಬಳದಿಂದ ಕಡಿತವಾಗುತ್ತದೆ. ಹಾಜರಾತಿಯಲ್ಲಿ ಗುರುತಿಸದ ದಿನಗಳನ್ನು ರಜೆ ಎಂದು ಎಣಿಸುವುದಿಲ್ಲ.</string>
+    <string name="lab_wage_per_month_label">ತಿಂಗಳ ಸಂಬಳ: %1$s</string>
+    <string name="lab_balance_label">ಕೊಡಬೇಕಾದ ಬಾಕಿ: %1$s</string>
+    <string name="lab_earned_monthly">ಗಳಿಸಿದ್ದು (%1$s/ತಿಂಗಳು)</string>
+    <string name="lab_leaves_this_month">ಈ ತಿಂಗಳ ರಜೆಗಳು</string>
+    <string name="lab_leaves_of_paid">%2$d ರಲ್ಲಿ %1$s ಸಂಬಳ ಸಹಿತ</string>
+    <string name="lab_unpaid_leaves">ಈ ತಿಂಗಳ ಸಂಬಳ ರಹಿತ ರಜೆಗಳು</string>
+    <string name="lab_days_deducted">%1$s ದಿನ ಕಡಿತ</string>
+    <string name="lab_remove_worker">ತೆಗೆದುಹಾಕಿ</string>
+    <string name="lab_delete_worker_title">ಕೆಲಸಗಾರರನ್ನು ತೆಗೆಯಬೇಕೇ?</string>
+    <string name="lab_delete_worker_body">%1$s ಅವರನ್ನು ತೆಗೆಯಬೇಕೇ? ಅವರ ಹಾಜರಾತಿ ದಾಖಲೆ ಅಳಿಸಿಹೋಗುತ್ತದೆ ಮತ್ತು ಮರಳಿ ಬರುವುದಿಲ್ಲ, ಆದ್ದರಿಂದ ಅವರ ಸಂಬಳವನ್ನು ಇನ್ನು ಲೆಕ್ಕ ಹಾಕಲಾಗದು. ಹಿಂದಿನ ಪಾವತಿಗಳು ಉಳಿಯುತ್ತವೆ.</string>
     <string name="lab_balance_to_pay_amt">ಪಾವತಿಸಬೇಕಾದ ಬಾಕಿ %1$s</string>
     <string name="lab_paid_ahead_amt">ಮುಂಚಿತವಾಗಿ ಪಾವತಿಸಿದ್ದು %1$s</string>
     <string name="cd_edit_worker">ಕಾರ್ಮಿಕನನ್ನು ಸಂಪಾದಿಸಿ</string>

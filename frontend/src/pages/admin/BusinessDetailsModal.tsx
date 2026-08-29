@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
-import { updateShop, type ShopRow } from "@/api/admin";
-import { friendlyError } from "@/api/client";
+import { useEffect, useRef, useState } from "react";
+import { deleteShopLogo, updateShop, uploadShopLogo, type ShopRow } from "@/api/admin";
+import { friendlyError, getMediaUrl } from "@/api/client";
 import { Modal } from "@/components/admin/Modal";
 import { Button } from "@/components/Button";
+import { validateImageFile } from "@/lib/image";
 
 interface BusinessDetailsModalProps {
   shop: ShopRow | null;
@@ -18,6 +19,13 @@ export function BusinessDetailsModal({ shop, onClose, onSaved }: BusinessDetails
   const [businessUpi, setBusinessUpi] = useState("");
   const [whatsappMessageTemplate, setWhatsappMessageTemplate] = useState("");
 
+  // The logo is uploaded/removed immediately (it's a file, not a form field),
+  // while the on/off switch rides along with Save Details like everything else.
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const [logoEnabled, setLogoEnabled] = useState(true);
+  const [logoBusy, setLogoBusy] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -29,9 +37,45 @@ export function BusinessDetailsModal({ shop, onClose, onSaved }: BusinessDetails
     setBusinessEmail(shop.business_email || "");
     setBusinessUpi(shop.business_upi || "");
     setWhatsappMessageTemplate(shop.whatsapp_message_template || "");
+    setLogoUrl(shop.logo_url ?? null);
+    setLogoEnabled(shop.logo_enabled ?? true);
     setError(null);
     setSubmitting(false);
   }, [shop]);
+
+  async function handleLogoPicked(file: File | undefined) {
+    if (!shop || !file) return;
+    const problem = validateImageFile(file);
+    if (problem) { setError(problem); return; }
+    setLogoBusy(true);
+    setError(null);
+    try {
+      const updated = await uploadShopLogo(shop.id, file);
+      setLogoUrl(updated.logo_url ?? null);
+      onSaved();
+    } catch (err) {
+      setError(friendlyError(err, "Couldn't upload the logo. Please try again."));
+    } finally {
+      setLogoBusy(false);
+      // Clear the input so picking the same file again still fires onChange.
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  }
+
+  async function handleLogoRemove() {
+    if (!shop) return;
+    setLogoBusy(true);
+    setError(null);
+    try {
+      await deleteShopLogo(shop.id);
+      setLogoUrl(null);
+      onSaved();
+    } catch (err) {
+      setError(friendlyError(err, "Couldn't remove the logo. Please try again."));
+    } finally {
+      setLogoBusy(false);
+    }
+  }
 
   async function handleSave() {
     if (!shop) return;
@@ -53,6 +97,7 @@ export function BusinessDetailsModal({ shop, onClose, onSaved }: BusinessDetails
         business_email: businessEmail.trim() || null,
         business_upi: trimmedUpi || null,
         whatsapp_message_template: whatsappMessageTemplate.trim() || null,
+        logo_enabled: logoEnabled,
       });
       onSaved();
       onClose();
@@ -137,6 +182,58 @@ export function BusinessDetailsModal({ shop, onClose, onSaved }: BusinessDetails
             onChange={(e) => setBusinessUpi(e.target.value)}
             placeholder="merchant@ybl"
           />
+        </div>
+
+        <div className="rounded-control border-2 border-border p-3">
+          <label className="mb-1 block text-sm font-semibold text-ink">Bill Logo</label>
+          <p className="mb-2 text-xs text-ink-soft leading-normal">
+            Printed at the top of this nursery&rsquo;s bills. Only you can change it —
+            the shop can see it but not edit it. JPG, PNG or WebP, up to 5&nbsp;MB.
+          </p>
+
+          <div className="flex items-center gap-3">
+            <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-control border-2 border-border bg-surface-muted">
+              {logoUrl ? (
+                <img src={getMediaUrl(logoUrl) ?? undefined} alt="Shop logo" className="h-full w-full object-contain" />
+              ) : (
+                <span className="text-xs text-ink-soft">None</span>
+              )}
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button variant="secondary" size="tap" disabled={logoBusy} onClick={() => fileRef.current?.click()}>
+                {logoBusy ? "Working…" : logoUrl ? "Replace" : "Upload"}
+              </Button>
+              {logoUrl && (
+                <Button variant="ghost" size="tap" disabled={logoBusy} onClick={handleLogoRemove}>
+                  Remove
+                </Button>
+              )}
+            </div>
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              className="sr-only"
+              onChange={(e) => handleLogoPicked(e.target.files?.[0])}
+            />
+          </div>
+
+          {logoUrl && (
+            <label className="mt-3 flex items-center gap-2 text-sm font-semibold text-ink">
+              <input
+                type="checkbox"
+                className="h-4 w-4"
+                checked={logoEnabled}
+                onChange={(e) => setLogoEnabled(e.target.checked)}
+              />
+              Print this logo on bills
+            </label>
+          )}
+          {logoUrl && !logoEnabled && (
+            <p className="mt-1 text-xs text-ink-soft">
+              Turned off — the file is kept, but bills print without it.
+            </p>
+          )}
         </div>
 
         <div>

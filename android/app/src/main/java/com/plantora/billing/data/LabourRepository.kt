@@ -24,13 +24,18 @@ internal fun LabourerDto.toDomain() = Labourer(
     phone = phone,
     aadhaar = aadhaar,
     gender = gender,
+    wageType = wageType,
     defaultWage = Money.parse(defaultWage),
+    monthlyWage = Money.parse(monthlyWage),
+    paidLeavesPerMonth = paidLeavesPerMonth,
     isActive = isActive,
     daysWorked = daysWorked,
     totalPaid = Money.parse(totalPaid),
     earned = Money.parse(earned),
     balanceToPay = Money.parse(balanceToPay),
     joinedOn = joinedOn,
+    leavesThisMonth = leavesThisMonth,
+    unpaidLeavesThisMonth = unpaidLeavesThisMonth,
     createdAt = createdAt,
 )
 
@@ -67,24 +72,32 @@ class LabourRepository @Inject constructor(
 ) {
     suspend fun labourers(): List<Labourer> = api.listLabourers().map { it.toDomain() }
 
+    // Both wages are always sent, so switching a worker between daily and monthly
+    // can't leave a stale figure behind in the mode they're no longer paid in.
     suspend fun addLabourer(
-        name: String, phone: String?, aadhaar: String?, gender: String, defaultWage: Money,
+        name: String, phone: String?, aadhaar: String?, gender: String,
+        wageType: String, defaultWage: Money, monthlyWage: Money, paidLeavesPerMonth: Int,
         joinedOn: String? = null,
     ): Labourer = api.createLabourer(
         LabourerCreateDto(
             name = name.trim(), phone = phone?.trim()?.ifBlank { null }, aadhaar = aadhaar?.trim()?.ifBlank { null },
-            gender = gender, defaultWage = defaultWage.toWire(), joinedOn = joinedOn,
+            gender = gender, wageType = wageType,
+            defaultWage = defaultWage.toWire(), monthlyWage = monthlyWage.toWire(),
+            paidLeavesPerMonth = paidLeavesPerMonth, joinedOn = joinedOn,
         ),
     ).toDomain()
 
     suspend fun updateLabourer(
-        id: String, name: String, phone: String?, aadhaar: String?, gender: String, defaultWage: Money,
+        id: String, name: String, phone: String?, aadhaar: String?, gender: String,
+        wageType: String, defaultWage: Money, monthlyWage: Money, paidLeavesPerMonth: Int,
         joinedOn: String? = null,
     ): Labourer = api.updateLabourer(
         id,
         LabourerUpdateDto(
             name = name.trim(), phone = phone?.trim() ?: "", aadhaar = aadhaar?.trim() ?: "",
-            gender = gender, defaultWage = defaultWage.toWire(), joinedOn = joinedOn,
+            gender = gender, wageType = wageType,
+            defaultWage = defaultWage.toWire(), monthlyWage = monthlyWage.toWire(),
+            paidLeavesPerMonth = paidLeavesPerMonth, joinedOn = joinedOn,
         ),
     ).toDomain()
 

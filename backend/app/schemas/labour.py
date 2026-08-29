@@ -13,6 +13,9 @@ Gender = Literal["male", "female"]
 PayMethod = Literal["cash", "upi", "split", "due"]
 PayKind = Literal["wage", "advance", "due_clear"]
 AttendanceStatus = Literal["present", "absent", "half_day"]
+# How a worker is paid. 'daily' reads default_wage; 'monthly' reads monthly_wage
+# and paid_leaves_per_month. Only one of the wage fields is ever meaningful.
+WageType = Literal["daily", "monthly"]
 
 
 # ── Labourer (the worker profile) ────────────────────────────────────────────
@@ -21,7 +24,12 @@ class LabourerCreate(BaseModel):
     phone: str | None = None
     aadhaar: str | None = None
     gender: Gender
-    default_wage: MoneyIn = Field(default=0)  # type: ignore[assignment]
+    wage_type: WageType = "daily"
+    default_wage: MoneyIn = Field(default=0)  # type: ignore[assignment]   per day
+    monthly_wage: MoneyIn = Field(default=0)  # type: ignore[assignment]   per month
+    # Leaves allowed each month without losing pay. Resets monthly; doesn't carry
+    # forward. Only meaningful for monthly workers.
+    paid_leaves_per_month: int = Field(default=0, ge=0, le=31)
     # Omit to use today (IST) — the usual case, since a worker is normally added
     # on the day they start. Set it when entering someone who started earlier.
     joined_on: dt.date | None = None
@@ -32,7 +40,10 @@ class LabourerUpdate(BaseModel):
     phone: str | None = None
     aadhaar: str | None = None
     gender: Gender | None = None
+    wage_type: WageType | None = None
     default_wage: MoneyIn | None = None
+    monthly_wage: MoneyIn | None = None
+    paid_leaves_per_month: int | None = Field(default=None, ge=0, le=31)
     is_active: bool | None = None
     joined_on: dt.date | None = None
 
@@ -43,11 +54,17 @@ class LabourerOut(BaseModel):
     phone: str | None = None
     aadhaar: str | None = None
     gender: Gender
-    default_wage: MoneyOut          # wage per day
+    wage_type: WageType = "daily"
+    default_wage: MoneyOut          # wage per day   (daily workers)
+    monthly_wage: MoneyOut = 0  # type: ignore[assignment]   (monthly workers)
+    paid_leaves_per_month: int = 0
     is_active: bool
-    # Attendance-driven ledger:
+    # Attendance-driven ledger (see app/services/labour_wages.py for the rules):
     #   days_worked = present + 0.5×half-day (from labour_attendance)
-    #   earned      = wage_per_day × days_worked
+    #   earned      — daily:   wage_per_day × days_worked
+    #                 monthly: salary per month, part months pro-rated at
+    #                          monthly_wage/30 per day, minus monthly_wage/30 for
+    #                          each leave beyond that month's paid-leave allowance
     #   total_paid  = every rupee handed over (wage + advance + legacy due-clear)
     #   balance_to_pay = earned − total_paid   (negative = paid ahead / advance)
     days_worked: str = "0"
@@ -55,6 +72,10 @@ class LabourerOut(BaseModel):
     earned: MoneyOut = 0  # type: ignore[assignment]
     balance_to_pay: MoneyOut = 0  # type: ignore[assignment]
     joined_on: dt.date
+    # This calendar month only, so the app can show WHY a monthly worker's pay was
+    # reduced rather than just showing a smaller number. absent = 1, half-day = ½.
+    leaves_this_month: str = "0"
+    unpaid_leaves_this_month: str = "0"
     created_at: dt.datetime
 
     model_config = {"from_attributes": True}

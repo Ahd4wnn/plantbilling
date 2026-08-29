@@ -13,17 +13,22 @@ import uuid
 from decimal import Decimal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
-from sqlalchemy import case, func, select
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.auth.dependencies import get_db, require_shop_staff, require_manager_or_admin
 from app.models.labour import Labourer, LabourPayment, LabourAttendance
-
-# Days credited per attendance status (half-day counts as half).
-_STATUS_DAYS = {"present": Decimal("1"), "half_day": Decimal("0.5"), "absent": Decimal("0")}
 from app.models.user import User
 from app.routers.bills import ZERO, q2, _http422, _payment_method, _user_email, _ist_day_bounds_utc, _today_ist
+from app.services.labour_wages import (
+    STATUS_DAYS,
+    STATUS_LEAVES,
+    daily_earnings,
+    month_start,
+    monthly_earnings,
+    unpaid_leaves_in_month,
+)
 from app.schemas.labour import (
     AttendanceMark,
     AttendanceOut,
@@ -47,24 +52,30 @@ def _num_str(v) -> str:
 
 def labourers_with_ledger(db: Session, shop_id: uuid.UUID | None = None) -> list[LabourerOut]:
     """The worker roster with the attendance-driven ledger for each:
-        days_worked (present + ½·half-day) → earned (wage/day × days)
+        days_worked (present + ½·half-day)
+        earned      — wage/day × days for a daily worker; salary minus unpaid-leave
+                      deductions for a monthly one (see app/services/labour_wages.py)
         total_paid (all cash+UPI handed over) → balance_to_pay (earned − paid).
+
     RLS scopes to the caller's shop; owner endpoints pass an explicit shop_id
-    because an owner can own several shops."""
+    because an owner can own several shops.
+
+    Attendance is fetched per month rather than as one lifetime total, because a
+    monthly worker's paid-leave allowance resets every month — two leaves in March
+    and two in April cost nothing, while four in March costs two days' pay. A
+    single total cannot tell those apart. Daily workers just sum the months back up.
+    """
+    month_col = func.date_trunc("month", LabourAttendance.day)
     lab_stmt = select(Labourer).order_by(Labourer.name.asc())
-    att_stmt = select(
-        LabourAttendance.labourer_id,
-        func.coalesce(
-            func.sum(
-                case(
-                    (LabourAttendance.status == "present", 1.0),
-                    (LabourAttendance.status == "half_day", 0.5),
-                    else_=0.0,
-                )
-            ),
-            0,
-        ),
-    ).group_by(LabourAttendance.labourer_id)
+    att_stmt = (
+        select(
+            LabourAttendance.labourer_id,
+            month_col.label("month"),
+            LabourAttendance.status,
+            func.count().label("marks"),
+        )
+        .group_by(LabourAttendance.labourer_id, month_col, LabourAttendance.status)
+    )
     paid_stmt = select(
         LabourPayment.labourer_id,
         func.coalesce(func.sum(LabourPayment.cash_amount + LabourPayment.upi_amount), 0),
@@ -75,24 +86,91 @@ def labourers_with_ledger(db: Session, shop_id: uuid.UUID | None = None) -> list
         paid_stmt = paid_stmt.where(LabourPayment.shop_id == shop_id)
 
     labourers = list(db.execute(lab_stmt).scalars())
-    days_by = {r[0]: Decimal(str(r[1])) for r in db.execute(att_stmt).all()}
     paid_by = {r[0]: Decimal(r[1]) for r in db.execute(paid_stmt).all()}
+
+    # labourer_id -> {first-of-month -> {"days": Decimal, "leaves": Decimal}}
+    marks: dict[uuid.UUID, dict[dt.date, dict[str, Decimal]]] = {}
+    for labourer_id, month, status, count in db.execute(att_stmt).all():
+        # date_trunc hands back a timestamp; the rest of this works in plain dates.
+        key = month.date() if isinstance(month, dt.datetime) else month
+        bucket = marks.setdefault(labourer_id, {}).setdefault(
+            key, {"days": ZERO, "leaves": ZERO}
+        )
+        n = Decimal(count)
+        bucket["days"] += STATUS_DAYS.get(status, ZERO) * n
+        bucket["leaves"] += STATUS_LEAVES.get(status, ZERO) * n
+
+    today = _today_ist()
+    this_month = month_start(today)
 
     out: list[LabourerOut] = []
     for l in labourers:
-        days = days_by.get(l.id, ZERO)
+        by_month = marks.get(l.id, {})
+        days = sum((m["days"] for m in by_month.values()), ZERO)
         paid = paid_by.get(l.id, ZERO)
-        earned = q2(Decimal(l.default_wage) * days)
+
+        if l.wage_type == "monthly":
+            leaves_by_month = {month: m["leaves"] for month, m in by_month.items()}
+            earned = monthly_earnings(
+                monthly_wage=Decimal(l.monthly_wage),
+                paid_leaves_per_month=l.paid_leaves_per_month,
+                joined_on=l.joined_on,
+                today=today,
+                leaves_by_month=leaves_by_month,
+            )
+        else:
+            earned = daily_earnings(Decimal(l.default_wage), days)
+
+        # This month's leave position, so the app can explain a deduction instead of
+        # just showing a smaller number.
+        leaves_now = by_month.get(this_month, {}).get("leaves", ZERO)
+        unpaid_now = unpaid_leaves_in_month(leaves_now, l.paid_leaves_per_month)
+
         out.append(
             LabourerOut(
                 id=l.id, name=l.name, phone=l.phone, aadhaar=l.aadhaar, gender=l.gender,  # type: ignore[arg-type]
-                default_wage=l.default_wage, is_active=l.is_active,
+                wage_type=l.wage_type,  # type: ignore[arg-type]
+                default_wage=l.default_wage,
+                monthly_wage=l.monthly_wage,
+                paid_leaves_per_month=l.paid_leaves_per_month,
+                is_active=l.is_active,
                 days_worked=_num_str(days), total_paid=q2(paid), earned=earned,
                 balance_to_pay=q2(earned - paid), joined_on=l.joined_on,
+                leaves_this_month=_num_str(leaves_now),
+                unpaid_leaves_this_month=_num_str(unpaid_now),
                 created_at=l.created_at,
             )
         )
     return out
+
+
+def _check_wages(wage_type: str, default_wage, monthly_wage) -> None:
+    """A worker must have a wage in the mode they're actually paid in.
+
+    Saving a monthly worker with a blank salary would quietly show them earning ₹0
+    forever, which reads as a broken app rather than a missing field — so refuse it
+    up front, naming the field the manager needs to fill in.
+    """
+    if wage_type == "monthly":
+        if Decimal(monthly_wage or 0) <= ZERO:
+            raise _http422("Enter the monthly wage for this worker.")
+    elif Decimal(default_wage or 0) <= ZERO:
+        raise _http422("Enter the wage per day for this worker.")
+
+
+def _bare_labourer_out(l: Labourer) -> LabourerOut:
+    """A just-created or fallback worker record, before any attendance exists."""
+    return LabourerOut(
+        id=l.id, name=l.name, phone=l.phone, aadhaar=l.aadhaar, gender=l.gender,  # type: ignore[arg-type]
+        wage_type=l.wage_type,  # type: ignore[arg-type]
+        default_wage=l.default_wage,
+        monthly_wage=l.monthly_wage,
+        paid_leaves_per_month=l.paid_leaves_per_month,
+        is_active=l.is_active, days_worked="0", total_paid=ZERO, earned=ZERO,
+        balance_to_pay=ZERO, joined_on=l.joined_on,
+        leaves_this_month="0", unpaid_leaves_this_month="0",
+        created_at=l.created_at,
+    )
 
 
 def _checked_joining_date(value: dt.date | None) -> dt.date:
@@ -152,25 +230,24 @@ def create_labourer(
     user: User = Depends(require_shop_staff),
 ) -> LabourerOut:
     shop_id = _require_shop(user)
+    _check_wages(payload.wage_type, payload.default_wage, payload.monthly_wage)
     labourer = Labourer(
         shop_id=shop_id,
         name=payload.name.strip(),
         phone=(payload.phone or "").strip() or None,
         aadhaar=(payload.aadhaar or "").strip() or None,
         gender=payload.gender,
+        wage_type=payload.wage_type,
         default_wage=q2(payload.default_wage),
+        monthly_wage=q2(payload.monthly_wage),
+        paid_leaves_per_month=payload.paid_leaves_per_month,
         joined_on=_checked_joining_date(payload.joined_on),
         created_by=user.id,
     )
     db.add(labourer)
     db.flush()
     db.refresh(labourer)
-    return LabourerOut(
-        id=labourer.id, name=labourer.name, phone=labourer.phone, aadhaar=labourer.aadhaar, gender=labourer.gender,  # type: ignore[arg-type]
-        default_wage=labourer.default_wage,
-        is_active=labourer.is_active, days_worked="0", total_paid=ZERO, earned=ZERO,
-        balance_to_pay=ZERO, joined_on=labourer.joined_on, created_at=labourer.created_at,
-    )
+    return _bare_labourer_out(labourer)
 
 
 @router.patch("/labourers/{labourer_id}", response_model=LabourerOut)
@@ -193,12 +270,22 @@ def update_labourer(
         labourer.aadhaar = payload.aadhaar.strip() or None
     if payload.gender is not None:
         labourer.gender = payload.gender
+    if payload.wage_type is not None:
+        labourer.wage_type = payload.wage_type
     if payload.default_wage is not None:
         labourer.default_wage = q2(payload.default_wage)
+    if payload.monthly_wage is not None:
+        labourer.monthly_wage = q2(payload.monthly_wage)
+    if payload.paid_leaves_per_month is not None:
+        labourer.paid_leaves_per_month = payload.paid_leaves_per_month
     if payload.is_active is not None:
         labourer.is_active = payload.is_active
     if payload.joined_on is not None:
         labourer.joined_on = _checked_joining_date(payload.joined_on)
+
+    # Validate the merged result, not the payload: switching someone to monthly
+    # without sending a monthly wage in the same request must still be caught.
+    _check_wages(labourer.wage_type, labourer.default_wage, labourer.monthly_wage)
 
     db.flush()
     db.refresh(labourer)
@@ -206,12 +293,7 @@ def update_labourer(
     for entry in labourers_with_ledger(db):
         if entry.id == labourer.id:
             return entry
-    return LabourerOut(
-        id=labourer.id, name=labourer.name, phone=labourer.phone, aadhaar=labourer.aadhaar, gender=labourer.gender,  # type: ignore[arg-type]
-        default_wage=labourer.default_wage,
-        is_active=labourer.is_active, days_worked="0", total_paid=ZERO, earned=ZERO,
-        balance_to_pay=ZERO, joined_on=labourer.joined_on, created_at=labourer.created_at,
-    )
+    return _bare_labourer_out(labourer)
 
 
 @router.delete("/labourers/{labourer_id}", status_code=status.HTTP_204_NO_CONTENT)

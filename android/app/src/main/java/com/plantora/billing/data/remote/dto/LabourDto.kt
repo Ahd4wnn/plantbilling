@@ -11,13 +11,20 @@ data class LabourerDto(
     val phone: String? = null,
     val aadhaar: String? = null,
     val gender: String,
+    // "daily" | "monthly". Defaulted so an older backend that doesn't send it
+    // still decodes — every pre-existing worker is paid by the day.
+    @SerialName("wage_type") val wageType: String = "daily",
     @SerialName("default_wage") val defaultWage: String,
+    @SerialName("monthly_wage") val monthlyWage: String = "0",
+    @SerialName("paid_leaves_per_month") val paidLeavesPerMonth: Int = 0,
     @SerialName("is_active") val isActive: Boolean = true,
     @SerialName("days_worked") val daysWorked: String = "0",
     @SerialName("total_paid") val totalPaid: String = "0",
     @SerialName("earned") val earned: String = "0",
     @SerialName("balance_to_pay") val balanceToPay: String = "0",
     @SerialName("joined_on") val joinedOn: String? = null,
+    @SerialName("leaves_this_month") val leavesThisMonth: String = "0",
+    @SerialName("unpaid_leaves_this_month") val unpaidLeavesThisMonth: String = "0",
     @SerialName("created_at") val createdAt: String,
 )
 
@@ -27,7 +34,10 @@ data class LabourerCreateDto(
     val phone: String? = null,
     val aadhaar: String? = null,
     val gender: String,
+    @SerialName("wage_type") val wageType: String = "daily",
     @SerialName("default_wage") val defaultWage: String = "0",
+    @SerialName("monthly_wage") val monthlyWage: String = "0",
+    @SerialName("paid_leaves_per_month") val paidLeavesPerMonth: Int = 0,
     // Omitted (null) means "today" — the server fills it in IST.
     @SerialName("joined_on") val joinedOn: String? = null,
 )
@@ -38,7 +48,10 @@ data class LabourerUpdateDto(
     val phone: String? = null,
     val aadhaar: String? = null,
     val gender: String? = null,
+    @SerialName("wage_type") val wageType: String? = null,
     @SerialName("default_wage") val defaultWage: String? = null,
+    @SerialName("monthly_wage") val monthlyWage: String? = null,
+    @SerialName("paid_leaves_per_month") val paidLeavesPerMonth: Int? = null,
     @SerialName("is_active") val isActive: Boolean? = null,
     @SerialName("joined_on") val joinedOn: String? = null,
 )

@@ -359,7 +359,7 @@ function LabourSection({ shopId }: { shopId: string }) {
                 <div className="min-w-0">
                   <div className="truncate font-semibold text-ink">{w.name}</div>
                   <div className="mt-0.5 text-sm text-ink-soft">
-                    {w.gender === "male" ? "Male" : "Female"} · {inr(w.default_wage)}/day · {w.days_worked} day(s)
+                    {w.gender === "male" ? "Male" : "Female"} · {w.wage_type === "monthly" ? `${inr(w.monthly_wage)}/month` : `${inr(w.default_wage)}/day`} · {w.days_worked} day(s)
                     {w.phone ? ` · ${w.phone}` : ""}{w.aadhaar ? ` · Aadhaar ${w.aadhaar}` : ""}
                   </div>
                 </div>
@@ -398,7 +398,14 @@ function LabourerModal({ shopId, worker, onClose }: { shopId: string; worker: La
         <p className="mt-1 text-sm text-ink-soft">{worker.gender === "male" ? "Male" : "Female"}{worker.phone ? ` · ${worker.phone}` : ""}{worker.aadhaar ? ` · Aadhaar ${worker.aadhaar}` : ""}</p>
         <div className="mt-3 space-y-1 rounded-card border border-border p-3 text-sm">
           <Line label={`Days worked`} value={`${worker.days_worked} day(s)`} />
-          <Line label={`Earned (${inr(worker.default_wage)}/day)`} value={inr(worker.earned)} />
+          {worker.wage_type === "monthly" ? (
+            <>
+              <Line label="Leaves this month" value={`${worker.leaves_this_month} of ${worker.paid_leaves_per_month} paid`} />
+              <Line label={`Earned (${inr(worker.monthly_wage)}/month)`} value={inr(worker.earned)} />
+            </>
+          ) : (
+            <Line label={`Earned (${inr(worker.default_wage)}/day)`} value={inr(worker.earned)} />
+          )}
           <Line label="Total paid" value={inr(worker.total_paid)} />
           <Line label={bal < 0 ? "Paid ahead" : "Balance to pay"} value={bal < 0 ? inr(String(-bal)) : inr(worker.balance_to_pay)} bold />
         </div>

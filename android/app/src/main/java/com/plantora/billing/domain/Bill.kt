@@ -59,6 +59,8 @@ data class BillDetail(
     val businessName: String?,
     val businessAddress: String?,
     val businessPhone: String?,
+    /** Shop logo to print at the top, or null for none. Switch already applied. */
+    val businessLogoUrl: String?,
     val subtotal: Money,
     val discountType: DiscountType,
     val discountValue: Money,

@@ -7,18 +7,34 @@ export type AttendanceStatus = "present" | "absent" | "half_day";
 
 export type PayKind = "wage" | "advance" | "due_clear";
 
+/** How a worker is paid. Only one of the two wage fields is ever meaningful. */
+export type WageType = "daily" | "monthly";
+
 export interface Labourer {
   id: string;
   name: string;
   phone: string | null;
   aadhaar: string | null;
   gender: Gender;
-  default_wage: string;       // wage per day
+  wage_type: WageType;
+  default_wage: string;       // wage per day     (daily workers)
+  monthly_wage: string;       // wage per month   (monthly workers)
+  paid_leaves_per_month: number;
   is_active: boolean;
   days_worked: string;        // present + ½·half-day (from attendance)
   total_paid: string;
-  earned: string;             // wage_per_day × days_worked
+  /**
+   * Daily:   wage_per_day × days_worked.
+   * Monthly: the salary, with part months pro-rated at monthly_wage/30 per day,
+   *          minus monthly_wage/30 for every leave beyond that month's allowance.
+   * The server is the only place this is computed — never recalculate it here.
+   */
+  earned: string;
   balance_to_pay: string;     // earned − total_paid (negative = paid ahead)
+  joined_on: string;          // YYYY-MM-DD
+  /** This calendar month only, so the app can explain a deduction. */
+  leaves_this_month: string;
+  unpaid_leaves_this_month: string;
   created_at: string;
 }
 
@@ -60,7 +76,12 @@ export interface LabourerPayload {
   phone?: string | null;
   aadhaar?: string | null;
   gender: Gender;
+  wage_type?: WageType;
   default_wage?: string;
+  monthly_wage?: string;
+  paid_leaves_per_month?: number;
+  /** YYYY-MM-DD. Omit for today (IST). Affects the wage, so send it when known. */
+  joined_on?: string | null;
 }
 
 export async function createLabourer(payload: LabourerPayload): Promise<Labourer> {

@@ -1,6 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { create } from "zustand";
 import { fetchBillDetail, type BillDetail } from "@/api/sales";
+import { getMediaUrl } from "@/api/client";
+import { encodeLogoRaster } from "@/lib/escposRaster";
 import type { BillOut } from "@/api/billing";
 
 // Fallback type declarations for Web Bluetooth API when types are not installed in TypeScript env
@@ -108,8 +110,19 @@ function cleanAscii(str: string): string {
     .replace(/[^\x00-\x7F]/g, "");    // strip any remaining non-ascii characters
 }
 
-// Compile a BillDetail object into binary ESC/POS formatting commands
-export function compileEscPosReceipt(bill: BillDetail, autoCut: boolean): Uint8Array {
+/**
+ * Compile a BillDetail object into binary ESC/POS formatting commands.
+ *
+ * Stays synchronous. `logoRaster` is prepared by the caller (see
+ * lib/escposRaster.ts) and passed in already encoded, so that fetching and
+ * dithering an image — the one genuinely async part — can't turn every call site
+ * into a promise, and so a logo that fails to load simply arrives as null.
+ */
+export function compileEscPosReceipt(
+  bill: BillDetail,
+  autoCut: boolean,
+  logoRaster?: Uint8Array | null,
+): Uint8Array {
   const encoder = new TextEncoder();
   const chunks: Uint8Array[] = [];
 
@@ -123,6 +136,11 @@ export function compileEscPosReceipt(bill: BillDetail, autoCut: boolean): Uint8A
 
   // 1. Initialize printer
   addBytes([0x1b, 0x40]);
+
+  // 1a. Shop logo, if there is one. Already centred and followed by a newline.
+  if (logoRaster && logoRaster.length > 0) {
+    chunks.push(logoRaster);
+  }
 
   // 2. Header (Center align, Bold, Double size)
   addBytes([0x1b, 0x61, 0x01]); // Center
@@ -609,7 +627,14 @@ export const useBluetoothPrinter = create<BluetoothState>((set, get) => ({
         detail = await fetchBillDetail(bill.id);
       }
 
-      const receiptBytes = compileEscPosReceipt(detail, autoCut);
+      // The server has already applied the shop's logo on/off switch, so a URL
+      // here means "print it". Encoding returns null on any failure — a logo that
+      // won't load must never stop a bill from printing.
+      const logoRaster = detail.business_logo_url
+        ? await encodeLogoRaster(getMediaUrl(detail.business_logo_url) ?? detail.business_logo_url)
+        : null;
+
+      const receiptBytes = compileEscPosReceipt(detail, autoCut, logoRaster);
 
       if (connectionType === "serial" && activeSerialPort) {
         const writer = activeSerialPort.writable.getWriter();

@@ -1,4 +1,5 @@
 import type { BillDetail } from "@/api/sales";
+import { getMediaUrl } from "@/api/client";
 import { formatINR, toPaise } from "@/lib/money";
 import { formatDateTime } from "@/lib/datetime";
 
@@ -20,6 +21,18 @@ export function BillReceipt({ bill }: { bill: BillDetail }) {
     <div className="space-y-6">
       {/* Header */}
       <div className="text-center">
+        {/* The server has already applied the shop's logo on/off switch — a URL
+            here means "print it". Kept visible under print:, since the whole
+            point is that it appears on the paper. */}
+        {bill.business_logo_url && (
+          <img
+            src={getMediaUrl(bill.business_logo_url) ?? undefined}
+            alt=""
+            className="mx-auto mb-3 h-16 max-w-[60%] object-contain"
+            // A broken logo must never break the receipt around it.
+            onError={(e) => { e.currentTarget.style.display = "none"; }}
+          />
+        )}
         <h2 className="text-xl font-extrabold text-ink">{bill.business_name || bill.shop_name || "Bill"}</h2>
         {bill.business_address && (
           <p className="mt-1.5 text-base font-semibold text-ink-soft whitespace-pre-wrap leading-tight">{bill.business_address}</p>

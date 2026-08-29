@@ -326,6 +326,24 @@
     <string name="lab_recent_payments">हाल के भुगतान</string>
     <string name="lab_no_payments">अभी तक कोई भुगतान दर्ज नहीं।</string>
     <string name="lab_per_day">%1$s/दिन</string>
+    <!-- Monthly-wage workers -->
+    <string name="lab_per_month">%1$s/महीना</string>
+    <string name="lab_wage_type">इस मज़दूर को कैसे भुगतान होता है?</string>
+    <string name="lab_wage_type_daily">प्रति दिन</string>
+    <string name="lab_wage_type_monthly">प्रति महीना</string>
+    <string name="lab_wage_per_month">महीने की मज़दूरी (₹)</string>
+    <string name="lab_paid_leaves">हर महीने कितनी सवेतन छुट्टी</string>
+    <string name="lab_paid_leaves_hint">महीने में इससे ज़्यादा छुट्टी लेने पर मज़दूरी से कटौती होगी। जिन दिनों आपने हाज़िरी दर्ज नहीं की, वे छुट्टी नहीं गिने जाते।</string>
+    <string name="lab_wage_per_month_label">महीने की मज़दूरी: %1$s</string>
+    <string name="lab_balance_label">देना बाकी: %1$s</string>
+    <string name="lab_earned_monthly">कमाया (%1$s/महीना)</string>
+    <string name="lab_leaves_this_month">इस महीने की छुट्टियाँ</string>
+    <string name="lab_leaves_of_paid">%2$d में से %1$s सवेतन</string>
+    <string name="lab_unpaid_leaves">इस महीने बिना वेतन की छुट्टियाँ</string>
+    <string name="lab_days_deducted">%1$s दिन की कटौती</string>
+    <string name="lab_remove_worker">हटाएँ</string>
+    <string name="lab_delete_worker_title">मज़दूर हटाएँ?</string>
+    <string name="lab_delete_worker_body">%1$s को हटाएँ? उनकी हाज़िरी मिट जाएगी और वापस नहीं आएगी, इसलिए उनकी मज़दूरी फिर नहीं निकाली जा सकेगी। पुराने भुगतान बने रहेंगे।</string>
     <string name="lab_balance_to_pay_amt">देना बाकी %1$s</string>
     <string name="lab_paid_ahead_amt">पहले चुकाया %1$s</string>
     <string name="cd_edit_worker">मज़दूर संपादित करें</string>

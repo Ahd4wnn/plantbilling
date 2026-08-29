@@ -25,6 +25,7 @@ import androidx.compose.material.icons.rounded.DeleteOutline
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.Payments
 import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
@@ -40,12 +41,15 @@ import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -60,6 +64,7 @@ import com.plantora.billing.domain.Labourer
 import com.plantora.billing.domain.LabourPayment
 import com.plantora.billing.domain.Money
 import com.plantora.billing.domain.formatBillTime
+import com.plantora.billing.domain.isMonthly
 import com.plantora.billing.domain.formatPlainDate
 import com.plantora.billing.domain.todayInShopZone
 import com.plantora.billing.ui.components.DatePickerField
@@ -82,6 +87,12 @@ private fun genderLabel(gender: String): String = when (gender) {
     else -> stringResource(R.string.lab_gender_male)
 }
 
+/** "₹500/day" or "₹15,000/month" — whichever this worker is actually paid. */
+@Composable
+private fun wageLabel(l: Labourer): String =
+    if (l.isMonthly) stringResource(R.string.lab_per_month, l.monthlyWage.format())
+    else stringResource(R.string.lab_per_day, l.defaultWage.format())
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LabourScreen(
@@ -91,6 +102,8 @@ fun LabourScreen(
     val ui by viewModel.ui.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
     val sheet = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    // The worker awaiting delete confirmation, if any.
+    var pendingDelete by remember { mutableStateOf<Labourer?>(null) }
 
     val ctx = androidx.compose.ui.platform.LocalContext.current
     LaunchedEffect(ui.message) { ui.message?.let { snackbar.showSnackbar(it.resolve(ctx)); viewModel.dismissMessage() } }
@@ -137,7 +150,7 @@ fun LabourScreen(
                     item { Text(stringResource(R.string.lab_no_workers), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                 }
                 items(ui.filteredLabourers, key = { it.id }) { l ->
-                    WorkerRow(l, canManage = ui.isManager, onOpen = { viewModel.openDetail(l) }, onEdit = { viewModel.openEditWorker(l) }, onDelete = { viewModel.deleteWorker(l.id) })
+                    WorkerRow(l, canManage = ui.isManager, onOpen = { viewModel.openDetail(l) }, onEdit = { viewModel.openEditWorker(l) }, onDelete = { pendingDelete = l })
                 }
 
                 item { Text(stringResource(R.string.lab_recent_payments), style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = Dimens.sm)) }
@@ -153,7 +166,13 @@ fun LabourScreen(
 
     ui.workerEditor?.let { editor ->
         ModalBottomSheet(onDismissRequest = viewModel::closeWorker, sheetState = sheet) {
-            WorkerEditorSheet(editor, viewModel::setWorkerName, viewModel::setWorkerPhone, viewModel::setWorkerAadhaar, viewModel::setWorkerGender, viewModel::setWorkerWage, viewModel::setWorkerJoinedOn, viewModel::saveWorker)
+            WorkerEditorSheet(
+                editor,
+                viewModel::setWorkerName, viewModel::setWorkerPhone, viewModel::setWorkerAadhaar,
+                viewModel::setWorkerGender, viewModel::setWorkerWage, viewModel::setWorkerWageType,
+                viewModel::setWorkerMonthlyWage, viewModel::setWorkerPaidLeaves,
+                viewModel::setWorkerJoinedOn, viewModel::saveWorker,
+            )
         }
     }
     ui.paymentEditor?.let { editor ->
@@ -175,6 +194,28 @@ fun LabourScreen(
             AttendanceSheet(ui.labourers, ui.attendance, ui.attendanceBusyId, viewModel::mark)
         }
     }
+
+    // Removing a worker also destroys their attendance record (the DB cascades),
+    // and every wage figure is calculated from that. This used to fire straight
+    // off a single tap on a small trash icon with nothing in between.
+    pendingDelete?.let { worker ->
+        AlertDialog(
+            onDismissRequest = { pendingDelete = null },
+            title = { Text(stringResource(R.string.lab_delete_worker_title)) },
+            text = { Text(stringResource(R.string.lab_delete_worker_body, worker.name)) },
+            confirmButton = {
+                TextButton(onClick = { viewModel.deleteWorker(worker.id); pendingDelete = null }) {
+                    Text(
+                        stringResource(R.string.lab_remove_worker),
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingDelete = null }) { Text(stringResource(R.string.action_cancel)) }
+            },
+        )
+    }
 }
 
 @Composable
@@ -184,7 +225,7 @@ private fun WorkerRow(l: Labourer, canManage: Boolean, onOpen: () -> Unit, onEdi
             Column(Modifier.weight(1f)) {
                 Text(l.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                 Text(
-                    genderLabel(l.gender) + " • " + stringResource(R.string.lab_per_day, l.defaultWage.format()) + (l.phone?.let { " • $it" } ?: "") +
+                    genderLabel(l.gender) + " • " + wageLabel(l) + (l.phone?.let { " • $it" } ?: "") +
                         (l.joinedOn?.let { " • " + stringResource(R.string.lab_joined_since, formatPlainDate(it)) } ?: ""),
                     style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -227,7 +268,19 @@ private fun PaymentRow(p: LabourPayment, canManage: Boolean, onEdit: () -> Unit,
 }
 
 @Composable
-private fun WorkerEditorSheet(editor: WorkerEditor, onName: (String) -> Unit, onPhone: (String) -> Unit, onAadhaar: (String) -> Unit, onGender: (String) -> Unit, onWage: (String) -> Unit, onJoinedOn: (java.time.LocalDate) -> Unit, onSave: () -> Unit) {
+private fun WorkerEditorSheet(
+    editor: WorkerEditor,
+    onName: (String) -> Unit,
+    onPhone: (String) -> Unit,
+    onAadhaar: (String) -> Unit,
+    onGender: (String) -> Unit,
+    onWage: (String) -> Unit,
+    onWageType: (String) -> Unit,
+    onMonthlyWage: (String) -> Unit,
+    onPaidLeaves: (String) -> Unit,
+    onJoinedOn: (java.time.LocalDate) -> Unit,
+    onSave: () -> Unit,
+) {
     Column(Modifier.fillMaxWidth().imePadding().verticalScroll(rememberScrollState()).padding(horizontal = Dimens.lg).padding(bottom = Dimens.xl)) {
         Text(if (editor.id != null) stringResource(R.string.cd_edit_worker) else stringResource(R.string.lab_add_worker), style = MaterialTheme.typography.headlineMedium)
         Spacer(Modifier.height(Dimens.lg))
@@ -239,7 +292,23 @@ private fun WorkerEditorSheet(editor: WorkerEditor, onName: (String) -> Unit, on
         Spacer(Modifier.height(Dimens.md))
         GenderToggle(editor.gender, onGender)
         Spacer(Modifier.height(Dimens.md))
-        PlantoraTextField(editor.wage, onWage, label = stringResource(R.string.lab_wage_per_day), keyboardType = KeyboardType.Decimal)
+        WageTypeToggle(editor.wageType, onWageType)
+        Spacer(Modifier.height(Dimens.md))
+        // Only the wage for the selected mode is asked for — showing both invites
+        // filling in the wrong one and wondering why the pay looks wrong.
+        if (editor.isMonthly) {
+            PlantoraTextField(editor.monthlyWage, onMonthlyWage, label = stringResource(R.string.lab_wage_per_month), keyboardType = KeyboardType.Decimal)
+            Spacer(Modifier.height(Dimens.md))
+            PlantoraTextField(editor.paidLeaves, onPaidLeaves, label = stringResource(R.string.lab_paid_leaves), keyboardType = KeyboardType.Number)
+            Spacer(Modifier.height(Dimens.xs))
+            Text(
+                stringResource(R.string.lab_paid_leaves_hint),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        } else {
+            PlantoraTextField(editor.wage, onWage, label = stringResource(R.string.lab_wage_per_day), keyboardType = KeyboardType.Decimal)
+        }
         Spacer(Modifier.height(Dimens.md))
         Text(stringResource(R.string.lab_joined_on), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Spacer(Modifier.height(Dimens.xs))
@@ -265,6 +334,17 @@ private fun GenderToggle(gender: String, onGender: (String) -> Unit) {
     SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
         SegmentedButton(selected = gender == "male", onClick = { onGender("male") }, shape = SegmentedButtonDefaults.itemShape(0, 2)) { Text(stringResource(R.string.lab_gender_male)) }
         SegmentedButton(selected = gender == "female", onClick = { onGender("female") }, shape = SegmentedButtonDefaults.itemShape(1, 2)) { Text(stringResource(R.string.lab_gender_female)) }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun WageTypeToggle(wageType: String, onWageType: (String) -> Unit) {
+    Text(stringResource(R.string.lab_wage_type), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    Spacer(Modifier.height(Dimens.xs))
+    SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
+        SegmentedButton(selected = wageType == "daily", onClick = { onWageType("daily") }, shape = SegmentedButtonDefaults.itemShape(0, 2)) { Text(stringResource(R.string.lab_wage_type_daily)) }
+        SegmentedButton(selected = wageType == "monthly", onClick = { onWageType("monthly") }, shape = SegmentedButtonDefaults.itemShape(1, 2)) { Text(stringResource(R.string.lab_wage_type_monthly)) }
     }
 }
 
@@ -299,9 +379,20 @@ private fun PaymentSheet(
 
         if (!editor.isAdvance) {
             Spacer(Modifier.height(Dimens.md))
-            Text(stringResource(R.string.lab_wage_per_day_label, editor.wagePerDay.format()), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Spacer(Modifier.height(Dimens.xs))
-            PlantoraTextField(editor.days, onDays, label = stringResource(R.string.lab_num_days), keyboardType = KeyboardType.Decimal)
+            if (editor.isMonthlyWorker) {
+                // No "number of days" — a salary isn't paid in days. Show the salary
+                // and what's outstanding, which is what's normally being handed over.
+                Text(
+                    stringResource(R.string.lab_wage_per_month_label, editor.monthlyWage.format()) +
+                        " • " + stringResource(R.string.lab_balance_label, editor.balanceToPay.format()),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            } else {
+                Text(stringResource(R.string.lab_wage_per_day_label, editor.wagePerDay.format()), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Spacer(Modifier.height(Dimens.xs))
+                PlantoraTextField(editor.days, onDays, label = stringResource(R.string.lab_num_days), keyboardType = KeyboardType.Decimal)
+            }
         }
         Spacer(Modifier.height(Dimens.md))
         PlantoraTextField(editor.amount, onAmount, label = if (editor.isAdvance) stringResource(R.string.lab_advance_amount) else stringResource(R.string.label_amount_rupees), keyboardType = KeyboardType.Decimal)
@@ -355,7 +446,25 @@ private fun WorkerDetailSheet(detail: WorkerDetail, onRecord: () -> Unit, onAdva
         // Statement of pay
         StatementRow(stringResource(R.string.lab_days_worked), stringResource(R.string.lab_days_count, l.daysWorked))
         HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
-        StatementRow(stringResource(R.string.lab_earned, l.defaultWage.format()), l.earned.format())
+        // A monthly worker's pay is a salary minus deductions, so show the leave
+        // position that produced it — a reduced figure on its own reads as a bug.
+        if (l.isMonthly) {
+            StatementRow(
+                stringResource(R.string.lab_leaves_this_month),
+                stringResource(R.string.lab_leaves_of_paid, l.leavesThisMonth, l.paidLeavesPerMonth),
+            )
+            HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
+            if ((l.unpaidLeavesThisMonth.toDoubleOrNull() ?: 0.0) > 0.0) {
+                StatementRow(
+                    stringResource(R.string.lab_unpaid_leaves),
+                    stringResource(R.string.lab_days_deducted, l.unpaidLeavesThisMonth),
+                )
+                HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
+            }
+            StatementRow(stringResource(R.string.lab_earned_monthly, l.monthlyWage.format()), l.earned.format())
+        } else {
+            StatementRow(stringResource(R.string.lab_earned, l.defaultWage.format()), l.earned.format())
+        }
         HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
         StatementRow(stringResource(R.string.lab_total_paid), l.totalPaid.format())
         HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))

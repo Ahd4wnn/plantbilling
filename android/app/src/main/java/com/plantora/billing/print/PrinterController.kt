@@ -1,13 +1,21 @@
 package com.plantora.billing.print
 
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import com.plantora.billing.data.local.AppPreferences
+import com.plantora.billing.data.resolveMediaUrl
 import com.plantora.billing.domain.BillDetail
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -91,7 +99,36 @@ class PrinterController @Inject constructor(
     suspend fun printBill(bill: BillDetail): Result<Unit> = printSession {
         val dots = dotsFor(prefs.paperWidthChars.first())
         val autoCut = prefs.autoCut.first()
-        ReceiptRenderer(dots).build(bill, autoCut)
+        val logo = fetchLogo(bill.businessLogoUrl)
+        try {
+            ReceiptRenderer(dots).build(bill, autoCut, logo)
+        } finally {
+            logo?.recycle()
+        }
+    }
+
+    /**
+     * Download and decode the shop's logo, or return null.
+     *
+     * Everything here fails soft. A logo is decoration; a bill that won't print
+     * because the shop's wifi dropped while fetching an image is a real problem in
+     * front of a waiting customer. Any failure — offline, 404, corrupt file, slow
+     * server — just prints the receipt without it.
+     *
+     * The server has already applied the shop's on/off switch, so a non-null URL
+     * here means "print this".
+     */
+    private suspend fun fetchLogo(rawUrl: String?): Bitmap? = withContext(Dispatchers.IO) {
+        val url = resolveMediaUrl(rawUrl, prefs.baseUrl.first()) ?: return@withContext null
+        runCatching {
+            val client = OkHttpClient.Builder()
+                .callTimeout(5, TimeUnit.SECONDS)
+                .build()
+            client.newCall(Request.Builder().url(url).build()).execute().use { response ->
+                if (!response.isSuccessful) return@use null
+                response.body?.byteStream()?.use { BitmapFactory.decodeStream(it) }
+            }
+        }.getOrNull()
     }
 
     suspend fun printTest(): Result<Unit> = printSession {

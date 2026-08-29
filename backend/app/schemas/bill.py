@@ -182,6 +182,11 @@ class BillDetailOut(BaseModel):
     business_name: str | None = None
     business_address: str | None = None
     business_phone: str | None = None
+    # The shop's logo for the printed receipt. Already resolved against the shop's
+    # on/off switch: None means "don't print a logo", whether because none was
+    # uploaded or because the admin turned it off. Every print surface — screen,
+    # browser, and both thermal paths — just checks for None.
+    business_logo_url: str | None = None
     bill_type: str
     subtotal: MoneyOut
     discount_type: str

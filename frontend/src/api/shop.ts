@@ -16,6 +16,9 @@ export interface ShopSettings {
   whatsapp_message_template: string | null;
   whatsapp_footer_message: string | null;
   whatsapp_language: string;
+  /** Read-only for the shop — only the platform admin can change these. */
+  logo_url: string | null;
+  logo_enabled: boolean;
 }
 
 export interface ShopSettingsUpdate {
