@@ -27,6 +27,21 @@ const MAX_LOGO_DOTS_TALL = 200;
 const THRESHOLD = 128;
 
 /**
+ * Media is served with a 30-day `expires`, so a response cached BEFORE the server
+ * sent CORS headers keeps failing here for a month — and no amount of reloading
+ * clears it, because browsers key a CORS-mode fetch separately from the plain
+ * `<img>` the receipt already displays. That is precisely the shape of the bug:
+ * logo visible on screen, missing from the print.
+ *
+ * A distinct query string is a different cache key, so this always gets a fresh
+ * response with the headers. The bytes are identical either way; only the entry
+ * differs, and the logo still caches normally under this key afterwards.
+ */
+function corsCacheKey(url: string): string {
+  return url + (url.includes("?") ? "&" : "?") + "cors=1";
+}
+
+/**
  * Load an image URL into a canvas and return its pixels.
  *
  * `crossOrigin` is set because the logo is served from the API host while the app
@@ -44,7 +59,7 @@ async function loadPixels(
     el.crossOrigin = "anonymous";
     el.onload = () => resolve(el);
     el.onerror = () => resolve(null);
-    el.src = url;
+    el.src = corsCacheKey(url);
   });
   if (!img || !img.width || !img.height) return null;
 
