@@ -3,7 +3,7 @@ from __future__ import annotations
 import datetime as dt
 import uuid
 
-from sqlalchemy import ForeignKey, Text
+from sqlalchemy import ForeignKey, Integer, Text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -21,6 +21,11 @@ class BillAuditLog(Base):
         UUID(as_uuid=True), ForeignKey("shops.id", ondelete="CASCADE"), nullable=False
     )
     bill_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
+    # The shop's own bill number (bills.bill_seq), copied here when the entry is
+    # written. Stored rather than joined because a delete entry outlives its bill,
+    # and the number would otherwise be lost with it. NULL for account deletions
+    # and for bills predating per-shop numbering.
+    bill_no: Mapped[int | None] = mapped_column(Integer, nullable=True)
     action: Mapped[str] = mapped_column(Text, nullable=False)  # 'edit' | 'delete'
     changed_by: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True

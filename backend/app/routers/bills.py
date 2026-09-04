@@ -103,6 +103,26 @@ def _bill_no(bill: Bill) -> str | None:
     return f"{bill.bill_seq:04d}" if bill.bill_seq is not None else None
 
 
+def _short_uuid(value) -> str:
+    """The first block of a UUID, upper-cased — the last-resort bill reference."""
+    return str(value).split("-")[0].upper() if value else "—"
+
+
+def _audit_bill_ref(bill_no: int | None, bill_id) -> str:
+    """How the report's edit & delete log names the bill an entry is about.
+
+    `bill_no` is copied onto the audit row when the entry is written, because a
+    delete entry outlives its bill and the number would otherwise vanish with it.
+    Entries written before that column existed fall back to the UUID fragment —
+    genuinely all that survives for them. Account deletions name no bill at all.
+    """
+    if bill_no is not None:
+        return f"{bill_no:04d}"
+    if bill_id is None:
+        return "—"
+    return _short_uuid(bill_id)
+
+
 def _bill_logo_url(shop) -> str | None:
     """The logo to print on this shop's bills, or None for no logo.
 
@@ -240,6 +260,9 @@ def _record_bill_audit(
         BillAuditLog(
             shop_id=bill.shop_id,
             bill_id=bill.id,
+            # Copied, not joined: a delete entry outlives its bill, so this is the
+            # only chance to keep the number the shop actually recognises.
+            bill_no=bill.bill_seq,
             action=action,
             changed_by=actor.id,
             changed_by_email=actor.email,
@@ -1268,13 +1291,10 @@ def download_detailed_report(
         ).scalars():
             items_by_bill.setdefault(it.bill_id, []).append(it)
 
-    def short_id(bid) -> str:
-        return str(bid).split("-")[0].upper() if bid else "—"
-
     def bill_ref(b) -> str:
         # Prefer the human-facing per-shop number; fall back to the UUID fragment
         # for legacy bills that were never assigned one.
-        return f"{b.bill_seq:04d}" if b.bill_seq is not None else short_id(b.id)
+        return f"{b.bill_seq:04d}" if b.bill_seq is not None else _short_uuid(b.id)
 
     def ist(dtv) -> str:
         return dtv.astimezone(SHOP_TZ).strftime("%Y-%m-%d %H:%M") if dtv else ""
@@ -1442,7 +1462,11 @@ def download_detailed_report(
         ).order_by(BillAuditLog.created_at.asc())
     ).scalars().all()
     audit_tab = [
-        [ist(a.created_at), a.action.replace("_", " "), short_id(a.bill_id), a.changed_by_email or "—", a.summary or ""]
+        [
+            ist(a.created_at), a.action.replace("_", " "),
+            _audit_bill_ref(a.bill_no, a.bill_id),
+            a.changed_by_email or "—", a.summary or "",
+        ]
         for a in audit_rows
     ]
 

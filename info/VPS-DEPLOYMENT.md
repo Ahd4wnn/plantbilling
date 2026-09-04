@@ -268,6 +268,7 @@ gunzip -c ~/plantbill-backup-YYYY-MM-DD-HHMM.sql.gz | \
 ### Recent deploys
 | Revision | What it adds |
 |---|---|
+| `e5f7a9b1c3d4` | **`bill_audit_log.bill_no`** — the shop's own bill number on each edit/delete entry, so the report's "Edit & Delete Log" stops showing a UUID fragment under a column headed *Bill No*. Copied in at write time because a delete entry outlives its bill; backfilled here for entries whose bill still exists. Entries for already-deleted bills keep the fragment — that number is genuinely gone. Additive; downgrade drops the column. |
 | `d4e6f8a0b2c3` | **Monthly-wage workers + shop logo** — `labourers.wage_type` / `monthly_wage` / `paid_leaves_per_month` (all defaulted, so every existing worker stays `'daily'` and no one's pay changes), plus `shops.logo_path`. Adds `labourers_wage_type_check` and `labourers_wage_nonneg` — note the latter restores a `default_wage >= 0` guard that Postgres silently dropped back at `d2e3f4a5b6c7` when `overtime_rate` was removed. Purely additive DDL; deploy order doesn't matter. Downgrade drops the columns and constraints. |
 | `c3d5e7f9a1b2` | **Admin ledger soft delete** — `deleted_at` / `deleted_by` on `admin_sales` and `admin_expenses`, plus a partial index on live rows. Purely additive; the old build ignores the columns, so deploy order doesn't matter. Downgrade drops both columns and the indexes. |
 | `b2c4d6e8f0a1` | **`labourers.joined_on`** — the date a worker joined. Additive; backfilled from `created_at` in Asia/Kolkata, defaults to `CURRENT_DATE`. Downgrade drops the column. Ships with the orange rebrand (app 0.1.40). |
@@ -336,9 +337,9 @@ gunzip -c ~/plantbill-backup-YYYY-MM-DD-HHMM.sql.gz | \
     deliberate choice, so that a manager who forgets to mark attendance never
     silently cuts someone's wages.
 13. **Part months are pro-rated.** A monthly worker joining mid-month earns
-    `monthly_wage/30 × days since joining`, and the current month grows by one
-    day's pay each day. A *complete* month always pays the full salary, whether it
-    has 28, 30 or 31 days.
+    `monthly_wage/30 × days since joining`. A *complete* month always pays the full
+    salary, whether it has 28, 30 or 31 days. (Superseded in part by item 18 — the
+    current month grows as attendance is *marked*, not as the calendar advances.)
 14. **Deleting a worker asks first, on Android too.** The trash icon used to delete
     immediately on a single tap — and it cascade-deletes the attendance every wage
     figure is computed from. Confirm the dialog appears on both web and Android, and
@@ -353,6 +354,33 @@ gunzip -c ~/plantbill-backup-YYYY-MM-DD-HHMM.sql.gz | \
     Android: a logo that dithers to an unreadable smudge is a failed test.
 17. **The shop cannot change its own logo.** `PATCH /shop` deliberately omits the
     logo fields; a shop-owner login sees the logo but has no control for it.
+
+### 7d. After `e5f7a9b1c3d4` (marked-day accrual + report bill numbers)
+
+18. **A monthly worker's pay stops at the last marked day.** This is a *behaviour
+    change to money* — the current month used to accrue by calendar date. Take a
+    worker on ₹16,500/month with attendance marked through the 3rd while today is
+    the 4th: before, 2,200 (4 × 550); after, **1,650** (3 × 550). Mark today and it
+    returns to 2,200. Expect balances to *drop* on deploy for any monthly worker
+    whose attendance isn't up to date — that is the fix, not a regression. Daily
+    workers must not move by a rupee.
+19. **A gap mid-month is still paid.** Mark the 1st, 3rd and 4th, leave the 2nd
+    untouched, with today the 5th → four days' pay. A forgotten tap must never cost
+    someone a day's wages; the cap only stops the month running *ahead* of the record.
+20. **Completed months are untouched.** A worker with a finished month still shows
+    the full salary for it, minus unpaid leaves, however patchy the attendance was.
+21. **The report's edit & delete log shows real bill numbers.** Edit a bill, then
+    delete another, then download the sales report → the "Edit & Delete Log" tab's
+    *Bill No* column must read `0042`-style numbers matching the "All Bills" tab, not
+    `3F9A2B1C`. Entries written *before* this deploy show numbers too (the migration
+    backfills them) — except for bills that were already deleted, which keep the
+    fragment because the number no longer exists anywhere. Account-deletion rows
+    show `—`.
+22. **Verify the backfill actually ran.** RLS is FORCE on `bill_audit_log`, and a
+    DML statement in a migration silently matches zero rows without the
+    `set_config('app.user_role','admin',true)` the revision sets. Check:
+    `SELECT count(*) FILTER (WHERE bill_no IS NOT NULL), count(*) FROM bill_audit_log;`
+    — the first number must be non-zero if the shop has ever edited a bill.
 
 ---
 
