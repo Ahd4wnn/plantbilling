@@ -18,6 +18,14 @@ at monthly_wage / 30 per leave. Deliberate choices baked in here:
   20th earns roughly a third of a month, and the current month accrues day by day
   — so a monthly worker's balance moves through the month exactly as a daily
   worker's does, instead of jumping on the 1st.
+- **The current month only accrues as far as attendance has been recorded.** It
+  runs from the 1st to the newest marked day, not to today's date. Otherwise the
+  balance climbs at midnight whether or not anybody opened the app, and a monthly
+  worker's pay would move for days that were never recorded while a daily worker's
+  only moves when somebody marks attendance. Days skipped in the *middle* of the
+  month are still paid — this stops the month running ahead of the record, it does
+  not punish a missed tap. A month with nothing marked at all accrues nothing yet.
+  Completed months are unaffected: they pay the full salary either way.
 - **Only marked absences count as leave**, with a half-day as half a leave. Days
   nobody marked at all are ignored. Attendance here is entered by hand by a shop
   manager who may be busy or away; treating an unmarked day as absence would cut a
@@ -94,12 +102,18 @@ def monthly_earnings(
     joined_on: dt.date,
     today: dt.date,
     leaves_by_month: Mapping[dt.date, Decimal],
+    last_marked: dt.date | None = None,
 ) -> Decimal:
     """Rupees earned by a monthly-salary worker, from joining up to `today`.
 
     `leaves_by_month` is keyed by the FIRST day of each month; a month with no
     entry simply has no leaves. Months are walked rather than derived from the
     leave map because a month with perfect attendance still has to be paid.
+
+    `last_marked` is the newest day attendance was recorded in the month `today`
+    falls in, and is how far that month accrues — see the module docstring. `None`
+    means nothing has been marked this month, so it has earned nothing yet. It is
+    only ever consulted for the current month; earlier months are complete.
     """
     wage = Decimal(monthly_wage)
     if wage <= ZERO or joined_on > today:
@@ -114,7 +128,10 @@ def monthly_earnings(
         first, last = cursor, month_end(cursor)
         window_start = max(joined_on, first)
         window_end = min(today, last)
-        if window_end >= window_start:
+        if cursor == final:
+            # The current, unfinished month accrues only as far as the record goes.
+            window_end = min(window_end, last_marked) if last_marked else None
+        if window_end is not None and window_end >= window_start:
             covers_whole_month = window_start == first and window_end == last
             if covers_whole_month:
                 base = wage

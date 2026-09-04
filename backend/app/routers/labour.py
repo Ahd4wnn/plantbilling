@@ -73,6 +73,9 @@ def labourers_with_ledger(db: Session, shop_id: uuid.UUID | None = None) -> list
             month_col.label("month"),
             LabourAttendance.status,
             func.count().label("marks"),
+            # How far this month's record actually reaches — a monthly worker's
+            # current month accrues to here, not to today's date.
+            func.max(LabourAttendance.day).label("last_day"),
         )
         .group_by(LabourAttendance.labourer_id, month_col, LabourAttendance.status)
     )
@@ -88,17 +91,20 @@ def labourers_with_ledger(db: Session, shop_id: uuid.UUID | None = None) -> list
     labourers = list(db.execute(lab_stmt).scalars())
     paid_by = {r[0]: Decimal(r[1]) for r in db.execute(paid_stmt).all()}
 
-    # labourer_id -> {first-of-month -> {"days": Decimal, "leaves": Decimal}}
-    marks: dict[uuid.UUID, dict[dt.date, dict[str, Decimal]]] = {}
-    for labourer_id, month, status, count in db.execute(att_stmt).all():
+    # labourer_id -> {first-of-month -> {"days", "leaves", "last_day"}}
+    marks: dict[uuid.UUID, dict[dt.date, dict]] = {}
+    for labourer_id, month, status, count, last_day in db.execute(att_stmt).all():
         # date_trunc hands back a timestamp; the rest of this works in plain dates.
         key = month.date() if isinstance(month, dt.datetime) else month
         bucket = marks.setdefault(labourer_id, {}).setdefault(
-            key, {"days": ZERO, "leaves": ZERO}
+            key, {"days": ZERO, "leaves": ZERO, "last_day": None}
         )
         n = Decimal(count)
         bucket["days"] += STATUS_DAYS.get(status, ZERO) * n
         bucket["leaves"] += STATUS_LEAVES.get(status, ZERO) * n
+        # One row per status, so the month's newest mark is the max across them.
+        if last_day is not None and (bucket["last_day"] is None or last_day > bucket["last_day"]):
+            bucket["last_day"] = last_day
 
     today = _today_ist()
     this_month = month_start(today)
@@ -109,6 +115,9 @@ def labourers_with_ledger(db: Session, shop_id: uuid.UUID | None = None) -> list
         days = sum((m["days"] for m in by_month.values()), ZERO)
         paid = paid_by.get(l.id, ZERO)
 
+        this_month_marks = by_month.get(this_month, {})
+        last_marked = this_month_marks.get("last_day")
+
         if l.wage_type == "monthly":
             leaves_by_month = {month: m["leaves"] for month, m in by_month.items()}
             earned = monthly_earnings(
@@ -117,13 +126,14 @@ def labourers_with_ledger(db: Session, shop_id: uuid.UUID | None = None) -> list
                 joined_on=l.joined_on,
                 today=today,
                 leaves_by_month=leaves_by_month,
+                last_marked=last_marked,
             )
         else:
             earned = daily_earnings(Decimal(l.default_wage), days)
 
         # This month's leave position, so the app can explain a deduction instead of
         # just showing a smaller number.
-        leaves_now = by_month.get(this_month, {}).get("leaves", ZERO)
+        leaves_now = this_month_marks.get("leaves", ZERO)
         unpaid_now = unpaid_leaves_in_month(leaves_now, l.paid_leaves_per_month)
 
         out.append(
@@ -138,6 +148,7 @@ def labourers_with_ledger(db: Session, shop_id: uuid.UUID | None = None) -> list
                 balance_to_pay=q2(earned - paid), joined_on=l.joined_on,
                 leaves_this_month=_num_str(leaves_now),
                 unpaid_leaves_this_month=_num_str(unpaid_now),
+                accrued_through=last_marked if l.wage_type == "monthly" else None,
                 created_at=l.created_at,
             )
         )

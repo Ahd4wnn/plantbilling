@@ -64,7 +64,9 @@ class LabourerOut(BaseModel):
     #   earned      — daily:   wage_per_day × days_worked
     #                 monthly: salary per month, part months pro-rated at
     #                          monthly_wage/30 per day, minus monthly_wage/30 for
-    #                          each leave beyond that month's paid-leave allowance
+    #                          each leave beyond that month's paid-leave allowance.
+    #                          The current month accrues only to accrued_through,
+    #                          the newest day attendance was marked — not to today.
     #   total_paid  = every rupee handed over (wage + advance + legacy due-clear)
     #   balance_to_pay = earned − total_paid   (negative = paid ahead / advance)
     days_worked: str = "0"
@@ -76,6 +78,9 @@ class LabourerOut(BaseModel):
     # reduced rather than just showing a smaller number. absent = 1, half-day = ½.
     leaves_this_month: str = "0"
     unpaid_leaves_this_month: str = "0"
+    # Monthly workers only: the newest day attendance was marked this month, i.e.
+    # how far `earned` has counted. None when nothing is marked yet this month.
+    accrued_through: dt.date | None = None
     created_at: dt.datetime
 
     model_config = {"from_attributes": True}

@@ -27,6 +27,7 @@ export interface Labourer {
    * Daily:   wage_per_day × days_worked.
    * Monthly: the salary, with part months pro-rated at monthly_wage/30 per day,
    *          minus monthly_wage/30 for every leave beyond that month's allowance.
+   *          The current month counts only up to `accrued_through`.
    * The server is the only place this is computed — never recalculate it here.
    */
   earned: string;
@@ -35,6 +36,11 @@ export interface Labourer {
   /** This calendar month only, so the app can explain a deduction. */
   leaves_this_month: string;
   unpaid_leaves_this_month: string;
+  /**
+   * Monthly workers only: the newest day attendance was marked this month, i.e.
+   * how far `earned` has counted. Null when nothing is marked yet this month.
+   */
+  accrued_through: string | null;   // YYYY-MM-DD
   created_at: string;
 }
 

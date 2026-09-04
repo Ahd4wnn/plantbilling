@@ -34,6 +34,11 @@ function fmt(v: string | null | undefined): string {
 function todayISO(): string {
   return new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
 }
+/** "3 Sep" — a YYYY-MM-DD day, read as a plain calendar date (no timezone shift). */
+function dayLabel(iso: string): string {
+  const [y, m, d] = iso.split("-").map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+}
 /** "₹500/day" or "₹15,000/month" — whichever this worker is actually paid. */
 function wageLine(l: Labourer): string {
   return l.wage_type === "monthly" ? `${fmt(l.monthly_wage)}/month` : `${fmt(l.default_wage)}/day`;
@@ -513,6 +518,15 @@ function DetailSheet({ labourer, onClose, onRecord }: { labourer: Labourer; onCl
                 <StatementRow label="Unpaid leaves this month" value={`${labourer.unpaid_leaves_this_month} day(s) deducted`} />
               )}
               <StatementRow label={`Earned (${fmt(labourer.monthly_wage)}/month)`} value={fmt(labourer.earned)} />
+              {/* Why the figure isn't the whole month yet. Without this the shop
+                  reads a part-month number as a mistake — which is exactly what
+                  happened before the current month was capped at the last mark. */}
+              <StatementRow
+                label="Counted up to"
+                value={labourer.accrued_through
+                  ? `${dayLabel(labourer.accrued_through)} — mark attendance to include later days`
+                  : "Nothing marked this month yet"}
+              />
             </>
           ) : (
             <StatementRow label={`Earned (${fmt(labourer.default_wage)}/day)`} value={fmt(labourer.earned)} />

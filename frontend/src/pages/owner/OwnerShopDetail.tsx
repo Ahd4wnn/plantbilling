@@ -402,6 +402,13 @@ function LabourerModal({ shopId, worker, onClose }: { shopId: string; worker: La
             <>
               <Line label="Leaves this month" value={`${worker.leaves_this_month} of ${worker.paid_leaves_per_month} paid`} />
               <Line label={`Earned (${inr(worker.monthly_wage)}/month)`} value={inr(worker.earned)} />
+              {/* The current month counts only as far as attendance was marked. */}
+              <Line
+                label="Counted up to"
+                value={worker.accrued_through
+                  ? new Date(worker.accrued_through + "T00:00:00").toLocaleDateString("en-IN", { day: "numeric", month: "short" })
+                  : "Nothing marked this month"}
+              />
             </>
           ) : (
             <Line label={`Earned (${inr(worker.default_wage)}/day)`} value={inr(worker.earned)} />
